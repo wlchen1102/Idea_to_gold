@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>点子成金 - 创意广场</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="navbar">
+    <div class="nav-left">
+      <div class="logo">点子成金</div>
+      <nav class="nav-links">
+        <a class="active" href="#">创意广场</a>
+        <a href="#">项目</a>
+        <a href="#">产品</a>
+      </nav>
+    </div>
+    <div class="nav-right">
+      <button id="publishBtn" class="btn btn-primary">+ 发布创意</button>
+      <div class="avatar" title="我的">邓</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 标题区 -->
+    <section class="page-head">
+      <h1>创意广场</h1>
+      <p class="sub">发现优秀创意，连接创作者与需求方</p>
+    </section>
+
+    <!-- 排序与筛选 -->
+    <section class="toolbar">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-sort="hot">热门</button>
+        <button class="tab" data-sort="new">最新</button>
+        <button class="tab" data-sort="bounty">悬赏</button>
+      </div>
+      <div class="toolbar-right">
+        <button id="filterToggle" class="btn btn-light">筛选</button>
+      </div>
+    </section>
+
+    <!-- 筛选面板 -->
+    <section id="filterPanel" class="filter-panel hidden" aria-hidden="true">
+      <div class="filter-group">
+        <div class="filter-title">期望终端</div>
+        <label><input type="checkbox" name="terminal" value="web" checked /> 网页</label>
+        <label><input type="checkbox" name="terminal" value="ios" checked /> iOS</label>
+        <label><input type="checkbox" name="terminal" value="android" checked /> Android</label>
+        <label><input type="checkbox" name="terminal" value="miniapp" checked /> 小程序</label>
+      </div>
+      <div class="filter-group">
+        <div class="filter-title">创意状态</div>
+        <label><input type="radio" name="status" value="all" checked /> 全部</label>
+        <label><input type="radio" name="status" value="pending" /> 待解决</label>
+        <label><input type="radio" name="status" value="developing" /> 开发中</label>
+      </div>
+      <div class="filter-actions">
+        <button id="applyFilters" class="btn btn-primary">应用筛选</button>
+        <button id="resetFilters" class="btn btn-ghost">重置</button>
+      </div>
+    </section>
+
+    <!-- 信息流卡片区域 -->
+    <section id="ideaList" class="cards-grid" aria-live="polite"></section>
+
+    <!-- 加载指示器 -->
+    <div id="loading" class="loading hidden">加载中...</div>
+  </main>
+
+  <!-- 移动端悬浮发布按钮 -->
+  <button id="fabPublish" class="fab" aria-label="发布创意">+</button>
+
+  <script src="app.js"></script>
+</body>
+</html> 
