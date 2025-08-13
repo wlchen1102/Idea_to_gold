@@ -1,0 +1,151 @@
+"use client";
+
+import React, { useState } from "react";
+
+function Avatar({ name, src }: { name: string; src?: string }) {
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt={name} className="h-10 w-10 rounded-full object-cover" />
+    );
+  }
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0] ?? "")
+    .join("")
+    .toUpperCase();
+  return (
+    <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ecf0f1] text-[#2c3e50] text-sm font-semibold">
+      {initials}
+    </div>
+  );
+}
+
+export interface CommentItem {
+  id: string;
+  author: string;
+  content: string;
+  time: string;
+  isAuthor?: boolean;
+  likes?: number;
+  liked?: boolean;
+}
+
+export default function CommentsSection({
+  initialComments,
+}: {
+  initialComments: CommentItem[];
+}) {
+  const [comments, setComments] = useState(
+    initialComments.map((c) => ({
+      likes: 0,
+      liked: false,
+      ...c,
+    }))
+  );
+  const [value, setValue] = useState("");
+
+  function handleSubmit() {
+    if (!value.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      {
+        id: String(Date.now()),
+        author: "你",
+        content: value.trim(),
+        time: "刚刚",
+        likes: 0,
+        liked: false,
+      },
+    ]);
+    setValue("");
+  }
+
+  function toggleLike(id: string) {
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              liked: !c.liked,
+              likes: (c.likes ?? 0) + (c.liked ? -1 : 1),
+            }
+          : c
+      )
+    );
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-lg font-semibold text-[#2c3e50]">评论</h3>
+        <span className="text-sm text-gray-500">共有 {comments.length} 条评论</span>
+      </div>
+      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4">
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="写下你的看法..."
+          rows={3}
+          className="w-full rounded-lg border border-gray-300 p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
+        />
+        <div className="flex justify-end">
+          <button
+            onClick={handleSubmit}
+            className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
+          >
+            发表评论
+          </button>
+        </div>
+      </div>
+
+      <ul className="mt-5 space-y-4">
+        {([...comments].reverse()).map((c) => (
+          <li key={c.id} className="flex gap-3">
+            <Avatar name={c.author} />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px] font-medium text-[#2c3e50]">
+                  {c.author}
+                </span>
+                {c.isAuthor && (
+                  <span className="rounded-full bg-[#F1C40F]/20 px-2 py-0.5 text-[12px] text-[#8a6d00]">
+                    作者
+                  </span>
+                )}
+                <span className="text-[12px] text-[#95a5a6]">{c.time}</span>
+              </div>
+              <p className="mt-1 text-[14px] leading-6 text-gray-700">{c.content}</p>
+              <div className="mt-2 flex items-center gap-4">
+                <button
+                  onClick={() => toggleLike(c.id)}
+                  className={`inline-flex items-center gap-1 text-[13px] ${
+                    c.liked ? "text-[#e74c3c]" : "text-gray-600 hover:text-[#e74c3c]"
+                  }`}
+                  aria-label="点赞评论"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill={c.liked ? "currentColor" : "none"}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                  <span>{c.likes ?? 0}</span>
+                </button>
+                <button className="text-[13px] text-[#3498db] hover:underline">回复</button>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
