@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ideas } from "@/data/ideas";
 import CommentsSection from "@/components/CommentsSection";
 import RightInfo from "@/components/RightInfo";
+import ClientEffects from "@/components/ClientEffects";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -28,7 +29,7 @@ type PageProps = { params: { id: string; slug: string } };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const idea = ideas.find((i) => i.id === params.id);
-  const title = idea ? `${idea.title} - 点子成金` : "创意详情 - 点子成金";
+  const title = idea ? `${idea.title} - 点子成金` : "点子详情 - 点子成金";
   return { title, description: idea?.description };
 }
 
@@ -63,7 +64,7 @@ export default function IdeaDetailPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <nav className="mb-4 text-sm text-gray-500">
-        <Link href="/" className="hover:underline">创意广场</Link>
+        <Link href="/" className="hover:underline">点子广场</Link>
         <span className="mx-2">/</span>
         <span className="text-gray-700">详情</span>
       </nav>
@@ -100,11 +101,11 @@ export default function IdeaDetailPage({ params }: PageProps) {
             </ul>
           </div>
 
-          <CommentsSection initialComments={initialComments} />
+          <CommentsSection ideaId={idea.id} initialComments={initialComments} />
         </section>
 
         <aside className="md:col-span-1">
-          <RightInfo supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} />
+          <RightInfo ideaId={idea.id} supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} />
         </aside>
       </div>
     </div>

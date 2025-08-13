@@ -7,9 +7,9 @@ export interface CreativityCardProps {
   authorAvatarUrl?: string;
   /** 发布时间显示，如 “3小时前” */
   publishedAtText: string;
-  /** 创意标题 */
+  /** 点子标题 */
   title: string;
-  /** 创意描述 */
+  /** 点子描述 */
   description: string;
   /** 期望终端标签，如 ["网页", "iOS"] */
   tags?: string[];

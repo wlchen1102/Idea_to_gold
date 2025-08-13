@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 function Avatar({ name, src }: { name: string; src?: string }) {
   if (src) {
@@ -35,8 +35,10 @@ export interface CommentItem {
 
 export default function CommentsSection({
   initialComments,
+  ideaId,
 }: {
   initialComments: CommentItem[];
+  ideaId?: string;
 }) {
   const [comments, setComments] = useState(
     initialComments.map((c) => ({
@@ -62,6 +64,37 @@ export default function CommentsSection({
     ]);
     setValue("");
   }
+
+  // 跨页注入评论（来自详情页跳转时）。监听特定键并在出现时消费
+  useEffect(() => {
+    const key = `injectComment:${ideaId ?? ''}`;
+    function tryConsume() {
+      if (!ideaId) return;
+      const content = localStorage.getItem(key);
+      if (content) {
+        setComments((prev) => [
+          ...prev,
+          { id: String(Date.now()), author: "你", content, time: "刚刚", likes: 0, liked: false },
+        ]);
+        localStorage.removeItem(key);
+        localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
+      }
+    }
+    // 初次尝试
+    tryConsume();
+    // 监听 storage 事件（跨标签页也适用）
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === key && e.newValue) tryConsume();
+    };
+    window.addEventListener("storage", onStorage);
+    // 当页面可见时再尝试一次，避免竞态
+    const onFocus = () => tryConsume();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [ideaId]);
 
   function toggleLike(id: string) {
     setComments((prev) =>

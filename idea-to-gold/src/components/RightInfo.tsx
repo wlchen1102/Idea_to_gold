@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function RightInfo({
   supporters,
   platforms,
   bounty,
+  ideaId,
 }: {
   supporters: number;
   platforms: string[];
   bounty: number;
+  ideaId?: string;
 }) {
   const [supported, setSupported] = useState(false);
   const [count, setCount] = useState(supporters);
@@ -19,6 +21,17 @@ export default function RightInfo({
     setSupported(true);
     setCount((c) => c + 1);
   }
+
+  // 若存在跨页标记 pendingSupport:{id}，则初始化为已支持并+1
+  useEffect(() => {
+    if (!ideaId) return;
+    const key = `pendingSupport:${ideaId}`;
+    if (localStorage.getItem(key)) {
+      localStorage.removeItem(key);
+      setSupported(true);
+      setCount((c) => c + 1);
+    }
+  }, [ideaId]);
 
   return (
     <div className="sticky top-24 space-y-4">

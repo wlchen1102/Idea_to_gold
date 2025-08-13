@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import AvatarMenu from "@/components/AvatarMenu";
+import ToastListener from "@/components/ToastListener";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -27,25 +29,22 @@ function Header() {
             aria-current="page"
             className="text-[16px] leading-6 text-[#2c3e50] underline decoration-[#2ECC71] decoration-2 underline-offset-8"
           >
-            创意广场
+            点子广场
           </Link>
           <Link href="#" className="text-[16px] leading-6 text-[#2c3e50] hover:text-[#2ECC71]">
-            项目
-          </Link>
-          <Link href="#" className="text-[16px] leading-6 text-[#2c3e50] hover:text-[#2ECC71]">
-            产品
+            产品库
           </Link>
         </nav>
 
-        {/* 右侧：发布按钮与头像占位 */}
-        <div className="flex items-center gap-3">
+        {/* 右侧：发布按钮与头像下拉菜单 */}
+        <div className="relative flex items-center gap-3">
           <Link
-            href="#"
+            href="/creatives/new"
             className="rounded-md bg-[#2ECC71] px-4 py-2 text-white hover:brightness-95"
           >
-            + 发布创意
+            + 发布点子
           </Link>
-          <div className="h-9 w-9 rounded-full bg-[#ecf0f1] ring-1 ring-[#95a5a6]/40" />
+          <AvatarMenu />
         </div>
       </div>
     </header>
@@ -59,7 +58,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={`${inter.className} antialiased min-h-screen bg-[#f7f8fa]`}>
+      <body suppressHydrationWarning className={`${inter.className} antialiased min-h-screen bg-[#f7f8fa]`}>
+        <ToastListener />
         <Header />
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
