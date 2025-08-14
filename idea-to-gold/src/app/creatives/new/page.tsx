@@ -101,7 +101,7 @@ export default function NewCreativePage() {
             placeholder="一句话说清你的点子，如：一个能自动总结会议纪要的AI工具"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-            className="mt-2 w-full rounded-md border border-gray-300 p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
+            className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
           />
         </div>
 
@@ -140,7 +140,7 @@ export default function NewCreativePage() {
                     setShowSimilar(true);
                   }, 3000);
                 }}
-            className="mt-2 w-full rounded-md border border-gray-300 p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none"
+            className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none"
           />
           {/* 相似创意推荐（描述失焦后先加载动画，3秒后展示） */}
           {similarLoading && (
@@ -238,7 +238,7 @@ export default function NewCreativePage() {
                 placeholder="例如：500"
                     value={bountyAmount}
                     onChange={(e) => setBountyAmount(e.target.value)}
-                className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
+                className="w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 py-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
               />
             </div>
           )}

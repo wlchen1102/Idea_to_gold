@@ -41,7 +41,7 @@
 - **色彩体系 (Color Palette)**:
     - **主色 (Primary)**: 活力绿 `#2ECC71` (用于按钮、链接、激活状态)
     - **辅色 (Secondary)**: 亮金色 `#F1C40F` (用于悬赏、高级徽章)
-    - **中性色 (Neutrals)**: 一套完整的灰阶，如 `#2c3e50` (正文)、`#95a5a6` (辅助信息)、`#ecf0f1` (背景/边框)
+    - **中性色 (Neutrals)**: 一套完整的灰阶，如 `#2c3e50` (正文)、`#95a5a6` (辅助信息)、`#f7f8fa` (背景/边框)
     - **系统色 (System)**: 红色 (`#e74c3c` for errors), 蓝色 (`#3498db` for info)
 - **字体排版 (Typography)**:
     - **字体家族**: Inter (首选), 或 苹方(PingFang SC)
