@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function RightInfo({
   supporters,
@@ -49,9 +50,12 @@ export default function RightInfo({
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <button className="w-full rounded-xl border border-[#2ECC71] px-5 py-3 text-[16px] font-semibold text-[#2ECC71] hover:bg-[#2ECC71]/10">
+        <Link
+          href={`/projects/new?idea_id=${ideaId ?? "123"}`}
+          className="block w-full rounded-xl border border-[#2ECC71] px-5 py-3 text-center text-[16px] font-semibold text-[#2ECC71] hover:bg-[#2ECC71]/10"
+        >
           我来解决
-        </button>
+        </Link>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

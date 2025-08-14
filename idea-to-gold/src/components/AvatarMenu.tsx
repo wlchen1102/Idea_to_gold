@@ -32,7 +32,7 @@ export default function AvatarMenu() {
           <Link href="#" className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
             个人主页
           </Link>
-          <Link href="#" className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
+          <Link href="/projects" className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
             我的项目
           </Link>
           <Link href="#" className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
