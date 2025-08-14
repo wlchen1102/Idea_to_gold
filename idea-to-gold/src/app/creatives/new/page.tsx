@@ -4,12 +4,40 @@ import { useState } from "react";
 import ConfirmationModal from "@/components/ConfirmationModal";
 
 export default function NewCreativePage() {
+  // 表单：受控状态
+  const [title, setTitle] = useState("AI 会议纪要助手");
+  const [desc, setDesc] = useState(
+    "它能够自动整理会议纪要、抽取待办事项，并将关键结论同步到协作工具中，适合远程团队和忙碌的管理者。"
+  );
   const [bountyEnabled, setBountyEnabled] = useState(false);
-  const suggestions = [
+  const [bountyAmount, setBountyAmount] = useState<string>("500");
+  const platformOptions = [
+    { id: "web", label: "网页" },
+    { id: "mini", label: "小程序" },
+    { id: "ios", label: "iOS" },
+    { id: "android", label: "安卓" },
+    { id: "win", label: "Windows" },
+    { id: "mac", label: "Mac" },
+  ] as const;
+  const [expectedTargets, setExpectedTargets] = useState<Record<string, boolean>>({
+    web: true,
+    mini: false,
+    ios: false,
+    android: false,
+    win: false,
+    mac: false,
+  });
+
+  // 侧边栏：模拟 API 请求
+  const presetSuggestions = [
     { id: "s1", score: 0.85, title: "AI 会议记录与行动项提取" },
     { id: "s2", score: 0.78, title: "语音转写 + 摘要助手（支持多语）" },
     { id: "s3", score: 0.73, title: "企业版会议纪要机器人（接入钉钉/企微）" },
   ];
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<
+    { id: string; score: number; title: string }[]
+  >([]);
   const [showConfirm, setShowConfirm] = useState(false);
 
   return (
@@ -32,23 +60,32 @@ export default function NewCreativePage() {
             id="title"
             type="text"
             placeholder="一句话说清你的点子，如：一个能自动总结会议纪要的AI工具"
-            defaultValue="AI 会议纪要助手"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
             className="mt-2 w-full rounded-md border border-gray-300 p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
           />
         </div>
 
-        {/* 详细描述 */}
+        {/* 点子详情 */}
         <div>
           <label htmlFor="desc" className="block text-sm font-medium text-[#2c3e50]">
-            详细描述
+            点子详情
           </label>
           <textarea
             id="desc"
             rows={8}
             placeholder="详细描述你的创意、目标用户、场景与可行性..."
-            defaultValue={
-              "它能够自动整理会议纪要、抽取待办事项，并将关键结论同步到协作工具中，适合远程团队和忙碌的管理者。"
-            }
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                onBlur={() => {
+                  // 模拟一次 API：1.5s 加载后返回预设相似点子
+                  setAiLoading(true);
+                  setAiSuggestions([]);
+                  setTimeout(() => {
+                    setAiLoading(false);
+                    setAiSuggestions(presetSuggestions);
+                  }, 1500);
+                }}
             className="mt-2 w-full rounded-md border border-gray-300 p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none"
           />
         </div>
@@ -57,20 +94,21 @@ export default function NewCreativePage() {
         <div>
           <span className="block text-sm font-medium text-[#2c3e50]">期望终端</span>
           <div className="mt-3 flex flex-wrap gap-3">
-            {[
-              { id: "web", label: "网页", checked: true },
-              { id: "mini", label: "小程序" },
-              { id: "ios", label: "iOS" },
-              { id: "android", label: "安卓" },
-              { id: "win", label: "Windows" },
-              { id: "mac", label: "Mac" },
-            ].map((opt) => (
+                {platformOptions.map((opt) => (
               <label
                 key={opt.id}
                 htmlFor={opt.id}
                 className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
               >
-                <input id={opt.id} type="checkbox" defaultChecked={Boolean(opt.checked)} className="h-4 w-4 rounded border-gray-300 text-[#2ECC71] focus:ring-[#2ECC71]" />
+                    <input
+                      id={opt.id}
+                      type="checkbox"
+                      checked={Boolean(expectedTargets[opt.id])}
+                      onChange={(e) =>
+                        setExpectedTargets((prev) => ({ ...prev, [opt.id]: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-[#2ECC71] focus:ring-[#2ECC71]"
+                    />
                 {opt.label}
               </label>
             ))}
@@ -101,7 +139,8 @@ export default function NewCreativePage() {
                 type="number"
                 min={0}
                 placeholder="例如：500"
-                defaultValue={500}
+                    value={bountyAmount}
+                    onChange={(e) => setBountyAmount(e.target.value)}
                 className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
               />
             </div>
@@ -133,40 +172,48 @@ export default function NewCreativePage() {
                 <h2 className="text-[16px] font-semibold text-[#2c3e50]">AI副驾</h2>
               </div>
               {/* 加载状态 */}
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <svg className="h-4 w-4 animate-spin text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                </svg>
-                正在思考中...
-              </div>
+              {aiLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <svg className="h-4 w-4 animate-spin text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                  正在思考中...
+                </div>
+              )}
 
               {/* 结果展示区 */}
-              <div className="mt-5">
-                <h3 className="mb-3 text-sm font-medium text-[#2c3e50]">看看这些相似的点子？</h3>
-                <ul className="space-y-3">
-                  {suggestions.map((s) => (
-                    <li key={s.id} className="rounded-lg border border-gray-200 p-3">
-                      <div className="text-[12px] text-gray-500">相似度: {(s.score * 100).toFixed(0)}%</div>
-                      <div className="mt-1 text-[14px] font-medium text-[#2c3e50]">{s.title}</div>
-                      <a href="#" className="mt-1 inline-block text-[13px] text-[#3498db] hover:underline">查看详情</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {aiSuggestions.length > 0 && (
+                <div className="mt-5">
+                  <h3 className="mb-3 text-sm font-medium text-[#2c3e50]">看看这些相似的点子？</h3>
+                  <ul className="space-y-3">
+                    {aiSuggestions.map((s) => (
+                      <li key={s.id} className="rounded-lg border border-gray-200 p-3">
+                        <div className="text-[12px] text-gray-500">相似度: {(s.score * 100).toFixed(0)}%</div>
+                        <div className="mt-1 text-[14px] font-medium text-[#2c3e50]">{s.title}</div>
+                        <a href="#" className="mt-1 inline-block text-[13px] text-[#3498db] hover:underline">查看详情</a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </aside>
       </div>
       <ConfirmationModal
         isOpen={showConfirm}
-        similar={{ id: suggestions[0].id, title: suggestions[0].title, score: suggestions[0].score, href: `/idea/1/ai-会议记录与行动项提取` }}
+        similar={{
+          id: (aiSuggestions[0] ?? presetSuggestions[0]).id,
+          title: (aiSuggestions[0] ?? presetSuggestions[0]).title,
+          score: (aiSuggestions[0] ?? presetSuggestions[0]).score,
+          href: `/idea/1/ai-会议记录与行动项提取`,
+        }}
         onClose={() => setShowConfirm(false)}
         onMerge={() => {
           setShowConfirm(false);
           // 写入跨页通信：toast + 评论注入
           localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
-          const desc = (document.getElementById("desc") as HTMLTextAreaElement)?.value || "";
           localStorage.setItem("pendingComment:1", desc);
           localStorage.setItem("pendingSupport:1", "1");
           // 跳转到相似点子详情（示例 id=1，实际可根据相似项）
