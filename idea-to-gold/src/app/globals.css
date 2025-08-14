@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f7f8fa;
   --foreground: #171717;
 }
 
@@ -17,6 +17,11 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+html {
+  /* 保持滚动条占位，避免不同页面出现/消失滚动条导致顶栏居中位置轻微抖动 */
+  scrollbar-gutter: stable both-edges;
 }
 
 body {

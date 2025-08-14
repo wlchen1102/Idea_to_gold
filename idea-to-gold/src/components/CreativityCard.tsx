@@ -120,7 +120,7 @@ export default function CreativityCard(props: CreativityCardProps) {
           <span>{formatCount(commentCount)}</span>
         </div>
 
-        {/* 右侧：我想要按钮（小屏占满一行） */}
+        {/* 右侧：我也要按钮（小屏占满一行） */}
         <button
           type="button"
           onClick={(e) => {
@@ -128,7 +128,7 @@ export default function CreativityCard(props: CreativityCardProps) {
             onUpvote?.(e);
           }}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2ECC71] px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-[#27AE60] w-full md:w-auto"
-          aria-label="我想要"
+          aria-label="我也要"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -140,7 +140,7 @@ export default function CreativityCard(props: CreativityCardProps) {
           >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
-          <span>我想要 ({formatCount(upvoteCount)})</span>
+          <span>我也要 ({formatCount(upvoteCount)})</span>
         </button>
       </div>
     </div>

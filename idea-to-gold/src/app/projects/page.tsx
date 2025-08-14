@@ -1,11 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import type React from "react";
 import type { SVGProps } from "react";
 
 type Project = {
   id: string;
   name: string;
-  status: "规划中" | "开发中" | "已发布";
+  status: "规划中" | "开发中" | "内测中" | "已发布";
   intro: string;
   fromIdeaTitle: string;
   fromIdeaHref: string;
@@ -102,7 +105,7 @@ export default function ProjectsPage(): React.ReactElement {
     {
       id: "p2",
       name: "语音转写与摘要服务",
-      status: "规划中",
+      status: "内测中",
       intro: "高准确率语音识别与多语种摘要引擎，为企业会议提供结构化输出。",
       fromIdeaTitle: "多语种语音摘要助手",
       fromIdeaHref: "/idea/2/语音转写-摘要助手",
@@ -135,40 +138,40 @@ export default function ProjectsPage(): React.ReactElement {
   const totalCount = projects.length;
   const planningCount = projects.filter((p) => p.status === "规划中").length;
   const developingCount = projects.filter((p) => p.status === "开发中").length;
+  const betaCount = projects.filter((p) => p.status === "内测中").length;
   const publishedCount = projects.filter((p) => p.status === "已发布").length;
+
+  const [activeTab, setActiveTab] = useState<"全部" | Project["status"]>("全部");
+  const projectsToRender =
+    activeTab === "全部" ? projects : projects.filter((p) => p.status === activeTab);
 
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">我的项目</h1>
       <p className="mt-2 text-[#95a5a6]">每一个项目，都是改变世界的一次尝试</p>
 
-      {/* 选项卡（静态展示） */}
+      {/* 选项卡（前端演示筛选） */}
       <div className="mt-6 w-fit rounded-lg bg-gray-100 p-1">
-        <button
-          className="rounded-md bg-[#2ECC71] px-4 py-2 text-sm font-medium text-white shadow-sm"
-          aria-current="page"
-          type="button"
-        >
-          全部 ({totalCount})
-        </button>
-        <button
-          className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900 rounded-md"
-          type="button"
-        >
-          规划中 ({planningCount})
-        </button>
-        <button
-          className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900 rounded-md"
-          type="button"
-        >
-          开发中 ({developingCount})
-        </button>
-        <button
-          className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900 rounded-md"
-          type="button"
-        >
-          已发布 ({publishedCount})
-        </button>
+        {([
+          { key: "全部", label: `全部 (${totalCount})` },
+          { key: "规划中", label: `规划中 (${planningCount})` },
+          { key: "开发中", label: `开发中 (${developingCount})` },
+          { key: "内测中", label: `内测中 (${betaCount})` },
+          { key: "已发布", label: `已发布 (${publishedCount})` },
+        ] as const).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${
+              activeTab === tab.key
+                ? "bg-[#2ECC71] text-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            }`}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* 空状态 */}
@@ -190,7 +193,7 @@ export default function ProjectsPage(): React.ReactElement {
       {hasProjects && (
         <section className="mt-8">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((p, idx) => (
+            {projectsToRender.map((p, idx) => (
               <ProjectCard key={p.id} project={p} href={`/project/${idx + 1}`} />
             ))}
           </div>
