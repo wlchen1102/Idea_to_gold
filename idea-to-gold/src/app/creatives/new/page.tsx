@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import Modal from "@/components/Modal";
 import CloseButton from "@/components/CloseButton";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export default function NewCreativePage() {
   // 表单：受控状态
@@ -105,6 +106,7 @@ export default function NewCreativePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "发布新创意" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* 左侧：表单（保持固定宽度，避免因隐藏侧栏导致整体变宽） */}
         <section className="md:col-span-2">

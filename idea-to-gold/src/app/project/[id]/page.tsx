@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 
 type PageParams = { id: string };
 type PageProps = { params: Promise<PageParams> };
@@ -60,6 +61,7 @@ export default async function ProjectHomePage({ params }: PageProps): Promise<Re
 
   return (
     <div className="mx-auto max-w-6xl p-6">
+      <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "项目详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* 左侧主内容区 */}
         <section className="md:col-span-2">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type React from "react";
 import type { SVGProps } from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 
 type Project = {
   id: string;

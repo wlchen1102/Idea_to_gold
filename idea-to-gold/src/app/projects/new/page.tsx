@@ -1,8 +1,10 @@
+import Breadcrumb from "@/components/Breadcrumb";
 import Link from "next/link";
 
 export default function NewProjectPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "创建新项目" }]} />
       {/* 标题区域 */}
       <header className="mb-8">
         <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">为你的新项目立项</h1>
