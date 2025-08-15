@@ -69,7 +69,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
       <nav className="mb-4 text-sm text-gray-500">
         <Link href="/" className="hover:underline">点子广场</Link>
         <span className="mx-2">/</span>
-        <span className="text-gray-700">详情</span>
+        <span className="text-gray-700">创意详情</span>
       </nav>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -83,7 +83,8 @@ export default async function IdeaDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="prose prose-neutral mt-6 max-w-none">
+          <h2 className="mt-6 text-lg font-semibold text-[#2c3e50]">创意描述</h2>
+          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-6 md:p-8">
             {idea.description.map((para, idx) => (
               <p key={idx} className="text-[15px] leading-7 text-gray-700">{para}</p>
             ))}
