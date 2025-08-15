@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import ConfirmationModal from "@/components/ConfirmationModal";
+import Modal from "@/components/Modal";
 import CloseButton from "@/components/CloseButton";
 
 export default function NewCreativePage() {
@@ -71,6 +72,29 @@ export default function NewCreativePage() {
   const [showSimilar, setShowSimilar] = useState(false);
   const [similarLoading, setSimilarLoading] = useState(false);
   const similarTimerRef = useRef<number | null>(null);
+  // 点子详情 textarea 引用，用于自适应高度
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  // 预览弹窗控制
+  const [isPreviewOpen, setPreviewOpen] = useState(false);
+  // 自适应高度：随内容增高，最多 16 行，超过后滚动
+  function autoResizeDesc() {
+    const el = descRef.current;
+    if (!el) return;
+    const maxLines = 16;         // 最多展示 16 行
+    const lineHeight = 24;       // 与 class `leading-6` 对应 24px 行高
+    const verticalPadding = 24;  // 与 class `p-3` 对应上下各 12px，总计 24px
+    const maxHeight = maxLines * lineHeight + verticalPadding;
+    el.style.height = "auto";
+    const newHeight = Math.min(el.scrollHeight, maxHeight);
+    el.style.height = `${newHeight}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  }
+  useEffect(() => {
+    autoResizeDesc();
+  }, [desc]);
+  useEffect(() => {
+    autoResizeDesc();
+  }, []);
   useEffect(() => {
     return () => {
       if (similarTimerRef.current) {
@@ -122,7 +146,7 @@ export default function NewCreativePage() {
           </div>
           <textarea
             id="desc"
-            rows={8}
+            rows={5}
             placeholder="详细描述你的创意、目标用户、场景与可行性..."
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
@@ -140,7 +164,8 @@ export default function NewCreativePage() {
                     setShowSimilar(true);
                   }, 3000);
                 }}
-            className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none"
+            ref={descRef}
+            className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none resize-none"
           />
           {/* 相似创意推荐（描述失焦后先加载动画，3秒后展示） */}
           {similarLoading && (
@@ -177,9 +202,32 @@ export default function NewCreativePage() {
               <ul className="space-y-3">
                 {presetSuggestions.slice(0, 3).map((s) => (
                   <li key={s.id} className="rounded-lg border border-gray-200 p-3">
-                    <div className="text-[12px] text-gray-500">相似度: {(s.score * 100).toFixed(0)}%</div>
-                    <div className="mt-1 text-[14px] font-medium text-[#2c3e50]">{s.title}</div>
-                    <a href="#" className="mt-1 inline-block text-[13px] text-[#3498db] hover:underline">查看详情</a>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[12px] text-gray-500">相似度: {(s.score * 100).toFixed(0)}%</div>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewOpen(true)}
+                          className="mt-1 text-left text-[14px] font-medium text-[#2c3e50] hover:underline"
+                          title="点击预览详情"
+                        >
+                          {s.title}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md bg-[#2ECC71] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#27AE60]"
+                        onClick={() => {
+                          localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
+                          localStorage.setItem("pendingComment:1", desc);
+                          localStorage.setItem("pendingSupport:1", "1");
+                          window.location.href = "/idea/1/ai-会议记录与行动项提取";
+                        }}
+                      >
+                        <span>👍</span>
+                        <span>合并进去并+1</span>
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -369,6 +417,7 @@ export default function NewCreativePage() {
           </aside>
         )}
       </div>
+      {/* 发布确认弹窗 */}
       <ConfirmationModal
         isOpen={showConfirm}
         similar={{
@@ -396,6 +445,29 @@ export default function NewCreativePage() {
           }, 1200);
         }}
       />
+
+      {/* 相似创意预览弹窗 */}
+      <Modal isOpen={isPreviewOpen} onClose={() => setPreviewOpen(false)} title="AI会议记录与行动项提取">
+        <div className="space-y-3 text-[14px] leading-6 text-[#2c3e50]">
+          <p>
+            这是一个用于演示的创意预览内容。它能够自动识别会议中的关键结论与行动项，支持多语种转写与摘要，
+            并可以与主流协作工具进行无缝同步，帮助团队更快对齐待办、降低沟通成本。
+          </p>
+          <p>
+            功能预览：语音转写、要点提取、行动项识别、提醒与推送、与第三方应用集成（如飞书、钉钉、Slack）。
+          </p>
+          <div className="rounded-md bg-gray-50 p-3 text-[13px] text-gray-700">已有856人想要</div>
+        </div>
+        <div className="mt-5 text-right">
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(false)}
+            className="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-[14px] font-medium text-[#2c3e50] hover:bg-gray-50"
+          >
+            关闭
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

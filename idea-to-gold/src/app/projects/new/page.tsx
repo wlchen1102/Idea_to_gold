@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export default function NewProjectPage(): JSX.Element {
+export default function NewProjectPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       {/* 标题区域 */}
@@ -13,12 +13,12 @@ export default function NewProjectPage(): JSX.Element {
       <section className="mb-8">
         <div className="rounded-xl bg-gray-50 p-4">
           <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
-            <a
+            <Link
               href="/idea/1/ai-会议记录与行动项提取"
               className="text-[#3498db] hover:underline"
             >
               关联创意：一个能自动总结会议纪要的AI工具
-            </a>
+            </Link>
           </div>
         </div>
       </section>

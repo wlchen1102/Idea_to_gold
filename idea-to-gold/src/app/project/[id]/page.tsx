@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type React from "react";
 
-type PageProps = { params: { id: string } };
+type PageParams = { id: string };
+type PageProps = { params: Promise<PageParams> };
 
 function Avatar({ name }: { name: string }) {
   const initials = name
@@ -48,9 +49,10 @@ function Step({
   );
 }
 
-export default function ProjectHomePage({ params }: PageProps): React.ReactElement {
+export default async function ProjectHomePage({ params }: PageProps): Promise<React.ReactElement> {
+  const { id } = await params;
   const project = {
-    id: params.id,
+    id,
     title: "【项目】会议纪要自动化助手",
     owner: { name: "Zoe" },
     fromIdea: { title: "AI会议纪要助手", href: "/idea/1/ai-会议记录与行动项提取" },

@@ -25,18 +25,21 @@ function Avatar({ name, src }: { name: string; src?: string }) {
   );
 }
 
-type PageProps = { params: { id: string; slug: string } };
+type PageParams = { id: string; slug: string };
+type PageProps = { params: Promise<PageParams> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const idea = ideas.find((i) => i.id === params.id);
+  const { id } = await params;
+  const idea = ideas.find((i) => i.id === id);
   const title = idea ? `${idea.title} - 点子成金` : "点子详情 - 点子成金";
   return { title, description: idea?.description };
 }
 
-export default function IdeaDetailPage({ params }: PageProps) {
-  const base = ideas.find((i) => i.id === params.id);
+export default async function IdeaDetailPage({ params }: PageProps) {
+  const { id } = await params;
+  const base = ideas.find((i) => i.id === id);
   const idea = {
-    id: params.id,
+    id,
     title: base?.title ?? "未找到创意",
     author: { name: base?.authorName ?? "匿名", time: base?.publishedAtText ?? "" },
     description: [
