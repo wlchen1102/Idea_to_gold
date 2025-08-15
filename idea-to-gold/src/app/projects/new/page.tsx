@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function NewProjectPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-4">
       <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "创建新项目" }]} />
       {/* 标题区域 */}
       <header className="mb-8">

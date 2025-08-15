@@ -66,7 +66,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="mx-auto max-w-6xl p-3">
       <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "点子详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">

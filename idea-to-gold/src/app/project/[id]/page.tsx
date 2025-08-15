@@ -60,7 +60,7 @@ export default async function ProjectHomePage({ params }: PageProps): Promise<Re
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="mx-auto max-w-6xl p-3">
       <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "项目详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* 左侧主内容区 */}

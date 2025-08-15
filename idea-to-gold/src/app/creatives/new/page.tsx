@@ -105,7 +105,7 @@ export default function NewCreativePage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-4">
       <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "发布新创意" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* 左侧：表单（保持固定宽度，避免因隐藏侧栏导致整体变宽） */}

@@ -61,7 +61,7 @@ export default function RootLayout({
       <body suppressHydrationWarning className={`${inter.className} antialiased min-h-screen bg-[#f7f8fa]`}>
         <ToastListener />
         <Header />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-4">{children}</main>
       </body>
     </html>
   );
