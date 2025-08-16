@@ -573,7 +573,7 @@ export default function LandingPage() {
               加入我们的创新社区，让你的想法变成改变世界的产品
             </p>
             
-            <Link href="/creatives/new" className="group relative inline-flex overflow-hidden rounded-xl bg-white px-12 py-4 text-lg font-semibold text-gray-900 shadow-2xl transition-all hover:shadow-3xl hover:scale-105">
+            <Link href="/login" className="group relative inline-flex overflow-hidden rounded-xl bg-emerald-500 px-12 py-4 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl hover:scale-105">
               <span className="relative z-10 flex items-center gap-2">
                 立即免费注册，点亮你的第一个创意
                 <i className="fas fa-sparkles transition-transform group-hover:rotate-12"></i>

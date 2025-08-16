@@ -6,7 +6,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import Modal from "@/components/Modal";
 
 type PageParams = { id: string };
-type PageProps = { params: Promise<PageParams> };
+type PageProps = { params: PageParams };
 
 function Avatar({ name }: { name: string }) {
   const initials = name
@@ -56,8 +56,8 @@ function Step({
 type ProjectStatus = "planning" | "developing" | "internalTesting" | "released";
 
 export default function ProjectHomePage({ params }: PageProps): React.ReactElement {
-  const { id } = React.use(params);
-  
+  const { id } = params;
+
   // 项目状态管理（模拟本地状态，实际应从API获取）
   const [projectStatus, setProjectStatus] = useState<ProjectStatus>("planning");
   

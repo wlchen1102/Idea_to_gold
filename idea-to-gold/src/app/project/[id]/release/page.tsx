@@ -9,7 +9,7 @@ type PageProps = { params?: PageParams };
 
 type ProductType = "web" | "mobile" | "desktop" | "other";
 
-export default function ProductReleasePage(_: PageProps = {}): React.ReactElement {
+export default function ProductReleasePage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   

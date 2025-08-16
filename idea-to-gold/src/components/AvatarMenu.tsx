@@ -2,10 +2,12 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AvatarMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -15,6 +17,18 @@ export default function AvatarMenu() {
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, []);
+
+  const handleLogout = () => {
+    try {
+      // 清理本地登录态
+      localStorage.removeItem('isLoggedIn');
+      // 通知全局（Header）更新登录态
+      window.dispatchEvent(new Event('auth:changed'));
+      setOpen(false);
+      // 跳转到首页
+      router.push('/');
+    } catch {}
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -39,7 +53,7 @@ export default function AvatarMenu() {
             账号设置
           </Link>
           <div className="my-1 h-px bg-gray-100" />
-          <button className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50" role="menuitem">
+          <button onClick={handleLogout} className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50" role="menuitem">
             退出登录
           </button>
         </div>

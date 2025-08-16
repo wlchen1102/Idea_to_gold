@@ -2,11 +2,23 @@
 
 import Link from "next/link";
 import AvatarMenu from "@/components/AvatarMenu";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function Header() {
-  // 简单的登录态示例：后续可接入真实鉴权后更新该状态
+  // 使用本地登录态（临时方案，后续可接入 Supabase 会话）
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // 组件挂载时读取 localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const flag = localStorage.getItem('isLoggedIn');
+      setIsLoggedIn(flag === 'true');
+      // 监听登录态变化的自定义事件（登录页设置时可触发）
+      const handler = () => setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
+      window.addEventListener('auth:changed', handler as EventListener);
+      return () => window.removeEventListener('auth:changed', handler as EventListener);
+    }
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
@@ -40,7 +52,7 @@ function Header() {
           {/* 右侧：根据登录态显示不同的操作区域 */}
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
-              // 登录状态：保持原功能但使用新样式
+              // 登录状态
               <>
                 <Link
                   href="/creatives/new"
@@ -51,7 +63,7 @@ function Header() {
                 <AvatarMenu />
               </>
             ) : (
-              // 未登录状态：使用新的按钮样式
+              // 未登录状态
               <>
                 <Link
                   href="/login"
@@ -60,7 +72,7 @@ function Header() {
                   登录
                 </Link>
                 <Link
-                  href="/signup"
+                  href="/login"
                   className="rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:brightness-110"
                 >
                   立即免费注册
