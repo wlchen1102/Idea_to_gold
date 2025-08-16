@@ -18,7 +18,7 @@ export default function Home() {
   // 首页为创意广场展示，无提交表单
 
   return (
-    <main className="mx-auto max-w-6xl p-3">
+    <>
       <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">点子广场</h1>
       <p className="mt-2 text-[#95a5a6]">连接真实需求与AI开发者，让每个好创意都能“点石成金”。</p>
 
@@ -56,6 +56,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-    </main>
+    </>
   );
 }

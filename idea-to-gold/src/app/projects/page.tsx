@@ -147,7 +147,7 @@ export default function ProjectsPage(): React.ReactElement {
     activeTab === "全部" ? projects : projects.filter((p) => p.status === activeTab);
 
   return (
-    <main className="mx-auto max-w-6xl p-3">
+    <>
       <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">我的项目</h1>
       <p className="mt-2 text-[#95a5a6]">每一个项目，都是改变世界的一次尝试</p>
 
@@ -200,7 +200,7 @@ export default function ProjectsPage(): React.ReactElement {
           </div>
         </section>
       )}
-    </main>
+    </>
   );
 }
 

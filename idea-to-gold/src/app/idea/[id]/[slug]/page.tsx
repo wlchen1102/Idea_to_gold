@@ -66,8 +66,8 @@ export default async function IdeaDetailPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl p-3">
-      <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "点子详情" }]} />
+    <>
+      <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "创意详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">
           <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
@@ -108,7 +108,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
           <RightInfo ideaId={idea.id} supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} />
         </aside>
       </div>
-    </div>
+    </>
   );
 }
 

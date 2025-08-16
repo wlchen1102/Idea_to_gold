@@ -105,11 +105,11 @@ export default function NewCreativePage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-4">
+    <>
       <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "发布新创意" }]} />
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-6 ${showAISidebar ? "md:grid-cols-3" : ""}`}>
         {/* 左侧：表单（保持固定宽度，避免因隐藏侧栏导致整体变宽） */}
-        <section className="md:col-span-2">
+        <section className={`${showAISidebar ? "md:col-span-2 md:mx-0" : "mx-auto max-w-2xl"}`}>
           <header className="mb-8">
             <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">分享你的绝妙创意</h1>
             <p className="mt-2 text-[#95a5a6]">一个好的创意，是改变世界的开始</p>
@@ -348,7 +348,7 @@ export default function NewCreativePage() {
                       <div className="grid h-8 w-8 place-items-center rounded-full bg-[#ecf0f1] text-sm">🤖</div>
                       <div className="max-w-[80%] space-y-3">
                         <div className="rounded-2xl bg-gray-100 px-3 py-2 text-sm leading-6 text-[#2c3e50]">
-                          感谢你的回答！根据我们的沟通，我为你整理了一份清晰的需求说明，请确认一下：
+                          感谢你的回答！根据我们的沟通，我为你整理出了一份清晰的需求说明，请确认一下：
                         </div>
                         <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-[#2c3e50]">
                           <div className="space-y-2">
@@ -431,20 +431,16 @@ export default function NewCreativePage() {
         onClose={() => setShowConfirm(false)}
         onMerge={() => {
           setShowConfirm(false);
-          // 写入跨页通信：toast + 评论注入
+          // 写入跨页通信：toast + 评论 + 支持 + 跳转
           localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
           localStorage.setItem("pendingComment:1", desc);
           localStorage.setItem("pendingSupport:1", "1");
-          // 跳转到相似点子详情（示例 id=1，实际可根据相似项）
-          window.location.href = `/idea/1/ai-会议记录与行动项提取`;
+          window.location.href = "/idea/1/ai-会议记录与行动项提取";
         }}
-        onContinue={() => {
+        onCreateProject={() => {
           setShowConfirm(false);
-          localStorage.setItem("pendingToast", "已发布成功");
-          // 先显示 toast，再在 1200ms 后返回首页
-          setTimeout(() => {
-            window.location.href = "/";
-          }, 1200);
+          localStorage.setItem("pendingToast", "已为你创建新项目，已带上你的创意描述");
+          window.location.href = "/projects/new";
         }}
       />
 
@@ -470,7 +466,7 @@ export default function NewCreativePage() {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
 
