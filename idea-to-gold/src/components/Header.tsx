@@ -1,23 +1,39 @@
+// 顶栏组件
 "use client";
 
 import Link from "next/link";
 import AvatarMenu from "@/components/AvatarMenu";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 function Header() {
-  // 使用本地登录态（临时方案，后续可接入 Supabase 会话）
+  // 登录态来源：Supabase 会话
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 组件挂载时读取 localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const flag = localStorage.getItem('isLoggedIn');
-      setIsLoggedIn(flag === 'true');
-      // 监听登录态变化的自定义事件（登录页设置时可触发）
-      const handler = () => setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
-      window.addEventListener('auth:changed', handler as EventListener);
-      return () => window.removeEventListener('auth:changed', handler as EventListener);
-    }
+    let unsub: (() => void) | undefined;
+
+    const init = async () => {
+      try {
+        // 获取当前用户
+        const { data } = await supabase.auth.getUser();
+        setIsLoggedIn(!!data.user);
+      } catch (e) {
+        console.warn("获取用户失败:", e);
+      }
+
+      // 监听会话变化
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsLoggedIn(!!session?.user);
+      });
+
+      unsub = () => {
+        try { listener.subscription.unsubscribe(); } catch {}
+      };
+    };
+
+    init();
+    return () => { if (unsub) unsub(); };
   }, []);
 
   return (
@@ -60,6 +76,7 @@ function Header() {
                 >
                   + 发布点子
                 </Link>
+                {/* AvatarMenu 内部已经负责从 profiles 获取 nickname 与 avatar_url 并渲染 */}
                 <AvatarMenu />
               </>
             ) : (

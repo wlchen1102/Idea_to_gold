@@ -46,7 +46,7 @@ var getGlobal, globalObject, fetch2, browser_default, Headers2, Request2, Respon
 var init_browser = __esm({
   "../node_modules/@supabase/node-fetch/browser.js"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     getGlobal = /* @__PURE__ */ __name(function() {
       if (typeof self !== "undefined") {
         return self;
@@ -72,7 +72,7 @@ var init_browser = __esm({
 var resolveFetch;
 var init_helper = __esm({
   "../node_modules/@supabase/functions-js/dist/module/helper.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     resolveFetch = /* @__PURE__ */ __name((customFetch) => {
       let _fetch;
       if (customFetch) {
@@ -91,7 +91,7 @@ var init_helper = __esm({
 var FunctionsError, FunctionsFetchError, FunctionsRelayError, FunctionsHttpError, FunctionRegion;
 var init_types = __esm({
   "../node_modules/@supabase/functions-js/dist/module/types.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     FunctionsError = class extends Error {
       static {
         __name(this, "FunctionsError");
@@ -150,7 +150,7 @@ var init_types = __esm({
 var __awaiter, FunctionsClient;
 var init_FunctionsClient = __esm({
   "../node_modules/@supabase/functions-js/dist/module/FunctionsClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_helper();
     init_types();
     __awaiter = function(thisArg, _arguments, P, generator) {
@@ -284,7 +284,7 @@ var init_FunctionsClient = __esm({
 // ../node_modules/@supabase/functions-js/dist/module/index.js
 var init_module = __esm({
   "../node_modules/@supabase/functions-js/dist/module/index.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_FunctionsClient();
   }
 });
@@ -293,7 +293,7 @@ var init_module = __esm({
 var require_PostgrestError = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestError.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     Object.defineProperty(exports, "__esModule", { value: true });
     var PostgrestError2 = class extends Error {
       static {
@@ -315,7 +315,7 @@ var require_PostgrestError = __commonJS({
 var require_PostgrestBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -521,7 +521,7 @@ var require_PostgrestBuilder = __commonJS({
 var require_PostgrestTransformBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestTransformBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -740,7 +740,7 @@ var require_PostgrestTransformBuilder = __commonJS({
 var require_PostgrestFilterBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestFilterBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1110,7 +1110,7 @@ var require_PostgrestFilterBuilder = __commonJS({
 var require_PostgrestQueryBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestQueryBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1386,7 +1386,7 @@ var require_PostgrestQueryBuilder = __commonJS({
 var require_version = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/version.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.version = void 0;
     exports.version = "0.0.0-automated";
@@ -1397,7 +1397,7 @@ var require_version = __commonJS({
 var require_constants = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/constants.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DEFAULT_HEADERS = void 0;
     var version_1 = require_version();
@@ -1409,7 +1409,7 @@ var require_constants = __commonJS({
 var require_PostgrestClient = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestClient.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1523,7 +1523,7 @@ var require_PostgrestClient = __commonJS({
 var require_cjs = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/index.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1556,7 +1556,7 @@ var require_cjs = __commonJS({
 var import_cjs, PostgrestClient, PostgrestQueryBuilder, PostgrestFilterBuilder, PostgrestTransformBuilder, PostgrestBuilder, PostgrestError;
 var init_wrapper = __esm({
   "../node_modules/@supabase/postgrest-js/dist/esm/wrapper.mjs"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     import_cjs = __toESM(require_cjs(), 1);
     ({
       PostgrestClient,
@@ -1573,7 +1573,7 @@ var init_wrapper = __esm({
 var WebSocketFactory, websocket_factory_default;
 var init_websocket_factory = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/websocket-factory.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     WebSocketFactory = class {
       static {
         __name(this, "WebSocketFactory");
@@ -1661,7 +1661,7 @@ Suggested solution: ${env.workaround}`;
 var version;
 var init_version = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     version = "2.15.1";
   }
 });
@@ -1670,7 +1670,7 @@ var init_version = __esm({
 var DEFAULT_VERSION, VSN, DEFAULT_TIMEOUT, WS_CLOSE_NORMAL, MAX_PUSH_BUFFER_SIZE, SOCKET_STATES, CHANNEL_STATES, CHANNEL_EVENTS, TRANSPORTS, CONNECTION_STATE;
 var init_constants = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_version();
     DEFAULT_VERSION = `realtime-js/${version}`;
     VSN = "1.0.0";
@@ -1714,7 +1714,7 @@ var init_constants = __esm({
 var Serializer;
 var init_serializer = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/serializer.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     Serializer = class {
       static {
         __name(this, "Serializer");
@@ -1755,7 +1755,7 @@ var init_serializer = __esm({
 var Timer;
 var init_timer = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/timer.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     Timer = class {
       static {
         __name(this, "Timer");
@@ -1789,7 +1789,7 @@ var init_timer = __esm({
 var PostgresTypes, convertChangeData, convertColumn, convertCell, noop, toBoolean, toNumber, toJson, toArray, toTimestampString, httpEndpointURL;
 var init_transformers = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/transformers.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     (function(PostgresTypes2) {
       PostgresTypes2["abstime"] = "abstime";
       PostgresTypes2["bool"] = "bool";
@@ -1950,7 +1950,7 @@ var init_transformers = __esm({
 var Push;
 var init_push = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/push.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_constants();
     Push = class {
       static {
@@ -2059,7 +2059,7 @@ var init_push = __esm({
 var REALTIME_PRESENCE_LISTEN_EVENTS, RealtimePresence;
 var init_RealtimePresence = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/RealtimePresence.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     (function(REALTIME_PRESENCE_LISTEN_EVENTS2) {
       REALTIME_PRESENCE_LISTEN_EVENTS2["SYNC"] = "sync";
       REALTIME_PRESENCE_LISTEN_EVENTS2["JOIN"] = "join";
@@ -2291,7 +2291,7 @@ var init_RealtimePresence = __esm({
 var REALTIME_POSTGRES_CHANGES_LISTEN_EVENT, REALTIME_LISTEN_TYPES, REALTIME_SUBSCRIBE_STATES, RealtimeChannel;
 var init_RealtimeChannel = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/RealtimeChannel.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_constants();
     init_push();
     init_timer();
@@ -2798,7 +2798,7 @@ var init_RealtimeChannel = __esm({
 var noop2, CONNECTION_TIMEOUTS, RECONNECT_INTERVALS, DEFAULT_RECONNECT_FALLBACK, WORKER_SCRIPT, RealtimeClient;
 var init_RealtimeClient = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_websocket_factory();
     init_constants();
     init_serializer();
@@ -3450,7 +3450,7 @@ Option 2: Install and provide the "ws" package:
 // ../node_modules/@supabase/realtime-js/dist/module/index.js
 var init_module2 = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/index.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_RealtimeClient();
     init_RealtimeChannel();
     init_RealtimePresence();
@@ -3465,7 +3465,7 @@ function isStorageError(error) {
 var StorageError, StorageApiError, StorageUnknownError;
 var init_errors = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/errors.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     StorageError = class extends Error {
       static {
         __name(this, "StorageError");
@@ -3513,7 +3513,7 @@ var init_errors = __esm({
 var __awaiter2, resolveFetch2, resolveResponse, recursiveToCamel, isPlainObject;
 var init_helpers = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/helpers.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     __awaiter2 = function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
@@ -3627,7 +3627,7 @@ function remove(fetcher, url, body, options, parameters) {
 var __awaiter3, _getErrorMessage, handleError, _getRequestParams;
 var init_fetch = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/fetch.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_errors();
     init_helpers();
     __awaiter3 = function(thisArg, _arguments, P, generator) {
@@ -3705,7 +3705,7 @@ var init_fetch = __esm({
 var __awaiter4, DEFAULT_SEARCH_OPTIONS, DEFAULT_FILE_OPTIONS, StorageFileApi;
 var init_StorageFileApi = __esm({
   "../node_modules/@supabase/storage-js/dist/module/packages/StorageFileApi.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_errors();
     init_fetch();
     init_helpers();
@@ -4265,7 +4265,7 @@ var init_StorageFileApi = __esm({
 var version2;
 var init_version2 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     version2 = "2.11.0";
   }
 });
@@ -4274,7 +4274,7 @@ var init_version2 = __esm({
 var DEFAULT_HEADERS;
 var init_constants2 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_version2();
     DEFAULT_HEADERS = { "X-Client-Info": `storage-js/${version2}` };
   }
@@ -4284,7 +4284,7 @@ var init_constants2 = __esm({
 var __awaiter5, StorageBucketApi;
 var init_StorageBucketApi = __esm({
   "../node_modules/@supabase/storage-js/dist/module/packages/StorageBucketApi.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_constants2();
     init_errors();
     init_fetch();
@@ -4483,7 +4483,7 @@ var init_StorageBucketApi = __esm({
 var StorageClient;
 var init_StorageClient = __esm({
   "../node_modules/@supabase/storage-js/dist/module/StorageClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_StorageFileApi();
     init_StorageBucketApi();
     StorageClient = class extends StorageBucketApi {
@@ -4508,14 +4508,14 @@ var init_StorageClient = __esm({
 // ../node_modules/@supabase/storage-js/dist/module/lib/types.js
 var init_types2 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/types.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
   }
 });
 
 // ../node_modules/@supabase/storage-js/dist/module/index.js
 var init_module3 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/index.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_StorageClient();
     init_types2();
     init_errors();
@@ -4526,7 +4526,7 @@ var init_module3 = __esm({
 var version3;
 var init_version3 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     version3 = "2.55.0";
   }
 });
@@ -4535,7 +4535,7 @@ var init_version3 = __esm({
 var JS_ENV, DEFAULT_HEADERS2, DEFAULT_GLOBAL_OPTIONS, DEFAULT_DB_OPTIONS, DEFAULT_AUTH_OPTIONS, DEFAULT_REALTIME_OPTIONS;
 var init_constants3 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_version3();
     JS_ENV = "";
     if (typeof Deno !== "undefined") {
@@ -4568,7 +4568,7 @@ var init_constants3 = __esm({
 var __awaiter6, resolveFetch3, resolveHeadersConstructor, fetchWithAuth;
 var init_fetch2 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/fetch.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_browser();
     __awaiter6 = function(thisArg, _arguments, P, generator) {
       function adopt(value) {
@@ -4665,7 +4665,7 @@ function applySettingDefaults(options, defaults) {
 var __awaiter7;
 var init_helpers2 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/helpers.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     __awaiter7 = function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
@@ -4706,7 +4706,7 @@ var init_helpers2 = __esm({
 var version4;
 var init_version4 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     version4 = "2.71.1";
   }
 });
@@ -4715,7 +4715,7 @@ var init_version4 = __esm({
 var AUTO_REFRESH_TICK_DURATION_MS, AUTO_REFRESH_TICK_THRESHOLD, EXPIRY_MARGIN_MS, GOTRUE_URL, STORAGE_KEY, DEFAULT_HEADERS3, API_VERSION_HEADER_NAME, API_VERSIONS, BASE64URL_REGEX, JWKS_TTL;
 var init_constants4 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_version4();
     AUTO_REFRESH_TICK_DURATION_MS = 30 * 1e3;
     AUTO_REFRESH_TICK_THRESHOLD = 3;
@@ -4754,7 +4754,7 @@ function isAuthRetryableFetchError(error) {
 var AuthError, AuthApiError, AuthUnknownError, CustomAuthError, AuthSessionMissingError, AuthInvalidTokenResponseError, AuthInvalidCredentialsError, AuthImplicitGrantRedirectError, AuthPKCEGrantCodeExchangeError, AuthRetryableFetchError, AuthWeakPasswordError, AuthInvalidJwtError;
 var init_errors2 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/errors.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     AuthError = class extends Error {
       static {
         __name(this, "AuthError");
@@ -5040,7 +5040,7 @@ function bytesToBase64URL(bytes) {
 var TO_BASE64URL, IGNORE_BASE64URL, FROM_BASE64URL;
 var init_base64url = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/base64url.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     TO_BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".split("");
     IGNORE_BASE64URL = " 	\n\r=".split("");
     FROM_BASE64URL = (() => {
@@ -5265,7 +5265,7 @@ function deepClone(obj) {
 var isBrowser, localStorageWriteTests, supportsLocalStorage, resolveFetch4, looksLikeFetchResponse, setItemAsync, getItemAsync, removeItemAsync, Deferred, API_VERSION_REGEX, UUID_REGEX;
 var init_helpers3 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/helpers.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_constants4();
     init_errors2();
     init_base64url();
@@ -5495,7 +5495,7 @@ function hasSession(data) {
 var __rest, _getErrorMessage2, NETWORK_ERROR_CODES, _getRequestParams2;
 var init_fetch3 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/fetch.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_constants4();
     init_helpers3();
     init_errors2();
@@ -5538,7 +5538,7 @@ var init_fetch3 = __esm({
 var SIGN_OUT_SCOPES;
 var init_types3 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/types.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     SIGN_OUT_SCOPES = ["global", "local", "others"];
   }
 });
@@ -5547,7 +5547,7 @@ var init_types3 = __esm({
 var __rest2, GoTrueAdminApi;
 var init_GoTrueAdminApi = __esm({
   "../node_modules/@supabase/auth-js/dist/module/GoTrueAdminApi.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_fetch3();
     init_helpers3();
     init_types3();
@@ -5833,7 +5833,7 @@ function memoryLocalStorageAdapter(store = {}) {
 }
 var init_local_storage = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/local-storage.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     __name(memoryLocalStorageAdapter, "memoryLocalStorageAdapter");
   }
 });
@@ -5859,7 +5859,7 @@ function polyfillGlobalThis() {
 }
 var init_polyfills = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/polyfills.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     __name(polyfillGlobalThis, "polyfillGlobalThis");
   }
 });
@@ -5920,7 +5920,7 @@ async function navigatorLock(name, acquireTimeout, fn) {
 var internals, LockAcquireTimeoutError, NavigatorLockAcquireTimeoutError;
 var init_locks = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/locks.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_helpers3();
     internals = {
       /**
@@ -5953,7 +5953,7 @@ async function lockNoOp(name, acquireTimeout, fn) {
 var DEFAULT_OPTIONS, GLOBAL_JWKS, GoTrueClient;
 var init_GoTrueClient = __esm({
   "../node_modules/@supabase/auth-js/dist/module/GoTrueClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_GoTrueAdminApi();
     init_constants4();
     init_errors2();
@@ -8077,7 +8077,7 @@ var init_GoTrueClient = __esm({
 // ../node_modules/@supabase/auth-js/dist/module/AuthAdminApi.js
 var init_AuthAdminApi = __esm({
   "../node_modules/@supabase/auth-js/dist/module/AuthAdminApi.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_GoTrueAdminApi();
   }
 });
@@ -8086,7 +8086,7 @@ var init_AuthAdminApi = __esm({
 var AuthClient, AuthClient_default;
 var init_AuthClient = __esm({
   "../node_modules/@supabase/auth-js/dist/module/AuthClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_GoTrueClient();
     AuthClient = GoTrueClient;
     AuthClient_default = AuthClient;
@@ -8096,7 +8096,7 @@ var init_AuthClient = __esm({
 // ../node_modules/@supabase/auth-js/dist/module/index.js
 var init_module4 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/index.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_GoTrueAdminApi();
     init_GoTrueClient();
     init_AuthAdminApi();
@@ -8111,7 +8111,7 @@ var init_module4 = __esm({
 var SupabaseAuthClient;
 var init_SupabaseAuthClient = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/SupabaseAuthClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module4();
     SupabaseAuthClient = class extends AuthClient_default {
       static {
@@ -8128,7 +8128,7 @@ var init_SupabaseAuthClient = __esm({
 var __awaiter8, SupabaseClient;
 var init_SupabaseClient = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module();
     init_wrapper();
     init_module2();
@@ -8395,7 +8395,7 @@ function shouldShowDeprecationWarning() {
 var createClient;
 var init_module5 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/index.js"() {
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_SupabaseClient();
     init_module4();
     init_wrapper();
@@ -8461,7 +8461,7 @@ async function onRequestPost(context) {
 var init_check_email = __esm({
   "api/auth/check-email.ts"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module5();
     __name(onRequestPost, "onRequestPost");
   }
@@ -8527,7 +8527,7 @@ async function onRequestPost2(context) {
 var init_check_phone = __esm({
   "api/auth/check-phone.ts"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module5();
     __name(onRequestPost2, "onRequestPost");
   }
@@ -8586,13 +8586,57 @@ async function onRequestPost3(context) {
 var init_login = __esm({
   "api/auth/login.ts"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module5();
     __name(onRequestPost3, "onRequestPost");
   }
 });
 
 // api/auth/signup.ts
+function pickRandomColor() {
+  const idx = Math.floor(Math.random() * SATURATED_COLORS.length);
+  return SATURATED_COLORS[idx];
+}
+function extractAvatarText(inputRaw) {
+  const input = (inputRaw || "").trim();
+  if (!input) return "U";
+  const chineseChars = Array.from(input).filter((ch) => /[\u4e00-\u9fa5]/.test(ch));
+  if (chineseChars.length > 0) {
+    const lastTwo = chineseChars.slice(-2).join("");
+    return lastTwo || chineseChars[chineseChars.length - 1] || "\u7528";
+  }
+  const letters = input.replace(/[^a-zA-Z]/g, "").toUpperCase();
+  if (letters.length > 0) {
+    return letters.slice(0, 2);
+  }
+  const digits = input.replace(/\D/g, "");
+  if (digits.length > 0) {
+    return digits.slice(-2);
+  }
+  return "U";
+}
+function buildUiAvatarUrl(name, bgColorHex) {
+  const bg = bgColorHex.replace("#", "").toUpperCase();
+  const encName = encodeURIComponent(name);
+  return `https://ui-avatars.com/api/?name=${encName}&background=${bg}&color=fff&size=128&bold=true`;
+}
+function isValidE164Phone(phone) {
+  return /^\+\d{7,15}$/.test(phone);
+}
+function normalizeAuthError(err, channel) {
+  const raw = (err?.message || "").toString();
+  const rawLower = raw.toLowerCase();
+  if (rawLower.includes("already registered") || rawLower.includes("duplicate key value") || rawLower.includes("users_phone_key") || rawLower.includes("users_email_key") || rawLower.includes("user already exists")) {
+    return { status: 409, message: channel === "phone" ? "\u8BE5\u624B\u673A\u53F7\u5DF2\u6CE8\u518C\uFF0C\u8BF7\u76F4\u63A5\u767B\u5F55\u6216\u627E\u56DE\u5BC6\u7801" : "\u8BE5\u90AE\u7BB1\u5DF2\u6CE8\u518C\uFF0C\u8BF7\u76F4\u63A5\u767B\u5F55\u6216\u627E\u56DE\u5BC6\u7801", raw };
+  }
+  if (rawLower.includes("password") && rawLower.includes("at least")) {
+    return { status: 400, message: "\u5BC6\u7801\u81F3\u5C116\u4F4D\uFF0C\u8BF7\u91CD\u65B0\u8BBE\u7F6E\u4E00\u4E2A\u66F4\u5B89\u5168\u7684\u5BC6\u7801", raw };
+  }
+  if (rawLower.includes("invalid email")) {
+    return { status: 400, message: "\u90AE\u7BB1\u683C\u5F0F\u4E0D\u6B63\u786E\uFF0C\u8BF7\u68C0\u67E5\u540E\u91CD\u8BD5", raw };
+  }
+  return { status: 400, message: "\u6CE8\u518C\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5", raw };
+}
 async function onRequestPost4(context) {
   try {
     const body = await context.request.json().catch(() => null);
@@ -8620,17 +8664,47 @@ async function onRequestPost4(context) {
       // 适配 Cloudflare Workers 环境
     });
     if (phone) {
+      if (!isValidE164Phone(phone)) {
+        return new Response(
+          JSON.stringify({ message: "\u624B\u673A\u53F7\u683C\u5F0F\u65E0\u6548\uFF0C\u8BF7\u8F93\u5165\u6709\u6548\u7684 E.164 \u683C\u5F0F\uFF08\u5982 +8613xxxxxxxxx\uFF09" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      const userMetadata = {};
+      if (typeof body?.nickname === "string" && body.nickname.trim()) {
+        userMetadata.nickname = body.nickname.trim();
+      }
       const { data, error } = await supabase.auth.admin.createUser({
         phone,
         password,
-        phone_confirm: true
+        phone_confirm: true,
         // 直接标记为已验证，跳过短信 OTP
+        user_metadata: userMetadata
+        // 将 nickname 写入用户元数据
       });
       if (error) {
+        const friendly = normalizeAuthError(error, "phone");
+        console.error("\u624B\u673A\u53F7\u6CE8\u518C\u5931\u8D25\uFF1A", { error: error.message, phoneMasked: phone.replace(/.(?=.{4})/g, "*") });
         return new Response(
-          JSON.stringify({ message: "\u6CE8\u518C\u5931\u8D25", error: error.message }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({ message: friendly.message, error: error.message }),
+          { status: friendly.status, headers: { "Content-Type": "application/json" } }
         );
+      }
+      try {
+        const userId = data.user?.id;
+        if (userId) {
+          const nameSource = typeof body?.nickname === "string" && body.nickname.trim() ? body.nickname.trim() : String(phone);
+          const display = extractAvatarText(nameSource);
+          const color = pickRandomColor();
+          const avatarUrl = buildUiAvatarUrl(display, color);
+          const updates = { avatar_url: avatarUrl };
+          if (typeof body?.nickname === "string" && body.nickname.trim()) {
+            updates.nickname = body.nickname.trim();
+          }
+          await supabase.from("profiles").upsert([{ id: userId, ...updates }], { onConflict: "id" });
+        }
+      } catch (e) {
+        console.warn("\u751F\u6210/\u66F4\u65B0\u9ED8\u8BA4\u5934\u50CF\u5931\u8D25(\u624B\u673A\u53F7\u6CE8\u518C)\uFF1A", e);
       }
       return new Response(
         JSON.stringify({
@@ -8640,12 +8714,36 @@ async function onRequestPost4(context) {
         { status: 201, headers: { "Content-Type": "application/json" } }
       );
     } else {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: typeof body?.nickname === "string" && body.nickname.trim() ? { nickname: body.nickname.trim() } : void 0
+        }
+      });
       if (error) {
+        const friendly = normalizeAuthError(error, "email");
+        console.error("\u90AE\u7BB1\u6CE8\u518C\u5931\u8D25\uFF1A", { error: error.message, emailMasked: (email || "").replace(/^(.).+(@.+)$/, "$1***$2") });
         return new Response(
-          JSON.stringify({ message: "\u6CE8\u518C\u5931\u8D25", error: error.message }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({ message: friendly.message, error: error.message }),
+          { status: friendly.status, headers: { "Content-Type": "application/json" } }
         );
+      }
+      try {
+        const userId = data.user?.id;
+        if (userId) {
+          const nameSource = typeof body?.nickname === "string" && body.nickname.trim() ? body.nickname.trim() : String(email || "").split("@")[0];
+          const display = extractAvatarText(nameSource);
+          const color = pickRandomColor();
+          const avatarUrl = buildUiAvatarUrl(display, color);
+          const updates = { avatar_url: avatarUrl };
+          if (typeof body?.nickname === "string" && body.nickname.trim()) {
+            updates.nickname = body.nickname.trim();
+          }
+          await supabase.from("profiles").upsert([{ id: userId, ...updates }], { onConflict: "id" });
+        }
+      } catch (e) {
+        console.warn("\u751F\u6210/\u66F4\u65B0\u9ED8\u8BA4\u5934\u50CF\u5931\u8D25(\u90AE\u7BB1\u6CE8\u518C)\uFF1A", e);
       }
       return new Response(
         JSON.stringify({
@@ -8656,17 +8754,25 @@ async function onRequestPost4(context) {
       );
     }
   } catch (e) {
+    console.error("\u6CE8\u518C\u63A5\u53E3\u5185\u90E8\u9519\u8BEF\uFF1A", e);
     return new Response(
       JSON.stringify({ message: "\u670D\u52A1\u5668\u5185\u90E8\u9519\u8BEF", error: e?.message ?? "unknown error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }
+var SATURATED_COLORS;
 var init_signup = __esm({
   "api/auth/signup.ts"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module5();
+    SATURATED_COLORS = ["#2ECC71", "#3498DB", "#E74C3C", "#F1C40F", "#9B59B6", "#1ABC9C"];
+    __name(pickRandomColor, "pickRandomColor");
+    __name(extractAvatarText, "extractAvatarText");
+    __name(buildUiAvatarUrl, "buildUiAvatarUrl");
+    __name(isValidE164Phone, "isValidE164Phone");
+    __name(normalizeAuthError, "normalizeAuthError");
     __name(onRequestPost4, "onRequestPost");
   }
 });
@@ -8736,7 +8842,7 @@ async function onRequestGet(context) {
 var init_id = __esm({
   "api/creatives/[id]/index.ts"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module5();
     __name(onRequestGet, "onRequestGet");
   }
@@ -8876,7 +8982,7 @@ async function onRequestPost5(context) {
 var init_creatives = __esm({
   "api/creatives/index.ts"() {
     "use strict";
-    init_functionsRoutes_0_7083234648773677();
+    init_functionsRoutes_0_1399158027380436();
     init_module5();
     __name(slugifyTitle, "slugifyTitle");
     __name(makeSlugUnique, "makeSlugUnique");
@@ -8885,10 +8991,10 @@ var init_creatives = __esm({
   }
 });
 
-// ../.wrangler/tmp/pages-lFDFds/functionsRoutes-0.7083234648773677.mjs
+// ../.wrangler/tmp/pages-1P2I8w/functionsRoutes-0.1399158027380436.mjs
 var routes;
-var init_functionsRoutes_0_7083234648773677 = __esm({
-  "../.wrangler/tmp/pages-lFDFds/functionsRoutes-0.7083234648773677.mjs"() {
+var init_functionsRoutes_0_1399158027380436 = __esm({
+  "../.wrangler/tmp/pages-1P2I8w/functionsRoutes-0.1399158027380436.mjs"() {
     "use strict";
     init_check_email();
     init_check_phone();
@@ -8951,17 +9057,17 @@ var init_functionsRoutes_0_7083234648773677 = __esm({
   }
 });
 
-// ../.wrangler/tmp/bundle-C9le9s/middleware-loader.entry.ts
-init_functionsRoutes_0_7083234648773677();
+// ../.wrangler/tmp/bundle-UszKuC/middleware-loader.entry.ts
+init_functionsRoutes_0_1399158027380436();
 
-// ../.wrangler/tmp/bundle-C9le9s/middleware-insertion-facade.js
-init_functionsRoutes_0_7083234648773677();
+// ../.wrangler/tmp/bundle-UszKuC/middleware-insertion-facade.js
+init_functionsRoutes_0_1399158027380436();
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_7083234648773677();
+init_functionsRoutes_0_1399158027380436();
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_7083234648773677();
+init_functionsRoutes_0_1399158027380436();
 function lexer(str) {
   var tokens = [];
   var i = 0;
@@ -9408,7 +9514,7 @@ var cloneResponse = /* @__PURE__ */ __name((response) => (
 ), "cloneResponse");
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
-init_functionsRoutes_0_7083234648773677();
+init_functionsRoutes_0_1399158027380436();
 var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
   try {
     return await middlewareCtx.next(request, env);
@@ -9427,7 +9533,7 @@ var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 var middleware_ensure_req_body_drained_default = drainBody;
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
-init_functionsRoutes_0_7083234648773677();
+init_functionsRoutes_0_1399158027380436();
 function reduceError(e) {
   return {
     name: e?.name,
@@ -9450,7 +9556,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-C9le9s/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-UszKuC/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9458,7 +9564,7 @@ var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
 var middleware_insertion_facade_default = pages_template_worker_default;
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/common.ts
-init_functionsRoutes_0_7083234648773677();
+init_functionsRoutes_0_1399158027380436();
 var __facade_middleware__ = [];
 function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
@@ -9483,7 +9589,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-C9le9s/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-UszKuC/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
@@ -9583,4 +9689,4 @@ export {
   __INTERNAL_WRANGLER_MIDDLEWARE__,
   middleware_loader_entry_default as default
 };
-//# sourceMappingURL=functionsWorker-0.5397840064843504.mjs.map
+//# sourceMappingURL=functionsWorker-0.9044777243915929.mjs.map

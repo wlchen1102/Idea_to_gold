@@ -2,7 +2,7 @@
 // 流程说明：
 // 1. 选择输入类型（手机号/邮箱），输入后点击"继续" → 调用 /api/auth/check-phone 或 /api/auth/check-email 检查是否存在
 // 2. 如果账号存在 → 显示密码输入框 + "登录"按钮
-// 3. 如果账号不存在 → 显示设置密码 + 确认密码 + "注册"按钮
+// 3. 如果账号不存在 → 显示昵称输入框 + 设置密码 + 确认密码 + "注册"按钮
 
 'use client'
 
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [phoneError, setPhoneError] = useState(''); // 手机号错误信息
   const [emailError, setEmailError] = useState(''); // 邮箱错误信息
   const [password, setPassword] = useState(''); // 登录密码
+  const [nickname, setNickname] = useState(''); // 注册昵称
   const [newPassword, setNewPassword] = useState(''); // 注册-设置密码
   const [confirmPassword, setConfirmPassword] = useState(''); // 注册-确认密码
   const [pwVisible, setPwVisible] = useState(false); // 密码是否可见
@@ -26,6 +27,8 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [nicknameError, setNicknameError] = useState(''); // 昵称校验错误信息
+  const [termsAccepted, setTermsAccepted] = useState(false); // 用户协议勾选状态
   const router = useRouter();
 
   // 中国大陆手机号：以1开头，第2位3-9，总共11位
@@ -39,6 +42,21 @@ export default function LoginPage() {
     const s = (raw || '').trim();
     if (!s) return s;
     return s.startsWith('+') ? s : `+86${s}`;
+  };
+
+  // 昵称实时校验：2-15个字符
+  const validateNickname = (value: string) => {
+    const v = (value || '').trim();
+    if (v.length === 0) {
+      setNicknameError('昵称为必填项');
+      return false;
+    }
+    if (v.length < 2 || v.length > 15) {
+      setNicknameError('昵称长度需在 2-15 个字符之间');
+      return false;
+    }
+    setNicknameError('');
+    return true;
   };
 
   const validatePhone = (value: string) => {
@@ -186,8 +204,8 @@ export default function LoginPage() {
       setSubmitError('');
 
       const body = inputType === 'phone' 
-        ? { phone: toE164(phone), password: newPassword }
-        : { email: email.trim(), password: newPassword };
+        ? { phone: toE164(phone), password: newPassword, nickname: nickname.trim() || undefined }
+        : { email: email.trim(), password: newPassword, nickname: nickname.trim() || undefined };
 
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -248,6 +266,7 @@ export default function LoginPage() {
   const backToInputStep = () => {
     setStep('phone');
     setPassword('');
+    setNickname('');
     setNewPassword('');
     setConfirmPassword('');
     setSubmitError('');
@@ -502,9 +521,35 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* 注册步骤：设置密码 */}
+                {/* 注册步骤：昵称、设置密码 */}
                 {step === 'signup' && (
                   <div className="space-y-4">
+                    {/* 昵称输入（必填，实时校验） */}
+                    <div className="space-y-2">
+                      <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
+                        昵称 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="nickname"
+                        name="nickname"
+                        type="text"
+                        placeholder="请输入昵称"
+                        className={`w-full h-12 px-3 rounded-lg border focus:ring-2 outline-none transition ${nicknameError ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-300 focus:border-green-600 focus:ring-green-100'}`}
+                        value={nickname}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setNickname(v);
+                          validateNickname(v);
+                        }}
+                        onBlur={(e) => validateNickname(e.target.value)}
+                        disabled={isSubmitting}
+                        maxLength={15}
+                      />
+                      {nicknameError && (
+                        <p className="text-xs text-red-500">{nicknameError}</p>
+                      )}
+                    </div>
+
                     <div className="space-y-2">
                       <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">设置密码</label>
                       <div className="relative">
@@ -553,14 +598,29 @@ export default function LoginPage() {
                       </div>
                     </div>
 
+                    {/* 用户协议勾选 */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        id="terms"
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        disabled={isSubmitting}
+                      />
+                      <label htmlFor="terms" className="text-sm text-gray-600 select-none">
+                        我已阅读并同意 <a href="/terms" target="_blank" className="text-emerald-600 hover:underline">用户协议</a> 与 <a href="/privacy" target="_blank" className="text-emerald-600 hover:underline">隐私政策</a>
+                      </label>
+                    </div>
+
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={handleSignup}
-                        disabled={(!newPassword || newPassword.length < 6 || newPassword !== confirmPassword) || isSubmitting}
+                        disabled={(!newPassword || newPassword.length < 6 || newPassword !== confirmPassword || !!nicknameError || !nickname.trim() || !termsAccepted) || isSubmitting}
                         aria-busy={isSubmitting}
                         className={`w-full h-11 rounded-lg font-medium text-white transition
-                          ${((!newPassword || newPassword.length < 6 || newPassword !== confirmPassword) || isSubmitting)
+                          ${((!newPassword || newPassword.length < 6 || newPassword !== confirmPassword || !!nicknameError || !nickname.trim() || !termsAccepted) || isSubmitting)
                             ? 'bg-gray-300 cursor-not-allowed'
                             : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
                       >
