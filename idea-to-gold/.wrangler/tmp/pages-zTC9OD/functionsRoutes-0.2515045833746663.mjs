@@ -2,6 +2,7 @@ import { onRequestPost as __api_auth_check_email_ts_onRequestPost } from "D:\\Pr
 import { onRequestPost as __api_auth_check_phone_ts_onRequestPost } from "D:\\ProjectAI\\Idea_to_gold\\idea-to-gold\\functions\\api\\auth\\check-phone.ts"
 import { onRequestPost as __api_auth_login_ts_onRequestPost } from "D:\\ProjectAI\\Idea_to_gold\\idea-to-gold\\functions\\api\\auth\\login.ts"
 import { onRequestPost as __api_auth_signup_ts_onRequestPost } from "D:\\ProjectAI\\Idea_to_gold\\idea-to-gold\\functions\\api\\auth\\signup.ts"
+import { onRequestPost as __api_creatives_index_ts_onRequestPost } from "D:\\ProjectAI\\Idea_to_gold\\idea-to-gold\\functions\\api\\creatives\\index.ts"
 
 export const routes = [
     {
@@ -31,5 +32,12 @@ export const routes = [
       method: "POST",
       middlewares: [],
       modules: [__api_auth_signup_ts_onRequestPost],
+    },
+  {
+      routePath: "/api/creatives",
+      mountPath: "/api/creatives",
+      method: "POST",
+      middlewares: [],
+      modules: [__api_creatives_index_ts_onRequestPost],
     },
   ]

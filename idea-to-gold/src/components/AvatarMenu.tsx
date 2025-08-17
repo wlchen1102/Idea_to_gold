@@ -47,7 +47,11 @@ export default function AvatarMenu() {
     return () => window.removeEventListener("auth:changed", handler);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // 先退出 Supabase 会话，避免残留 token
+      await supabase.auth.signOut();
+    } catch {}
     try {
       // 清理本地登录态
       localStorage.removeItem('isLoggedIn');

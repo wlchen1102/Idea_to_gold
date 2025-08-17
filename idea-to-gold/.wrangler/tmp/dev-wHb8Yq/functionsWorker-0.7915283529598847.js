@@ -8879,6 +8879,84 @@ var init_signup = __esm({
     __name2(onRequestPost4, "onRequestPost");
   }
 });
+async function onRequestPost5(context) {
+  try {
+    const supabaseUrl = context.env?.SUPABASE_URL;
+    const serviceRoleKey = context.env?.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(
+        JSON.stringify({
+          message: "\u670D\u52A1\u7AEF\u73AF\u5883\u53D8\u91CF\u672A\u914D\u7F6E\uFF1A\u8BF7\u914D\u7F6E SUPABASE_URL \u4E0E SUPABASE_SERVICE_ROLE_KEY"
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      global: { fetch }
+      // 适配 Cloudflare Workers 环境
+    });
+    const authHeader = context.request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ message: "\u672A\u63D0\u4F9B\u6709\u6548\u7684\u8BBF\u95EE\u4EE4\u724C\uFF0C\u8BF7\u5148\u767B\u5F55" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const accessToken = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+    if (authError || !user?.id) {
+      return new Response(
+        JSON.stringify({ message: "\u8BBF\u95EE\u4EE4\u724C\u65E0\u6548\u6216\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const body = await context.request.json().catch(() => null);
+    const title = body?.title;
+    const description = body?.description;
+    const terminals = body?.terminals;
+    const bounty_amount = body?.bounty_amount || 0;
+    if (!title || !description) {
+      return new Response(
+        JSON.stringify({ message: "\u7F3A\u5C11\u5FC5\u586B\u5B57\u6BB5\uFF1Atitle \u6216 description" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const { error } = await supabase.from("user_creatives").insert([
+      {
+        title,
+        description,
+        terminals,
+        bounty_amount,
+        author_id: user.id
+        // 从验证后的 JWT 中获取，安全可靠
+      }
+    ]);
+    if (error) {
+      return new Response(
+        JSON.stringify({ message: "\u521B\u5EFA\u521B\u610F\u5931\u8D25", error: error.message }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    return new Response(
+      JSON.stringify({ message: "\u521B\u610F\u521B\u5EFA\u6210\u529F", author_id: user.id }),
+      { status: 201, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ message: "\u670D\u52A1\u5668\u5185\u90E8\u9519\u8BEF", error: e?.message ?? "unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}
+__name(onRequestPost5, "onRequestPost5");
+var init_creatives = __esm({
+  "api/creatives/index.ts"() {
+    "use strict";
+    init_functionsRoutes_0_2515045833746663();
+    init_module5();
+    __name2(onRequestPost5, "onRequestPost");
+  }
+});
 var routes;
 var init_functionsRoutes_0_2515045833746663 = __esm({
   "../.wrangler/tmp/pages-zTC9OD/functionsRoutes-0.2515045833746663.mjs"() {
@@ -8887,6 +8965,7 @@ var init_functionsRoutes_0_2515045833746663 = __esm({
     init_check_phone();
     init_login();
     init_signup();
+    init_creatives();
     routes = [
       {
         routePath: "/api/auth/check-email",
@@ -8915,6 +8994,13 @@ var init_functionsRoutes_0_2515045833746663 = __esm({
         method: "POST",
         middlewares: [],
         modules: [onRequestPost4]
+      },
+      {
+        routePath: "/api/creatives",
+        mountPath: "/api/creatives",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost5]
       }
     ];
   }

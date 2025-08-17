@@ -8,6 +8,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from 'next/navigation'
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const [step, setStep] = useState<'phone' | 'login' | 'signup'>('phone'); // 当前步骤
@@ -126,8 +127,10 @@ export default function LoginPage() {
 
       if (res.ok) {
         setSuccessMessage('登录成功！正在跳转...');
+        
         // 设置本地登录态
         localStorage.setItem('isLoggedIn', 'true');
+        
         // 保存当前用户ID（来自后端返回）
         try {
           const uid = (data as any)?.userId;
@@ -137,8 +140,23 @@ export default function LoginPage() {
             localStorage.removeItem('userId');
           }
         } catch {}
+
+        // 【关键修复】如果后端返回了 session，设置到 Supabase 客户端
+        try {
+          const session = (data as any)?.session;
+          if (session?.access_token && session?.refresh_token) {
+            await supabase.auth.setSession({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token
+            });
+          }
+        } catch (e) {
+          console.warn('设置 Supabase 会话失败:', e);
+        }
+        
         // 通知全局监听者（Header/AvatarMenu）更新登录态
         window.dispatchEvent(new Event('auth:changed'));
+        
         setTimeout(() => {
           router.push('/'); // 跳转到点子广场页面
         }, 1200);
@@ -181,8 +199,10 @@ export default function LoginPage() {
 
       if (res.ok && (res.status === 201 || res.status === 200)) {
         setSuccessMessage('注册成功！正在跳转...');
+        
         // 设置本地登录态
         localStorage.setItem('isLoggedIn', 'true');
+        
         // 保存当前用户ID（来自后端返回）
         try {
           const uid = (data as any)?.userId;
@@ -192,8 +212,25 @@ export default function LoginPage() {
             localStorage.removeItem('userId');
           }
         } catch {}
+
+        // 【关键修复】注册成功后，用相同的账号密码创建 Supabase 会话
+        try {
+          const credentials = inputType === 'phone' 
+            ? { phone: toE164(phone), password: newPassword }
+            : { email: email.trim(), password: newPassword };
+          
+          const { data: signInData, error } = await supabase.auth.signInWithPassword(credentials as any);
+          
+          if (error) {
+            console.warn('注册后创建会话失败:', error);
+          }
+        } catch (e) {
+          console.warn('注册后创建会话异常:', e);
+        }
+        
         // 通知全局监听者（Header/AvatarMenu）更新登录态
         window.dispatchEvent(new Event('auth:changed'));
+        
         setTimeout(() => {
           router.push('/'); // 跳转到点子广场页面
         }, 1200);
