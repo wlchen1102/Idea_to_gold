@@ -1,3 +1,4 @@
+// 我的项目页面
 "use client";
 
 import Link from "next/link";
@@ -99,7 +100,7 @@ export default function ProjectsPage(): React.ReactElement {
       status: "开发中",
       intro: "将会议录音转写并自动抽取行动项，支持与团队协作工具同步。",
       fromIdeaTitle: "AI会议纪要助手",
-      fromIdeaHref: "/idea/1/ai-会议记录与行动项提取",
+      fromIdeaHref: "/idea/1",
       views: 1280,
       supports: 312,
     },
@@ -109,7 +110,7 @@ export default function ProjectsPage(): React.ReactElement {
       status: "内测中",
       intro: "高准确率语音识别与多语种摘要引擎，为企业会议提供结构化输出。",
       fromIdeaTitle: "多语种语音摘要助手",
-      fromIdeaHref: "/idea/2/语音转写-摘要助手",
+      fromIdeaHref: "/idea/2",
       views: 860,
       supports: 190,
     },
@@ -119,7 +120,7 @@ export default function ProjectsPage(): React.ReactElement {
       status: "开发中",
       intro: "面向钉钉/企微的企业内协作机器人，自动输出纪要与OKR映射。",
       fromIdeaTitle: "企业版会议纪要机器人",
-      fromIdeaHref: "/idea/3/企业版会议纪要机器人",
+      fromIdeaHref: "/idea/3",
       views: 2034,
       supports: 528,
     },
@@ -129,7 +130,7 @@ export default function ProjectsPage(): React.ReactElement {
       status: "已发布",
       intro: "基于NLP的行动项归因与提醒工具，帮助团队闭环推进任务。",
       fromIdeaTitle: "行动项提取与提醒",
-      fromIdeaHref: "/idea/4/行动项提取与提醒",
+      fromIdeaHref: "/idea/4",
       views: 640,
       supports: 120,
     },

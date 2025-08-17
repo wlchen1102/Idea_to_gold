@@ -1,3 +1,4 @@
+// 创建新项目页面
 "use client";
 
 import Breadcrumb from "@/components/Breadcrumb";
@@ -126,7 +127,7 @@ export default function NewProjectPage() {
             {/* 关联创意链接（采用项目详情“源于创意”样式）*/}
             <div className="mt-6 rounded-xl bg-gray-50 p-4">
               <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
-                <Link href="/idea/1/ai-会议记录与行动项提取" className="text-[#3498db] hover:underline">
+                <Link href="/idea/1" className="text-[#3498db] hover:underline">
                   源于创意：一个能自动总结会议纪要的AI工具
                 </Link>
               </div>

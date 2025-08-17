@@ -1,3 +1,5 @@
+// 项目详情页面
+
 "use client";
 
 import Link from "next/link";
@@ -85,7 +87,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   // 新增：模拟原始创意信息
   const ideaInfo = {
     title: 'AI会议纪要助手', // 添加标题
-    ideaLink: '/idea/1/ai-会议记录与行动项提取', // 添加来源链接
+    ideaLink: `/idea/1`, // 更新来源链接为 /idea/{id}
     author: { name: 'Zoe' },
     description:
       '这是一个将会议记录全流程自动化的创意。通过高精度语音识别将语音实时转写为文本，并利用大语言模型进行要点提炼、行动项抽取与结构化输出，最终一键同步到团队协作平台，帮助团队快速复盘、对齐信息、提升执行效率。',
@@ -118,7 +120,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     id,
     title: "【项目】会议纪要自动化助手",
     owner: { name: "Zoe" },
-    fromIdea: { title: "AI会议纪要助手", href: "/idea/1/ai-会议记录与行动项提取" },
+    fromIdea: { title: "AI会议纪要助手", href: `/idea/1` },
     status: projectStatus, // 使用动态状态
   };
 

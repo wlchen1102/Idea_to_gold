@@ -1,3 +1,4 @@
+// 用户个人中心页面
 "use client";
 
 import { useState } from "react";
@@ -184,7 +185,7 @@ export default function ProfilePage() {
                       <p className="mt-2 text-sm leading-6 text-gray-600">将会议录音转写并自动抽取行动项，支持与团队协作工具同步。</p>
                       <div className="mt-4 flex items-start justify-between gap-3">
                         <div className="flex-1 border-l-4 border-gray-200 pl-3">
-                          <Link href="/idea/1/ai-会议记录与行动项提取" className="text-[13px] text-[#3498db] hover:underline">
+                          <Link href="/idea/1" className="text-[13px] text-[#3498db] hover:underline">
                             源于创意：AI会议纪要助手
                           </Link>
                         </div>
@@ -216,7 +217,7 @@ export default function ProfilePage() {
                       <p className="mt-2 text-sm leading-6 text-gray-600">基于NLP的行动项归因与提醒工具，帮助团队闭环推进任务。</p>
                       <div className="mt-4 flex items-start justify-between gap-3">
                         <div className="flex-1 border-l-4 border-gray-200 pl-3">
-                          <Link href="/idea/4/行动项提取与提醒" className="text-[13px] text-[#3498db] hover:underline">
+                          <Link href="/idea/2" className="text-[13px] text-[#3498db] hover:underline">
                             源于创意：行动项提取与提醒
                           </Link>
                         </div>

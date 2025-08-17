@@ -1,3 +1,4 @@
+// 发布新创意页面
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -81,11 +82,11 @@ export default function NewCreativePage() {
     setSubmitting(true);
     
     try {
-      // 使用 Supabase 获取当前会话的 access_token，用于调用后端鉴权
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-      if (!accessToken) {
-        // 未登录，提示并跳转登录
+      // 检查登录：需要有效的 Supabase 会话
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (sessionError || !accessToken) {
         localStorage.setItem('pendingToast', '请先登录后再发布创意');
         window.dispatchEvent(new Event('localToast'));
         setSubmitting(false);
@@ -94,7 +95,7 @@ export default function NewCreativePage() {
         return;
       }
 
-      // 构建请求数据，后端将从 JWT 中提取 author_id，因此不再传递 author_id
+      // 构建请求数据（author_id 不再从前端传，后端根据 token 中的 user.id 设置）
       const requestData = {
         title: title.trim(),
         description: desc.trim(),
@@ -102,7 +103,7 @@ export default function NewCreativePage() {
         bounty_amount: bountyEnabled ? Math.max(0, parseInt(bountyAmount || '0', 10) || 0) : 0,
       };
 
-      // 向 /api/creatives 发送 POST 请求，并携带 Authorization 头
+      // 向 /api/creatives 发送 POST 请求，添加 Authorization 头
       const response = await fetch('/api/creatives', {
         method: 'POST',
         headers: {
@@ -290,11 +291,11 @@ export default function NewCreativePage() {
                             type="button"
                             className="inline-flex items-center gap-1 rounded-md bg-[#2ECC71] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#27AE60]"
                             onClick={() => {
-                              localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
-                              localStorage.setItem("pendingComment:1", desc);
-                              localStorage.setItem("pendingSupport:1", "1");
-                              window.location.href = "/idea/1/ai-会议记录与行动项提取";
-                            }}
+                                localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
+                                localStorage.setItem(`pendingComment:${s.id}`, desc);
+                                localStorage.setItem(`pendingSupport:${s.id}`, "1");
+                                window.location.href = `/idea/${s.id}`;
+                              }}
                           >
                             <span>👍</span>
                             <span>合并进去并+1</span>
@@ -307,7 +308,7 @@ export default function NewCreativePage() {
               )}
             </div>
 
-            {/* 期望终端选择 */}
+            {/* 期望终端 */}
             <div>
               <span className="block text-sm font-medium text-[#2c3e50]">期望终端</span>
               <div className="mt-3 flex flex-wrap gap-3">
@@ -382,14 +383,152 @@ export default function NewCreativePage() {
           </form>
         </section>
 
-        {/* 右侧：AI副驾与相似创意区域 */}
-        {/* ... 其余 UI 代码保持不变 ... */}
+        {/* 右侧：AI副驾侧边栏（默认隐藏，点击触发后显示） */}
+        {showAISidebar && (
+          <aside className="md:col-span-1">
+            <div className="sticky top-24 space-y-4">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="mb-1 flex items-center gap-2">
+                  {/* 魔法棒/灯泡图标 */}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F1C40F" strokeWidth="2" className="h-5 w-5">
+                    <path d="M9 18h6M12 2v4m8 6h-4m-8 0H4m11.31-6.31 2.83 2.83M5.86 5.86l2.83 2.83" />
+                  </svg>
+                  <h2 className="text-[16px] font-semibold text-[#2c3e50]">猫神AI</h2>
+                  <CloseButton className="ml-auto" onClick={() => setShowAISidebar(false)} />
+                </div>
+                {/* 对话历史（自适应，超出 60vh 滚动） */}
+                <div className="mt-3 max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+                  {chatMessages.map((m) => (
+                    <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={`flex items-end gap-2 ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                        {/* 头像 */}
+                        <div className="grid h-8 w-8 place-items-center rounded-full bg-[#ecf0f1] text-sm">
+                          {m.role === "ai" ? "🤖" : "我"}
+                        </div>
+                        {/* 气泡 */}
+                        <div
+                          className={`max-w-[70%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                            m.role === "ai"
+                              ? "bg-gray-100 text-[#2c3e50]"
+                              : "bg-[#2ECC71] text-white"
+                          }`}
+                        >
+                          {m.text}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {/* AI 最终总结作为一条系统消息 */}
+                  <div className="flex justify-start">
+                    <div className="flex items-start gap-2">
+                      <div className="grid h-8 w-8 place-items-center rounded-full bg-[#ecf0f1] text-sm">🤖</div>
+                      <div className="max-w-[80%] space-y-3">
+                        <div className="rounded-2xl bg-gray-100 px-3 py-2 text-sm leading-6 text-[#2c3e50]">
+                          感谢你的回答！根据我们的沟通，我为你整理出了一份清晰的需求说明，请确认一下：
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-[#2c3e50]">
+                          <div className="space-y-2">
+                            <div>
+                              <span className="font-medium">【一句话标题】</span>：AI会议纪要与行动项提取助手
+                            </div>
+                            <div>
+                              <span className="font-medium">【目标用户】</span>：小团队管理者
+                            </div>
+                            <div>
+                              <span className="font-medium">【核心痛点】</span>：整理纪要耗时耗力
+                            </div>
+                            <div>
+                              <span className="font-medium">【核心功能】</span>：自动转写、行动项提取、同步到协作工具
+                            </div>
+                            <div>
+                              <span className="font-medium">【MVP范围】</span>：会议录音 → 转写 → 行动项 → 推送
+                            </div>
+                            <div>
+                              <span className="font-medium">【预期终端】</span>：网页、Mac
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newTitle = "AI会议纪要与行动项提取助手";
+                              // 仅将结构化说明（不含标题）填充到详情，避免与标题重复
+                              const newDesc = [
+                                "【目标用户】: 小团队管理者",
+                                "【核心痛点】: 整理纪要耗时耗力",
+                                "【核心功能】: 自动转写、行动项提取、同步到协作工具",
+                                "【MVP范围】: 会议录音 → 转写 → 行动项 → 推送",
+                                "【预期终端】: 网页、Mac",
+                              ].join("\n");
+                              setTitle(newTitle);
+                              setDesc(newDesc);
+                              setExpectedTargets((prev) => ({ ...prev, web: true, mac: true }));
+                            }}
+                            className="w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-[#27AE60]"
+                          >
+                            👍 完美，填充到左侧表单
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* 输入区：固定在聊天窗口底部 */}
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="输入你的问题..."
+                    className="flex-1 rounded-md border border-gray-300 p-2 text-sm focus:border-[#2ECC71] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    className="rounded-md bg-[#2ECC71] px-3 py-2 text-sm font-semibold text-white hover:bg-[#27AE60]"
+                  >
+                    发送
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        )}
       </div>
+      {/* 发布确认弹窗 */}
       <ConfirmationModal
         isOpen={showConfirm}
+        similar={{
+          id: (aiSuggestions[0] ?? presetSuggestions[0]).id,
+          title: (aiSuggestions[0] ?? presetSuggestions[0]).title,
+          score: (aiSuggestions[0] ?? presetSuggestions[0]).score,
+          href: `/idea/${(aiSuggestions[0] ?? presetSuggestions[0]).id}`,
+        }}
         onClose={() => setShowConfirm(false)}
         onContinue={handleSubmit}
       />
+      {/* 相似创意预览弹窗 */}
+      <Modal isOpen={isPreviewOpen} onClose={() => setPreviewOpen(false)} title="AI会议记录与行动项提取">
+        <div className="space-y-3 text-[14px] leading-6 text-[#2c3e50]">
+          <p>
+            这是一个用于演示的创意预览内容。它能够自动识别会议中的关键结论与行动项，支持多语种转写与摘要，
+            并可以与主流协作工具进行无缝同步，帮助团队更快对齐待办、降低沟通成本。
+          </p>
+          <p>
+            功能预览：语音转写、要点提取、行动项识别、提醒与推送、与第三方应用集成（如飞书、钉钉、Slack）。
+          </p>
+          <div className="rounded-md bg-gray-50 p-3 text-[13px] text-gray-700">已有856人想要</div>
+        </div>
+        <div className="mt-5 text-right">
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(false)}
+            className="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-[14px] font-medium text-[#2c3e50] hover:bg-gray-50"
+          >
+            关闭
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }
