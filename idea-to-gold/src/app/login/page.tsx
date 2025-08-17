@@ -128,7 +128,16 @@ export default function LoginPage() {
         setSuccessMessage('登录成功！正在跳转...');
         // 设置本地登录态
         localStorage.setItem('isLoggedIn', 'true');
-        // 通知全局监听者（Header）更新登录态
+        // 保存当前用户ID（来自后端返回）
+        try {
+          const uid = (data as any)?.userId;
+          if (uid) {
+            localStorage.setItem('userId', String(uid));
+          } else {
+            localStorage.removeItem('userId');
+          }
+        } catch {}
+        // 通知全局监听者（Header/AvatarMenu）更新登录态
         window.dispatchEvent(new Event('auth:changed'));
         setTimeout(() => {
           router.push('/'); // 跳转到点子广场页面
@@ -174,7 +183,16 @@ export default function LoginPage() {
         setSuccessMessage('注册成功！正在跳转...');
         // 设置本地登录态
         localStorage.setItem('isLoggedIn', 'true');
-        // 通知全局监听者（Header）更新登录态
+        // 保存当前用户ID（来自后端返回）
+        try {
+          const uid = (data as any)?.userId;
+          if (uid) {
+            localStorage.setItem('userId', String(uid));
+          } else {
+            localStorage.removeItem('userId');
+          }
+        } catch {}
+        // 通知全局监听者（Header/AvatarMenu）更新登录态
         window.dispatchEvent(new Event('auth:changed'));
         setTimeout(() => {
           router.push('/'); // 跳转到点子广场页面
