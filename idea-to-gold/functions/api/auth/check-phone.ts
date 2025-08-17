@@ -15,6 +15,21 @@ export async function onRequestPost(context: any): Promise<Response> {
       )
     }
 
+    // 工具方法：统一手机号格式为“去除+号且包含国家码”的数字串
+    // 目前仅支持中国大陆：+86 + 11位，以1开头
+    const normalizeCnPhoneNoPlus = (raw: string) => {
+      const s = (raw || '').trim()
+      if (!s) return ''
+      // 去除空格、横线等非数字字符
+      const digits = s.replace(/[^\d]/g, '')
+      // 如果是 86 开头且总长 13（86 + 11位），直接返回
+      if (digits.startsWith('86') && digits.length === 13) return digits
+      // 如果是 11 位大陆手机号，补上 86 前缀
+      if (/^1[3-9]\d{9}$/.test(digits)) return '86' + digits
+      // 其他情况，直接返回数字形式（兜底）
+      return digits
+    }
+
     // 2) 从服务端环境变量读取 Supabase 配置
     const supabaseUrl = context.env?.SUPABASE_URL
     const serviceRoleKey = context.env?.SUPABASE_SERVICE_ROLE_KEY
@@ -44,8 +59,9 @@ export async function onRequestPost(context: any): Promise<Response> {
       )
     }
 
-    // 5) 检查是否存在该手机号的用户
-    const existingUser = users?.users?.find(user => user.phone === phone)
+    // 5) 检查是否存在该手机号的用户（忽略前端是否带+号的差异）
+    const normalizedInput = normalizeCnPhoneNoPlus(phone)
+    const existingUser = users?.users?.find(user => normalizeCnPhoneNoPlus(user.phone || '') === normalizedInput)
     const exists = !!existingUser
 
     return new Response(

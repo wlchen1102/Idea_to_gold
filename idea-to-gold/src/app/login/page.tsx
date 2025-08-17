@@ -242,7 +242,7 @@ export default function LoginPage() {
               <header className="mb-8 text-center">
                 <h1 className="text-2xl font-bold text-gray-900">欢迎来到点子成金</h1>
                 <p className="mt-2 text-gray-600">
-                  {step === 'phone' && '输入手机号或邮箱，开始或继续你的创造之旅。'}
+                  {step === 'phone' && '输入手机号或邮箱，开启你的创造之旅。'}
                   {step === 'login' && '欢迎回来，请输入密码登录。'}
                   {step === 'signup' && '创建新账户，设置你的密码。'}
                 </p>

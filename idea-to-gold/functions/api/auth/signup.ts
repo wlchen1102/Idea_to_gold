@@ -34,26 +34,49 @@ export async function onRequestPost(context: any): Promise<Response> {
       global: { fetch }, // 适配 Cloudflare Workers 环境
     })
 
-    // 4) 调用 Supabase 的注册接口（邮箱/手机号 + 密码）
-    const payload = phone ? { phone, password } : { email, password }
-    const { data, error } = await supabase.auth.signUp(payload as any)
+    // 4) 分支处理：仅手机号注册走 Admin 路径以绕过 OTP 验证，邮箱注册保持标准流程
+    if (phone) {
+      // 使用 Admin SDK 创建已验证的手机号用户（必须使用 Service Role Key，严禁在前端使用）
+      const { data, error } = await supabase.auth.admin.createUser({
+        phone,
+        password,
+        phone_confirm: true, // 直接标记为已验证，跳过短信 OTP
+      })
 
-    // 5) 处理 Supabase 返回的结果
-    if (error) {
+      // 5) 处理 Supabase 返回的结果
+      if (error) {
+        return new Response(
+          JSON.stringify({ message: '注册失败', error: error.message }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
       return new Response(
-        JSON.stringify({ message: '注册失败', error: error.message }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          message: '注册成功',
+          userId: data.user?.id ?? null,
+        }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } }
+      )
+    } else {
+      // 邮箱注册仍使用标准 signUp（是否需要邮件验证由项目设置决定）
+      const { data, error } = await supabase.auth.signUp({ email, password } as any)
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ message: '注册失败', error: error.message }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({
+          message: '注册成功',
+          userId: data.user?.id ?? null,
+        }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } }
       )
     }
-
-    // 注册成功（可能需要短信/邮件验证，取决于 Supabase 项目设置）
-    return new Response(
-      JSON.stringify({
-        message: '注册成功',
-        userId: data.user?.id ?? null,
-      }),
-      { status: 201, headers: { 'Content-Type': 'application/json' } }
-    )
   } catch (e: any) {
     return new Response(
       JSON.stringify({ message: '服务器内部错误', error: e?.message ?? 'unknown error' }),
