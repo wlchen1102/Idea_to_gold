@@ -8582,7 +8582,7 @@ async function onRequestPost2(context) {
     return new Response(
       JSON.stringify({
         exists,
-        message: exists ? "\u624B\u673A\u53F7\u5DF2\u6CE8\u518C" : "\u624B\u673A\u53F7\u53EF\u7528\u4E8E\u6CE8\u518C"
+        message: exists ? "\u624B\u673A\u53F7\u5DF2\u6CE8\u518C\uFF0C\u8BF7\u76F4\u63A5\u767B\u5F55" : "\u624B\u673A\u53F7\u672A\u6CE8\u518C\uFF0C\u8BF7\u5148\u6CE8\u518C"
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
@@ -9134,10 +9134,10 @@ var init_functionsRoutes_0_9440270532686748 = __esm({
   }
 });
 
-// ../.wrangler/tmp/bundle-OWz88R/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-zjvqVu/middleware-loader.entry.ts
 init_functionsRoutes_0_9440270532686748();
 
-// ../.wrangler/tmp/bundle-OWz88R/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-zjvqVu/middleware-insertion-facade.js
 init_functionsRoutes_0_9440270532686748();
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/pages-template-worker.ts
@@ -9633,7 +9633,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-OWz88R/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-zjvqVu/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9666,7 +9666,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-OWz88R/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-zjvqVu/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -15,7 +15,7 @@ export async function onRequestPost(context: any): Promise<Response> {
       )
     }
 
-    // 工具方法：统一手机号格式为“去除+号且包含国家码”的数字串
+    // 工具方法：统一手机号格式为"去除+号且包含国家码"的数字串
     // 目前仅支持中国大陆：+86 + 11位，以1开头
     const normalizeCnPhoneNoPlus = (raw: string) => {
       const s = (raw || '').trim()
@@ -67,7 +67,7 @@ export async function onRequestPost(context: any): Promise<Response> {
     return new Response(
       JSON.stringify({
         exists,
-        message: exists ? '手机号已注册' : '手机号可用于注册'
+        message: exists ? '手机号已注册，请直接登录' : '手机号未注册，请先注册'
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )

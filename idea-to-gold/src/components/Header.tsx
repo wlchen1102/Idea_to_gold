@@ -89,7 +89,7 @@ function Header() {
                   登录
                 </Link>
                 <Link
-                  href="/login"
+                  href="/login?mode=signup"
                   className="rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:brightness-110"
                 >
                   立即免费注册

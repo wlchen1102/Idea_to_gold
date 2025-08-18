@@ -8791,7 +8791,7 @@ async function onRequestPost2(context) {
     return new Response(
       JSON.stringify({
         exists,
-        message: exists ? "\u624B\u673A\u53F7\u5DF2\u6CE8\u518C" : "\u624B\u673A\u53F7\u53EF\u7528\u4E8E\u6CE8\u518C"
+        message: exists ? "\u624B\u673A\u53F7\u5DF2\u6CE8\u518C\uFF0C\u8BF7\u76F4\u63A5\u767B\u5F55" : "\u624B\u673A\u53F7\u672A\u6CE8\u518C\uFF0C\u8BF7\u5148\u6CE8\u518C"
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

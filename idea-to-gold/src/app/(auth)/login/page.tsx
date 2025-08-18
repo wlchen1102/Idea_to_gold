@@ -6,8 +6,8 @@
 
 'use client'
 
-import React, { useState } from "react";
-import { useRouter } from 'next/navigation'
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -29,7 +29,27 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [nicknameError, setNicknameError] = useState(''); // 昵称校验错误信息
   const [termsAccepted, setTermsAccepted] = useState(false); // 用户协议勾选状态
+  const [mode, setMode] = useState<'login' | 'signup'>('login'); // 登录/注册模式切换
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 失焦延迟校验计时器（手机号）
+  const phoneBlurTimer = useRef<any>(null);
+
+  // 根据 URL 查询参数初始化展示模式，例如 /login?mode=signup 直接展示注册页
+  useEffect(() => {
+    try {
+      const m = (searchParams?.get('mode') || searchParams?.get('tab') || '').toLowerCase();
+      if (m === 'signup' || m === 'register') setMode('signup');
+      else if (m === 'login') setMode('login');
+    } catch {}
+    // 仅在首次挂载时读取一次
+  }, []);
+
+  useEffect(() => {
+    // 组件卸载时清理定时器
+    return () => { if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current); };
+  }, []);
 
   // 中国大陆手机号：以1开头，第2位3-9，总共11位
   const CN_PHONE_REGEX = /^1[3-9]\d{9}$/;
@@ -80,6 +100,46 @@ export default function LoginPage() {
   const isCurrentInputValid = () => inputType === 'phone' ? isPhoneValid : isEmailValid;
   const canContinue = getCurrentInput().trim() !== '' && isCurrentInputValid();
 
+  // 统一：调度“手机号失焦2秒后自动校验是否存在”
+  const schedulePhoneExistenceCheck = (currentMode: 'login' | 'signup') => {
+    if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current);
+    // 只有输入了有效手机号时才调度
+    if (!CN_PHONE_REGEX.test(phone.trim())) return;
+
+    phoneBlurTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/auth/check-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: toE164(phone) })
+        });
+        const data = await res.json().catch(() => ({} as any));
+        if (!CN_PHONE_REGEX.test(phone.trim())) return; // 若期间用户已修改为非法值，忽略
+
+        if (res.ok) {
+          const exists = !!(data as any).exists;
+          if (exists) {
+            // 已注册
+            if (currentMode === 'signup') {
+              setPhoneError('手机号已注册，请直接登录');
+            } else {
+              setPhoneError('');
+            }
+          } else {
+            // 未注册
+            if (currentMode === 'login') {
+              setPhoneError('手机号未注册，请先注册');
+            } else {
+              setPhoneError('');
+            }
+          }
+        }
+      } catch {
+        // 静默失败：不影响用户继续
+      }
+    }, 1000);
+  };
+
   // 检查账号是否存在（手机号或邮箱）
   const handleContinue = async () => {
     const isValid = inputType === 'phone' ? validatePhone(phone) : validateEmail(email);
@@ -90,7 +150,7 @@ export default function LoginPage() {
       setSubmitError('');
 
       const endpoint = inputType === 'phone' ? '/api/auth/check-phone' : '/api/auth/check-email';
-      const body = inputType === 'phone' 
+      const body = inputType === 'phone'
         ? { phone: toE164(phone) }
         : { email: email.trim() };
 
@@ -131,7 +191,7 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setSubmitError('');
 
-      const body = inputType === 'phone' 
+      const body = inputType === 'phone'
         ? { phone: toE164(phone), password }
         : { email: email.trim(), password };
 
@@ -179,7 +239,13 @@ export default function LoginPage() {
           router.push('/'); // 跳转到点子广场页面
         }, 1200);
       } else {
-        setSubmitError((data as any).error || (data as any).message || '登录失败，请检查密码');
+        const serverMsg = (data as any).error || (data as any).message || '登录失败，请检查密码';
+        // 将 Supabase 的英文错误映射为中文（仅手机号登录场景）
+        if (inputType === 'phone' && typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('invalid login credentials')) {
+          setSubmitError('手机号未注册，请先注册');
+        } else {
+          setSubmitError(serverMsg);
+        }
       }
     } catch (e: any) {
       setSubmitError(e?.message || '网络异常，请稍后重试');
@@ -203,7 +269,7 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setSubmitError('');
 
-      const body = inputType === 'phone' 
+      const body = inputType === 'phone'
         ? { phone: toE164(phone), password: newPassword, nickname: nickname.trim() || undefined }
         : { email: email.trim(), password: newPassword, nickname: nickname.trim() || undefined };
 
@@ -233,27 +299,24 @@ export default function LoginPage() {
 
         // 【关键修复】注册成功后，用相同的账号密码创建 Supabase 会话
         try {
-          const credentials = inputType === 'phone' 
+          const credentials = inputType === 'phone'
             ? { phone: toE164(phone), password: newPassword }
             : { email: email.trim(), password: newPassword };
-          
-          const { data: signInData, error } = await supabase.auth.signInWithPassword(credentials as any);
-          
-          if (error) {
-            console.warn('注册后创建会话失败:', error);
+        
+          const { data: signedIn, error: signInErr } = await supabase.auth.signInWithPassword(credentials as any);
+          if (signInErr) {
+            console.warn('注册后自动登录失败:', signInErr);
           }
         } catch (e) {
-          console.warn('注册后创建会话异常:', e);
+          console.warn('设置 Supabase 会话失败:', e);
         }
-        
-        // 通知全局监听者（Header/AvatarMenu）更新登录态
-        window.dispatchEvent(new Event('auth:changed'));
-        
+
         setTimeout(() => {
-          router.push('/'); // 跳转到点子广场页面
+          router.push('/');
         }, 1200);
       } else {
-        setSubmitError((data as any).error || (data as any).message || '注册失败，请稍后再试');
+        // 直接使用服务端归一化后的中文 message
+        setSubmitError((data as any).message || '注册失败，请稍后重试');
       }
     } catch (e: any) {
       setSubmitError(e?.message || '网络异常，请稍后重试');
@@ -262,31 +325,12 @@ export default function LoginPage() {
     }
   };
 
-  // 返回输入步骤
-  const backToInputStep = () => {
-    setStep('phone');
-    setPassword('');
-    setNickname('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setSubmitError('');
-    setSuccessMessage('');
-  };
-
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:py-12">
-        {/* 两列布局：左侧产品介绍，右侧登录表单 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-          {/* 左侧：产品介绍/品牌展示区 */}
-          <aside className="order-2 lg:order-1 relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-blue-50 border border-emerald-100/40 p-8 lg:p-10">
-            {/* 背景装饰 */}
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute -top-6 -left-6 h-56 w-56 rounded-full bg-emerald-200/30 blur-3xl" />
-              <div className="absolute bottom-10 right-10 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl" />
-              <div className="absolute top-1/2 left-1/3 h-48 w-48 rounded-full bg-purple-200/20 blur-3xl" />
-            </div>
-
+    <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-gray-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 py-10 lg:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+          {/* 左侧：卖点与价值主张 */}
+          <aside className="order-2 lg:order-1">
             <div className="space-y-6">
               <h2 className="text-3xl lg:text-4xl font-bold text-gray-900">
                 点亮你的
@@ -316,9 +360,7 @@ export default function LoginPage() {
               <header className="mb-8 text-center">
                 <h1 className="text-2xl font-bold text-gray-900">欢迎来到点子成金</h1>
                 <p className="mt-2 text-gray-600">
-                  {step === 'phone' && '输入手机号或邮箱，开启你的创造之旅。'}
-                  {step === 'login' && '欢迎回来，请输入密码登录。'}
-                  {step === 'signup' && '创建新账户，设置你的密码。'}
+                  {mode === 'login' ? '欢迎回来，请输入手机号和密码登录。' : '欢迎创建新账户'}
                 </p>
               </header>
 
@@ -336,150 +378,42 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* 表单区域 */}
+              {/* 表单区域（动态切换：登录/注册） */}
               <form className="space-y-6" aria-label="登录注册表单" onSubmit={(e) => e.preventDefault()}>
-                
-                {/* 输入类型选择 - 仅在初始输入步骤显示 */}
-                {step === 'phone' && (
+                {/* 使用条件渲染取代表单面板的绝对定位，避免高度被裁剪 */}
+                {mode === 'login' ? (
                   <div className="space-y-4">
-                    {/* 输入类型切换 */}
-                    <div className="flex rounded-lg bg-gray-100 p-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInputType('phone');
-                          setEmail('');
-                          setEmailError('');
-                        }}
-                        className={`flex-1 rounded-md py-2.5 text-sm font-medium transition ${
-                          inputType === 'phone'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        手机号
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInputType('email');
-                          setPhone('');
-                          setPhoneError('');
-                        }}
-                        className={`flex-1 rounded-md py-2.5 text-sm font-medium transition ${
-                          inputType === 'email'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        邮箱
-                      </button>
-                    </div>
-
                     {/* 手机号输入 */}
-                    {inputType === 'phone' && (
-                      <div className="space-y-2">
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                          手机号
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 select-none">+86</span>
-                          <input
-                            id="phone"
-                            name="phone"
-                            type="tel"
-                            inputMode="numeric"
-                            placeholder="请输入你的手机号码"
-                            className={`w-full h-12 pl-14 pr-4 rounded-lg border focus:ring-2 outline-none transition ${
-                              phoneError ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 
-                              'border-gray-300 focus:border-green-600 focus:ring-green-100'
-                            }`}
-                            value={phone}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPhone(val);
-                              validatePhone(val);
-                              setPhoneError('');
-                            }}
-                            onBlur={() => validatePhone(phone)}
-                          />
-                        </div>
-                        {phoneError && <p className="text-sm text-red-600">{phoneError}</p>}
-                      </div>
-                    )}
-
-                    {/* 邮箱输入 */}
-                    {inputType === 'email' && (
-                      <div className="space-y-2">
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                          邮箱
-                        </label>
+                    <div className="space-y-2">
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">手机号</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 select-none">+86</span>
                         <input
-                          id="email"
-                          name="email"
-                          type="email"
-                          placeholder="请输入你的邮箱地址"
-                          className={`w-full h-12 px-3 rounded-lg border focus:ring-2 outline-none transition ${
-                            emailError ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 
-                            'border-gray-300 focus:border-green-600 focus:ring-green-100'
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="请输入你的手机号码"
+                          className={`w-full h-12 pl-14 pr-4 rounded-lg border focus:ring-2 outline-none transition ${
+                            phoneError ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-300 focus:border-green-600 focus:ring-green-100'
                           }`}
-                          value={email}
+                          value={phone}
                           onChange={(e) => {
                             const val = e.target.value;
-                            setEmail(val);
-                            validateEmail(val);
-                            setEmailError('');
+                            setPhone(val);
+                            validatePhone(val);
+                            setPhoneError('');
+                            if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current);
                           }}
-                          onBlur={() => validateEmail(email)}
+                          onFocus={() => { if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current); }}
+                          onBlur={() => { if (validatePhone(phone)) schedulePhoneExistenceCheck('login'); }}
+                          disabled={isSubmitting}
                         />
-                        {emailError && <p className="text-sm text-red-600">{emailError}</p>}
                       </div>
-                    )}
-
-                    {/* 继续按钮 */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={handleContinue}
-                        disabled={!canContinue || isSubmitting}
-                        aria-busy={isSubmitting}
-                        className={`w-full h-11 rounded-lg font-medium text-white transition
-                          ${(!canContinue || isSubmitting)
-                            ? 'bg-gray-300 cursor-not-allowed'
-                            : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
-                      >
-                        {isSubmitting ? '检查中…' : '继续'}
-                      </button>
+                      {phoneError && <p className="text-sm text-red-600">{phoneError}</p>}
                     </div>
-                  </div>
-                )}
 
-                {/* 已输入账号信息显示 - 在登录/注册步骤显示 */}
-                {(step === 'login' || step === 'signup') && (
-                  <div className="rounded-lg bg-gray-50 p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          {inputType === 'phone' ? '手机号' : '邮箱'}
-                        </p>
-                        <p className="font-medium text-gray-900">
-                          {inputType === 'phone' ? `+86 ${phone}` : email}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={backToInputStep}
-                        className="text-sm text-green-600 hover:text-green-700"
-                      >
-                        修改
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 登录步骤：密码输入 */}
-                {step === 'login' && (
-                  <div className="space-y-4">
+                    {/* 密码输入 */}
                     <div className="space-y-2">
                       <label htmlFor="password" className="block text-sm font-medium text-gray-700">密码</label>
                       <div className="relative">
@@ -508,27 +442,49 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={handleLogin}
-                        disabled={!password || isSubmitting}
+                        disabled={!isPhoneValid || !password || isSubmitting}
                         aria-busy={isSubmitting}
-                        className={`w-full h-11 rounded-lg font-medium text-white transition
-                          ${(!password || isSubmitting)
-                            ? 'bg-gray-300 cursor-not-allowed'
-                            : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
+                        className={`w-full h-11 rounded-lg font-medium text-white transition ${(!isPhoneValid || !password || isSubmitting) ? 'bg-gray-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
                       >
                         {isSubmitting ? '登录中…' : '登录'}
                       </button>
                     </div>
                   </div>
-                )}
-
-                {/* 注册步骤：昵称、设置密码 */}
-                {step === 'signup' && (
+                ) : (
                   <div className="space-y-4">
-                    {/* 昵称输入（必填，实时校验） */}
+                    {/* 手机号输入 */}
                     <div className="space-y-2">
-                      <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
-                        昵称 <span className="text-red-500">*</span>
-                      </label>
+                      <label htmlFor="phone-signup" className="block text-sm font-medium text-gray-700">手机号</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 select-none">+86</span>
+                        <input
+                          id="phone-signup"
+                          name="phone-signup"
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="请输入你的手机号码"
+                          className={`w-full h-12 pl-14 pr-4 rounded-lg border focus:ring-2 outline-none transition ${
+                            phoneError ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-300 focus:border-green-600 focus:ring-green-100'
+                          }`}
+                          value={phone}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPhone(val);
+                            validatePhone(val);
+                            setPhoneError('');
+                            if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current);
+                          }}
+                          onFocus={() => { if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current); }}
+                          onBlur={() => { if (validatePhone(phone)) schedulePhoneExistenceCheck('signup'); }}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                      {phoneError && <p className="text-sm text-red-600">{phoneError}</p>}
+                    </div>
+
+                    {/* 昵称输入 */}
+                    <div className="space-y-2">
+                      <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">昵称 <span className="text-red-500">*</span></label>
                       <input
                         id="nickname"
                         name="nickname"
@@ -536,20 +492,15 @@ export default function LoginPage() {
                         placeholder="请输入昵称"
                         className={`w-full h-12 px-3 rounded-lg border focus:ring-2 outline-none transition ${nicknameError ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-300 focus:border-green-600 focus:ring-green-100'}`}
                         value={nickname}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setNickname(v);
-                          validateNickname(v);
-                        }}
+                        onChange={(e) => { const v = e.target.value; setNickname(v); validateNickname(v); }}
                         onBlur={(e) => validateNickname(e.target.value)}
                         disabled={isSubmitting}
                         maxLength={15}
                       />
-                      {nicknameError && (
-                        <p className="text-xs text-red-500">{nicknameError}</p>
-                      )}
+                      {nicknameError && <p className="text-xs text-red-500">{nicknameError}</p>}
                     </div>
 
+                    {/* 设置密码 */}
                     <div className="space-y-2">
                       <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">设置密码</label>
                       <div className="relative">
@@ -574,6 +525,7 @@ export default function LoginPage() {
                       </div>
                     </div>
 
+                    {/* 确认密码 */}
                     <div className="space-y-2">
                       <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">确认密码</label>
                       <div className="relative">
@@ -598,8 +550,8 @@ export default function LoginPage() {
                       </div>
                     </div>
 
-                    {/* 用户协议勾选 */}
-                    <div className="flex items-center gap-2 pt-1">
+                    {/* 协议 */}
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
                       <input
                         id="terms"
                         type="checkbox"
@@ -608,27 +560,49 @@ export default function LoginPage() {
                         onChange={(e) => setTermsAccepted(e.target.checked)}
                         disabled={isSubmitting}
                       />
-                      <label htmlFor="terms" className="text-sm text-gray-600 select-none">
-                        我已阅读并同意 <a href="/terms" target="_blank" className="text-emerald-600 hover:underline">用户协议</a> 与 <a href="/privacy" target="_blank" className="text-emerald-600 hover:underline">隐私政策</a>
-                      </label>
+                      <label htmlFor="terms">我已阅读并同意 <a href="#" className="text-emerald-600 hover:underline">用户协议</a> 与 <a href="#" className="text-emerald-600 hover:underline">隐私政策</a></label>
                     </div>
 
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={handleSignup}
-                        disabled={(!newPassword || newPassword.length < 6 || newPassword !== confirmPassword || !!nicknameError || !nickname.trim() || !termsAccepted) || isSubmitting}
+                        disabled={(!isPhoneValid || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || !!nicknameError || !nickname.trim() || !termsAccepted) || isSubmitting}
                         aria-busy={isSubmitting}
-                        className={`w-full h-11 rounded-lg font-medium text-white transition
-                          ${((!newPassword || newPassword.length < 6 || newPassword !== confirmPassword || !!nicknameError || !nickname.trim() || !termsAccepted) || isSubmitting)
-                            ? 'bg-gray-300 cursor-not-allowed'
-                            : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
+                        className={`w-full h-11 rounded-lg font-medium text-white transition ${((!isPhoneValid || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || !!nicknameError || !nickname.trim() || !termsAccepted) || isSubmitting) ? 'bg-gray-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
                       >
                         {isSubmitting ? '注册中…' : '注册'}
                       </button>
                     </div>
                   </div>
                 )}
+
+                {/* 底部模式切换引导 */}
+                <div className="text-center text-sm text-gray-600">
+                  {mode === 'login' ? (
+                    <>
+                      还没有账号？
+                      <button
+                        type="button"
+                        onClick={() => { setMode('signup'); setSubmitError(''); setSuccessMessage(''); setPassword(''); }}
+                        className="ml-1 text-emerald-600 hover:text-emerald-700 hover:underline"
+                      >
+                        立即注册
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      已有账号？
+                      <button
+                        type="button"
+                        onClick={() => { setMode('login'); setSubmitError(''); setSuccessMessage(''); setNewPassword(''); setConfirmPassword(''); }}
+                        className="ml-1 text-emerald-600 hover:text-emerald-700 hover:underline"
+                      >
+                        返回登录
+                      </button>
+                    </>
+                  )}
+                </div>
               </form>
             </div>
           </section>
