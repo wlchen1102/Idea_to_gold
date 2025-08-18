@@ -3,9 +3,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import ConfirmationModal from "@/components/ConfirmationModal";
-import Modal from "@/components/Modal";
-import CloseButton from "@/components/CloseButton";
+// import ConfirmationModal from "@/components/ConfirmationModal";
+// import Modal from "@/components/Modal";
+// import CloseButton from "@/components/CloseButton";
 import Breadcrumb from "@/components/Breadcrumb";
 import { supabase } from "@/lib/supabase";
 
@@ -17,8 +17,9 @@ export default function NewCreativePage() {
   const [desc, setDesc] = useState(
     "它能够自动整理会议"
   );
-  const [bountyEnabled, setBountyEnabled] = useState(false);
-  const [bountyAmount, setBountyAmount] = useState<string>("500");
+  // 【暂时注释】悬赏金额功能
+  // const [bountyEnabled, setBountyEnabled] = useState(false);
+  // const [bountyAmount, setBountyAmount] = useState<string>("500");
   const platformOptions = [
     { id: "web", label: "网页" },
     { id: "mini", label: "小程序" },
@@ -39,43 +40,43 @@ export default function NewCreativePage() {
   // 提交状态
   const [submitting, setSubmitting] = useState(false);
 
-  // 侧边栏：模拟 API 请求
-  const presetSuggestions = [
-    { id: "s1", score: 0.85, title: "AI 会议记录与行动项提取" },
-    { id: "s2", score: 0.78, title: "语音转写 + 摘要助手（支持多语）" },
-    { id: "s3", score: 0.73, title: "企业版会议纪要机器人（接入钉钉/企微）" },
-  ];
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<
-    { id: string; score: number; title: string }[]
-  >([]);
-  const [showConfirm, setShowConfirm] = useState(false);
-  // 新增：AI副驾侧边栏显示控制（默认隐藏）
-  const [showAISidebar, setShowAISidebar] = useState(false);
-  // 新增：AI 对话模拟数据
-  const [chatMessages, setChatMessages] = useState<
-    { id: string; role: "ai" | "user"; text: string }[]
-  >([
-    { id: "m1", role: "ai", text: "太棒了！请用一句话告诉我你最初的想法是什么？" },
-    { id: "m2", role: "user", text: "我想做一个能自动弄会议纪要的工具。" },
-    { id: "m3", role: "ai", text: "好的，你认为它最关键的价值是什么？" },
-    { id: "m4", role: "user", text: "帮团队更快对齐待办，并同步到协作工具。" },
-    { id: "m5", role: "ai", text: "明白了，你打算先从哪个场景开始？" },
-  ]);
+  // 【暂时注释】侧边栏：模拟 API 请求
+  // const presetSuggestions = [
+  //   { id: "s1", score: 0.85, title: "AI 会议记录与行动项提取" },
+  //   { id: "s2", score: 0.78, title: "语音转写 + 摘要助手（支持多语）" },
+  //   { id: "s3", score: 0.73, title: "企业版会议纪要机器人（接入钉钉/企微）" },
+  // ];
+  // const [aiLoading, setAiLoading] = useState(false);
+  // const [aiSuggestions, setAiSuggestions] = useState<
+  //   { id: string; score: number; title: string }[]
+  // >([]);
+  // const [showConfirm, setShowConfirm] = useState(false);
+  // 【暂时注释】AI副驾侧边栏显示控制（默认隐藏）
+  // const [showAISidebar, setShowAISidebar] = useState(false);
+  // 【暂时注释】AI 对话模拟数据
+  // const [chatMessages, setChatMessages] = useState<
+  //   { id: string; role: "ai" | "user"; text: string }[]
+  // >([
+  //   { id: "m1", role: "ai", text: "太棒了！请用一句话告诉我你最初的想法是什么？" },
+  //   { id: "m2", role: "user", text: "我想做一个能自动弄会议纪要的工具。" },
+  //   { id: "m3", role: "ai", text: "好的，你认为它最关键的价值是什么？" },
+  //   { id: "m4", role: "user", text: "帮团队更快对齐待办，并同步到协作工具。" },
+  //   { id: "m5", role: "ai", text: "明白了，你打算先从哪个场景开始？" },
+  // ]);
   // 聊天输入框与发送
-  const [chatInput, setChatInput] = useState("");
-  function handleSend() {
-    const text = chatInput.trim();
-    if (!text) return;
-    setChatMessages((prev) => [...prev, { id: `u${Date.now()}`, role: "user", text }]);
-    setChatInput("");
-    setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        { id: `a${Date.now()}`, role: "ai", text: "收到！我会继续帮你梳理。" },
-      ]);
-    }, 600);
-  }
+  // const [chatInput, setChatInput] = useState("");
+  // function handleSend() {
+  //   const text = chatInput.trim();
+  //   if (!text) return;
+  //   setChatMessages((prev) => [...prev, { id: `u${Date.now()}`, role: "user", text }]);
+  //   setChatInput("");
+  //   setTimeout(() => {
+  //     setChatMessages((prev) => [
+  //       ...prev,
+  //       { id: `a${Date.now()}`, role: "ai", text: "收到！我会继续帮你梳理。" },
+  //     ]);
+  //   }, 600);
+  // }
 
   // 处理表单提交的真实API调用
   const handleSubmit = async () => {
@@ -90,7 +91,7 @@ export default function NewCreativePage() {
         localStorage.setItem('pendingToast', '请先登录后再发布创意');
         window.dispatchEvent(new Event('localToast'));
         setSubmitting(false);
-        setShowConfirm(false);
+        // setShowConfirm(false);
         router.push('/login');
         return;
       }
@@ -100,7 +101,9 @@ export default function NewCreativePage() {
         title: title.trim(),
         description: desc.trim(),
         terminals: Object.keys(expectedTargets).filter(key => expectedTargets[key]),
-        bounty_amount: bountyEnabled ? Math.max(0, parseInt(bountyAmount || '0', 10) || 0) : 0,
+        // 【暂时注释】悬赏金额功能
+        // bounty_amount: bountyEnabled ? Math.max(0, parseInt(bountyAmount || '0', 10) || 0) : 0,
+        bounty_amount: 0,
       };
 
       // 向 /api/creatives 发送 POST 请求，添加 Authorization 头
@@ -136,18 +139,18 @@ export default function NewCreativePage() {
       window.dispatchEvent(new Event("localToast"));
     } finally {
       setSubmitting(false);
-      setShowConfirm(false);
+      // setShowConfirm(false);
     }
   };
 
-  // 相似创意显示控制：默认隐藏，textarea 失焦 3 秒后显示
-  const [showSimilar, setShowSimilar] = useState(false);
-  const [similarLoading, setSimilarLoading] = useState(false);
-  const similarTimerRef = useRef<number | null>(null);
+  // 【暂时注释】相似创意显示控制：默认隐藏，textarea 失焦 3 秒后显示
+  // const [showSimilar, setShowSimilar] = useState(false);
+  // const [similarLoading, setSimilarLoading] = useState(false);
+  // const similarTimerRef = useRef<number | null>(null);
   // 点子详情 textarea 引用，用于自适应高度
   const descRef = useRef<HTMLTextAreaElement>(null);
-  // 预览弹窗控制
-  const [isPreviewOpen, setPreviewOpen] = useState(false);
+  // 【暂时注释】预览弹窗控制
+  // const [isPreviewOpen, setPreviewOpen] = useState(false);
   // 自适应高度：随内容增高，最多 16 行，超过后滚动
   function autoResizeDesc() {
     const el = descRef.current;
@@ -167,20 +170,24 @@ export default function NewCreativePage() {
   useEffect(() => {
     autoResizeDesc();
   }, []);
-  useEffect(() => {
-    return () => {
-      if (similarTimerRef.current) {
-        clearTimeout(similarTimerRef.current);
-      }
-    };
-  }, []);
+  // 【暂时注释】相似创意定时器清理
+  // useEffect(() => {
+  //   return () => {
+  //     if (similarTimerRef.current) {
+  //       clearTimeout(similarTimerRef.current);
+  //     }
+  //   };
+  // }, []);
 
   return (
     <>
       <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "发布新创意" }]} />
-      <div className={`grid grid-cols-1 gap-6 ${showAISidebar ? "md:grid-cols-3" : ""}`}>
+      {/* 【暂时注释】动态布局支持AI侧边栏 */}
+      {/* <div className={`grid grid-cols-1 gap-6 ${showAISidebar ? "md:grid-cols-3" : ""}`}> */}
+      <div className="grid grid-cols-1 gap-6">
         {/* 左侧：表单（保持固定宽度，避免因隐藏侧栏导致整体变宽） */}
-        <section className={`${showAISidebar ? "md:col-span-2 md:mx-0" : "mx-auto max-w-2xl"}`}>
+        {/* <section className={`${showAISidebar ? "md:col-span-2 md:mx-0" : "mx-auto max-w-2xl"}`}> */}
+        <section className="mx-auto max-w-2xl">
           <header className="mb-8">
             <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">分享你的绝妙创意</h1>
             <p className="mt-2 text-[#95a5a6]">一个好的创意，是改变世界的开始</p>
@@ -208,14 +215,15 @@ export default function NewCreativePage() {
                 <label htmlFor="desc" className="block text-sm font-medium text-[#2c3e50]">
                   点子详情
                 </label>
-                <button
+                {/* 【暂时注释】AI梳理需求按钮 */}
+                {/* <button
                   type="button"
                   onClick={() => desc.length > 10 && setShowAISidebar(true)}
                   className={`text-xs font-medium ${desc.length > 10 ? "text-[#3498db] hover:underline" : "text-gray-400 cursor-not-allowed"}`}
                   disabled={desc.length <= 10}
                 >
                   ✨ 让AI帮我梳理需求
-                </button>
+                </button> */}
               </div>
               <textarea
                 id="desc"
@@ -223,25 +231,26 @@ export default function NewCreativePage() {
                 placeholder="详细描述你的创意、目标用户、场景与可行性..."
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                onFocus={() => {
-                  if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
-                  setShowSimilar(false);
-                  setSimilarLoading(false);
-                }}
-                onBlur={() => {
-                  if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
-                  setShowSimilar(false);
-                  setSimilarLoading(true);
-                  similarTimerRef.current = window.setTimeout(() => {
-                    setSimilarLoading(false);
-                    setShowSimilar(true);
-                  }, 3000);
-                }}
+                // 【暂时注释】相似创意功能的 onFocus 和 onBlur 事件
+                // onFocus={() => {
+                //   if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
+                //   setShowSimilar(false);
+                //   setSimilarLoading(false);
+                // }}
+                // onBlur={() => {
+                //   if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
+                //   setShowSimilar(false);
+                //   setSimilarLoading(true);
+                //   similarTimerRef.current = window.setTimeout(() => {
+                //     setSimilarLoading(false);
+                //     setShowSimilar(true);
+                //   }, 3000);
+                // }}
                 ref={descRef}
                 className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none resize-none"
               />
-              {/* 相似创意推荐（描述失焦后先加载动画，3秒后展示） */}
-              {similarLoading && (
+              {/* 【暂时注释】相似创意推荐（描述失焦后先加载动画，3秒后展示） */}
+              {/* {similarLoading && (
                 <div className="relative mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                   <CloseButton
                     size="sm"
@@ -305,7 +314,7 @@ export default function NewCreativePage() {
                     ))}
                   </ul>
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* 期望终端 */}
@@ -333,8 +342,8 @@ export default function NewCreativePage() {
               </div>
             </div>
 
-            {/* 悬赏金额 */}
-            <div>
+            {/* 【暂时注释】悬赏金额 */}
+            {/* <div>
               <div className="flex items-center justify-between">
                 <label htmlFor="bounty" className="block text-sm font-medium text-[#2c3e50]">
                   悬赏金额 (可选)
@@ -363,13 +372,15 @@ export default function NewCreativePage() {
                   />
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* 发布按钮 */}
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => setShowConfirm(true)}
+                // 【暂时注释】使用确认弹窗
+                // onClick={() => setShowConfirm(true)}
+                onClick={handleSubmit}
                 disabled={submitting}
                 className={`w-full rounded-lg px-6 py-3 text-[16px] font-semibold text-white ${
                   submitting
@@ -383,29 +394,25 @@ export default function NewCreativePage() {
           </form>
         </section>
 
-        {/* 右侧：AI副驾侧边栏（默认隐藏，点击触发后显示） */}
-        {showAISidebar && (
+        {/* 【暂时注释】右侧：AI副驾侧边栏（默认隐藏，点击触发后显示） */}
+        {/* {showAISidebar && (
           <aside className="md:col-span-1">
             <div className="sticky top-24 space-y-4">
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="mb-1 flex items-center gap-2">
-                  {/* 魔法棒/灯泡图标 */}
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F1C40F" strokeWidth="2" className="h-5 w-5">
                     <path d="M9 18h6M12 2v4m8 6h-4m-8 0H4m11.31-6.31 2.83 2.83M5.86 5.86l2.83 2.83" />
                   </svg>
                   <h2 className="text-[16px] font-semibold text-[#2c3e50]">猫神AI</h2>
                   <CloseButton className="ml-auto" onClick={() => setShowAISidebar(false)} />
                 </div>
-                {/* 对话历史（自适应，超出 60vh 滚动） */}
                 <div className="mt-3 max-h-[60vh] overflow-y-auto space-y-3 pr-1">
                   {chatMessages.map((m) => (
                     <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                       <div className={`flex items-end gap-2 ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                        {/* 头像 */}
                         <div className="grid h-8 w-8 place-items-center rounded-full bg-[#ecf0f1] text-sm">
                           {m.role === "ai" ? "🤖" : "我"}
                         </div>
-                        {/* 气泡 */}
                         <div
                           className={`max-w-[70%] rounded-2xl px-3 py-2 text-sm leading-6 ${
                             m.role === "ai"
@@ -418,7 +425,6 @@ export default function NewCreativePage() {
                       </div>
                     </div>
                   ))}
-                  {/* AI 最终总结作为一条系统消息 */}
                   <div className="flex justify-start">
                     <div className="flex items-start gap-2">
                       <div className="grid h-8 w-8 place-items-center rounded-full bg-[#ecf0f1] text-sm">🤖</div>
@@ -453,7 +459,6 @@ export default function NewCreativePage() {
                             type="button"
                             onClick={() => {
                               const newTitle = "AI会议纪要与行动项提取助手";
-                              // 仅将结构化说明（不含标题）填充到详情，避免与标题重复
                               const newDesc = [
                                 "【目标用户】: 小团队管理者",
                                 "【核心痛点】: 整理纪要耗时耗力",
@@ -474,7 +479,6 @@ export default function NewCreativePage() {
                     </div>
                   </div>
                 </div>
-                {/* 输入区：固定在聊天窗口底部 */}
                 <div className="mt-3 flex items-center gap-2">
                   <input
                     value={chatInput}
@@ -493,10 +497,10 @@ export default function NewCreativePage() {
               </div>
             </div>
           </aside>
-        )}
+        )} */}
       </div>
-      {/* 发布确认弹窗 */}
-      <ConfirmationModal
+      {/* 【暂时注释】发布确认弹窗 */}
+      {/* <ConfirmationModal
         isOpen={showConfirm}
         similar={{
           id: (aiSuggestions[0] ?? presetSuggestions[0]).id,
@@ -506,9 +510,9 @@ export default function NewCreativePage() {
         }}
         onClose={() => setShowConfirm(false)}
         onContinue={handleSubmit}
-      />
-      {/* 相似创意预览弹窗 */}
-      <Modal isOpen={isPreviewOpen} onClose={() => setPreviewOpen(false)} title="AI会议记录与行动项提取">
+      /> */}
+      {/* 【暂时注释】相似创意预览弹窗 */}
+      {/* <Modal isOpen={isPreviewOpen} onClose={() => setPreviewOpen(false)} title="AI会议记录与行动项提取">
         <div className="space-y-3 text-[14px] leading-6 text-[#2c3e50]">
           <p>
             这是一个用于演示的创意预览内容。它能够自动识别会议中的关键结论与行动项，支持多语种转写与摘要，
@@ -528,7 +532,7 @@ export default function NewCreativePage() {
             关闭
           </button>
         </div>
-      </Modal>
+      </Modal> */}
     </>
   );
 }
