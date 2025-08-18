@@ -21,7 +21,7 @@ export default function TextInput({ label, description, error, className = "", i
         type="text"
         {...rest}
         className={
-          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none ` + (className || "")
+          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] focus:border-1 focus:border-[#2ECC71] focus:outline-none ` + (className || "")
         }
       />
       {description && <div className="mt-1 text-xs text-gray-500">{description}</div>}

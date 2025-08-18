@@ -8410,6 +8410,75 @@ var init_module5 = __esm({
   }
 });
 
+// api/users/me/profile.ts
+async function onRequestPatch(context) {
+  try {
+    const supabaseUrl = context.env?.SUPABASE_URL;
+    const serviceRoleKey = context.env?.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(
+        JSON.stringify({ message: "\u670D\u52A1\u7AEF\u73AF\u5883\u53D8\u91CF\u672A\u914D\u7F6E\uFF1A\u8BF7\u914D\u7F6E SUPABASE_URL \u4E0E SUPABASE_SERVICE_ROLE_KEY" }),
+        { status: 500, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      global: { fetch }
+      // 适配 Cloudflare Workers 环境
+    });
+    const authHeader = context.request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ message: "\u672A\u63D0\u4F9B\u6709\u6548\u7684\u8BBF\u95EE\u4EE4\u724C\uFF0C\u8BF7\u5148\u767B\u5F55" }),
+        { status: 401, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+    const accessToken = authHeader.replace("Bearer ", "").trim();
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+    if (authError || !user?.id) {
+      return new Response(
+        JSON.stringify({ message: "\u8BBF\u95EE\u4EE4\u724C\u65E0\u6548\u6216\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55" }),
+        { status: 401, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+    const body = await context.request.json().catch(() => null);
+    const nickname = body?.nickname;
+    const bio = body?.bio;
+    const updateData = {};
+    if (typeof nickname !== "undefined") updateData.nickname = nickname;
+    if (typeof bio !== "undefined") updateData.bio = bio;
+    if (Object.keys(updateData).length === 0) {
+      return new Response(
+        JSON.stringify({ message: "\u672A\u63D0\u4F9B\u9700\u8981\u66F4\u65B0\u7684\u5B57\u6BB5" }),
+        { status: 400, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+    const { error: updateError } = await supabase.from("profiles").update(updateData).eq("id", user.id);
+    if (updateError) {
+      return new Response(
+        JSON.stringify({ message: "\u66F4\u65B0\u8D44\u6599\u5931\u8D25", error: updateError.message }),
+        { status: 400, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+    return new Response(
+      JSON.stringify({ message: "\u66F4\u65B0\u6210\u529F" }),
+      { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } }
+    );
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ message: "\u670D\u52A1\u5668\u5185\u90E8\u9519\u8BEF", error: e?.message ?? "unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json; charset=utf-8" } }
+    );
+  }
+}
+var init_profile = __esm({
+  "api/users/me/profile.ts"() {
+    "use strict";
+    init_functionsRoutes_0_9440270532686748();
+    init_module5();
+    __name(onRequestPatch, "onRequestPatch");
+  }
+});
+
 // api/auth/check-email.ts
 async function onRequestPost(context) {
   try {
@@ -8996,6 +9065,7 @@ var routes;
 var init_functionsRoutes_0_9440270532686748 = __esm({
   "../.wrangler/tmp/pages-5K6UsJ/functionsRoutes-0.9440270532686748.mjs"() {
     "use strict";
+    init_profile();
     init_check_email();
     init_check_phone();
     init_login();
@@ -9004,6 +9074,13 @@ var init_functionsRoutes_0_9440270532686748 = __esm({
     init_creatives();
     init_creatives();
     routes = [
+      {
+        routePath: "/api/users/me/profile",
+        mountPath: "/api/users/me",
+        method: "PATCH",
+        middlewares: [],
+        modules: [onRequestPatch]
+      },
       {
         routePath: "/api/auth/check-email",
         mountPath: "/api/auth",
@@ -9057,10 +9134,10 @@ var init_functionsRoutes_0_9440270532686748 = __esm({
   }
 });
 
-// ../.wrangler/tmp/bundle-vdv1Vl/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-OWz88R/middleware-loader.entry.ts
 init_functionsRoutes_0_9440270532686748();
 
-// ../.wrangler/tmp/bundle-vdv1Vl/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-OWz88R/middleware-insertion-facade.js
 init_functionsRoutes_0_9440270532686748();
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/pages-template-worker.ts
@@ -9556,7 +9633,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-vdv1Vl/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-OWz88R/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9589,7 +9666,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-vdv1Vl/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-OWz88R/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

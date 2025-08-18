@@ -43,7 +43,7 @@ export default function Textarea({ label, description, error, className = "", id
         ref={ref}
         {...rest}
         className={
-          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none resize-none ` + (className || "")
+          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] leading-6 focus:border-1 focus:border-[#2ECC71] focus:outline-none resize-none ` + (className || "")
         }
       />
       {description && <div className="mt-1 text-xs text-gray-500">{description}</div>}

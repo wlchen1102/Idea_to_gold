@@ -6,6 +6,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import TextInput from '@/components/ui/TextInput'
+import Textarea from '@/components/ui/Textarea'
 
 // 定义Tab的类型
 type TabType = 'profile' | 'security'
@@ -20,6 +22,8 @@ export default function AccountSettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
+  const [isSaving, setIsSaving] = useState<boolean>(false)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // 页面首次加载时拉取当前登录用户的资料
   useEffect(() => {
@@ -72,8 +76,57 @@ export default function AccountSettingsPage() {
     }
   }, [])
 
+  // 点击保存：调用后端 PATCH /api/users/me/profile 接口
+  const handleSave = async () => {
+    console.log('保存按钮被点击了')
+    try {
+      setIsSaving(true)
+      setError('')
+
+      // 获取当前会话的访问令牌
+      const { data: sessionResp, error: sessionErr } = await supabase.auth.getSession()
+      if (sessionErr) throw sessionErr
+      const accessToken = sessionResp?.session?.access_token
+      if (!accessToken) throw new Error('未登录或会话已过期，请重新登录')
+
+      console.log('准备发送请求到 /api/users/me/profile', { nickname, bio })
+
+      const resp = await fetch('/api/users/me/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ nickname, bio }),
+      })
+
+      const result = await resp.json().catch(() => ({}))
+      console.log('API响应:', result)
+      
+      if (!resp.ok) {
+        const msg = result?.message || '更新失败'
+        throw new Error(msg)
+      }
+
+      setToast({ type: 'success', message: '资料更新成功！' })
+      setTimeout(() => setToast(null), 2500)
+    } catch (e: any) {
+      console.error('保存失败:', e)
+      setToast({ type: 'error', message: e?.message || '更新失败' })
+      setTimeout(() => setToast(null), 3000)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <main className="w-full min-h-screen bg-gray-50">
+      {/* 全局 Toast 提示 */}
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md shadow-lg text-white ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {toast.message}
+        </div>
+      )}
       {/* 页面容器 */}
       <div className="mx-auto max-w-6xl px-6 py-10">
         {/* 页面标题 */}
@@ -125,7 +178,7 @@ export default function AccountSettingsPage() {
               <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">公开资料</h3>
 
-                {/* 头像上传区域（此处仍为占位，没有接入上传逻辑） */}
+                {/* 头像上传区域（此处仍为占位，暂时不支持上传功能） */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">头像</label>
                   <div className="flex items-center gap-4">
@@ -146,48 +199,41 @@ export default function AccountSettingsPage() {
                       </div>
                     )}
 
-                    {/* 上传按钮（静态按钮，无交互逻辑） */}
+                    {/* 上传按钮（暂不支持上传，故完全注释掉） */}
+                    {/*
                     <button
                       type="button"
                       className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                     >
                       上传新头像
                     </button>
+                    */}
                   </div>
                 </div>
 
                 {/* 昵称编辑 */}
                 <div className="mb-6">
-                  <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-2">
-                    昵称
-                  </label>
-                  <input
+                  <TextInput
                     id="nickname"
-                    name="nickname"
-                    type="text"
+                    label="昵称"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
                     placeholder={loading ? '加载中…' : '请输入你的昵称'}
-                    className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    error={error}
                   />
-                  {error && (
-                    <p className="mt-1 text-sm text-red-600">{error}</p>
-                  )}
                 </div>
 
                 {/* 个人简介 */}
                 <div className="mb-6">
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                    个人简介
-                  </label>
-                  <textarea
+                  <Textarea
                     id="bio"
-                    name="bio"
+                    label="个人简介"
                     rows={4}
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     placeholder={loading ? '加载中…' : '介绍一下你自己吧'}
-                    className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    autoResize={true}
+                    maxLines={8}
                   />
                 </div>
 
@@ -195,9 +241,13 @@ export default function AccountSettingsPage() {
                 <div className="mt-8 border-t border-gray-200 pt-4 flex justify-end">
                   <button
                     type="button"
-                    className="inline-flex items-center rounded-md bg-green-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onClick={handleSave}
+                    disabled={isSaving || loading}
+                    className={`inline-flex items-center rounded-md px-5 py-2.5 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                      isSaving || loading ? 'bg-green-400 cursor-not-allowed opacity-60' : 'bg-green-600 hover:bg-green-700'
+                    }`}
                   >
-                    保存更改
+                    {isSaving ? '保存中…' : '保存更改'}
                   </button>
                 </div>
               </div>
