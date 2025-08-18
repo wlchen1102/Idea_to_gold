@@ -8,14 +8,17 @@ import { useRouter } from "next/navigation";
 // import CloseButton from "@/components/CloseButton";
 import Breadcrumb from "@/components/Breadcrumb";
 import { supabase } from "@/lib/supabase";
+import Checkbox from "@/components/ui/Checkbox";
+import TextInput from "@/components/ui/TextInput";
+import Textarea from "@/components/ui/Textarea";
 
 export default function NewCreativePage() {
   const router = useRouter();
   
   // 表单：受控状态
-  const [title, setTitle] = useState("AI 会议纪要助手");
+  const [title, setTitle] = useState("");
   const [desc, setDesc] = useState(
-    "它能够自动整理会议"
+    ""
   );
   // 【暂时注释】悬赏金额功能
   // const [bountyEnabled, setBountyEnabled] = useState(false);
@@ -196,125 +199,26 @@ export default function NewCreativePage() {
           <form className="space-y-6">
             {/* 标题 */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-[#2c3e50]">
-                标题
-              </label>
-              <input
+              <TextInput
                 id="title"
-                type="text"
+                label="标题"
                 placeholder="一句话说清你的点子，如：一个能自动总结会议纪要的AI工具"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
               />
             </div>
 
             {/* 点子详情 */}
             <div>
-              <div className="flex items-center justify-between">
-                <label htmlFor="desc" className="block text-sm font-medium text-[#2c3e50]">
-                  点子详情
-                </label>
-                {/* 【暂时注释】AI梳理需求按钮 */}
-                {/* <button
-                  type="button"
-                  onClick={() => desc.length > 10 && setShowAISidebar(true)}
-                  className={`text-xs font-medium ${desc.length > 10 ? "text-[#3498db] hover:underline" : "text-gray-400 cursor-not-allowed"}`}
-                  disabled={desc.length <= 10}
-                >
-                  ✨ 让AI帮我梳理需求
-                </button> */}
-              </div>
-              <textarea
+              <Textarea
                 id="desc"
+                label="点子详情"
                 rows={5}
                 placeholder="详细描述你的创意、目标用户、场景与可行性..."
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                // 【暂时注释】相似创意功能的 onFocus 和 onBlur 事件
-                // onFocus={() => {
-                //   if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
-                //   setShowSimilar(false);
-                //   setSimilarLoading(false);
-                // }}
-                // onBlur={() => {
-                //   if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
-                //   setShowSimilar(false);
-                //   setSimilarLoading(true);
-                //   similarTimerRef.current = window.setTimeout(() => {
-                //     setSimilarLoading(false);
-                //     setShowSimilar(true);
-                //   }, 3000);
-                // }}
-                ref={descRef}
-                className="mt-2 w-full rounded-md border border-gray-300 bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none resize-none"
+                autoResize
               />
-              {/* 【暂时注释】相似创意推荐（描述失焦后先加载动画，3秒后展示） */}
-              {/* {similarLoading && (
-                <div className="relative mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <CloseButton
-                    size="sm"
-                    className="absolute right-3 top-3"
-                    onClick={() => {
-                      if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
-                      setSimilarLoading(false);
-                      setShowSimilar(false);
-                    }}
-                  />
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <svg className="h-4 w-4 animate-spin text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                    </svg>
-                    正在为你查找相似创意...
-                  </div>
-                </div>
-              )}
-              {showSimilar && !similarLoading && (
-                <div className="relative mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <CloseButton
-                    size="sm"
-                    className="absolute right-3 top-3"
-                    onClick={() => {
-                      if (similarTimerRef.current) clearTimeout(similarTimerRef.current);
-                      setShowSimilar(false);
-                    }}
-                  />
-                  <h3 className="mb-3 text-sm font-medium text-[#2c3e50]">我们好发现了一些相似创意~</h3>
-                  <ul className="space-y-3">
-                    {presetSuggestions.slice(0, 3).map((s) => (
-                      <li key={s.id} className="rounded-lg border border-gray-200 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-[12px] text-gray-500">相似度: {(s.score * 100).toFixed(0)}%</div>
-                            <button
-                              type="button"
-                              onClick={() => setPreviewOpen(true)}
-                              className="mt-1 text-left text-[14px] font-medium text-[#2c3e50] hover:underline"
-                              title="点击预览详情"
-                            >
-                              {s.title}
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-md bg-[#2ECC71] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#27AE60]"
-                            onClick={() => {
-                                localStorage.setItem("pendingToast", "已将您的描述自动添加到评论区");
-                                localStorage.setItem(`pendingComment:${s.id}`, desc);
-                                localStorage.setItem(`pendingSupport:${s.id}`, "1");
-                                window.location.href = `/idea/${s.id}`;
-                              }}
-                          >
-                            <span>👍</span>
-                            <span>合并进去并+1</span>
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )} */}
             </div>
 
             {/* 期望终端 */}
@@ -322,22 +226,16 @@ export default function NewCreativePage() {
               <span className="block text-sm font-medium text-[#2c3e50]">期望终端</span>
               <div className="mt-3 flex flex-wrap gap-3">
                 {platformOptions.map((opt) => (
-                  <label
+                  <Checkbox
                     key={opt.id}
-                    htmlFor={opt.id}
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <input
-                      id={opt.id}
-                      type="checkbox"
-                      checked={Boolean(expectedTargets[opt.id])}
-                      onChange={(e) =>
-                        setExpectedTargets((prev) => ({ ...prev, [opt.id]: e.target.checked }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300 text-[#2ECC71] focus:ring-[#2ECC71]"
-                    />
-                    {opt.label}
-                  </label>
+                    id={opt.id}
+                    label={opt.label}
+                    wrapperClassName="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    checked={Boolean(expectedTargets[opt.id])}
+                    onChange={(e) =>
+                      setExpectedTargets((prev) => ({ ...prev, [opt.id]: (e.target as HTMLInputElement).checked }))
+                    }
+                  />
                 ))}
               </div>
             </div>
