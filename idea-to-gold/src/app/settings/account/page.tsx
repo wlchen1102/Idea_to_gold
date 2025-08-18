@@ -4,7 +4,8 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 // 定义Tab的类型
 type TabType = 'profile' | 'security'
@@ -12,6 +13,65 @@ type TabType = 'profile' | 'security'
 export default function AccountSettingsPage() {
   // 使用useState管理当前激活的Tab（默认为公开资料）
   const [activeTab, setActiveTab] = useState<TabType>('profile')
+
+  // 公开资料：新增本地状态来存储从数据库获取的数据
+  const [nickname, setNickname] = useState<string>('')
+  const [bio, setBio] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string>('')
+
+  // 页面首次加载时拉取当前登录用户的资料
+  useEffect(() => {
+    let isMounted = true // 防止组件卸载后更新state
+
+    const fetchProfile = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        // 1) 获取当前登录用户
+        const { data: userResp, error: userErr } = await supabase.auth.getUser()
+        if (userErr) throw userErr
+
+        const user = userResp?.user
+        if (!user) {
+          // 未登录：清空展示
+          if (isMounted) {
+            setNickname('')
+            setBio('')
+          }
+          return
+        }
+
+        // 2) 查询 profiles 表获取 nickname 和 bio
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('nickname, bio, avatar_url')
+          .eq('id', user.id)
+          .single()
+
+        if (error) throw error
+
+        if (isMounted && data) {
+          setNickname(data.nickname || '')
+          setBio(data.bio || '')
+          setAvatarUrl((data as any).avatar_url || '')
+        }
+      } catch (e: any) {
+        if (isMounted) setError(e?.message || '加载用户资料失败')
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchProfile()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
     <main className="w-full min-h-screen bg-gray-50">
       {/* 页面容器 */}
@@ -65,17 +125,26 @@ export default function AccountSettingsPage() {
               <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">公开资料</h3>
 
-                {/* 头像上传区域 */}
+                {/* 头像上传区域（此处仍为占位，没有接入上传逻辑） */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">头像</label>
                   <div className="flex items-center gap-4">
-                    {/* 头像占位符：100x100 圆形 */}
-                    <div
-                      aria-label="当前头像占位图"
-                      className="h-24 w-24 rounded-full bg-gray-200 ring-1 ring-inset ring-gray-300 flex items-center justify-center text-gray-400 text-xs"
-                    >
-                      100×100
-                    </div>
+                    {/* 头像：有链接则显示图片，否则显示占位 */}
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="当前头像"
+                        className="h-24 w-24 rounded-full object-cover ring-1 ring-inset ring-gray-300"
+                        onError={() => setAvatarUrl('')}
+                      />
+                    ) : (
+                      <div
+                        aria-label="当前头像占位图"
+                        className="h-24 w-24 rounded-full bg-gray-200 ring-1 ring-inset ring-gray-300 flex items-center justify-center text-gray-400 text-xs"
+                      >
+                        100×100
+                      </div>
+                    )}
 
                     {/* 上传按钮（静态按钮，无交互逻辑） */}
                     <button
@@ -96,9 +165,14 @@ export default function AccountSettingsPage() {
                     id="nickname"
                     name="nickname"
                     type="text"
-                    defaultValue="创意玩家"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder={loading ? '加载中…' : '请输入你的昵称'}
                     className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
+                  {error && (
+                    <p className="mt-1 text-sm text-red-600">{error}</p>
+                  )}
                 </div>
 
                 {/* 个人简介 */}
@@ -110,12 +184,14 @@ export default function AccountSettingsPage() {
                     id="bio"
                     name="bio"
                     rows={4}
-                    defaultValue="热爱产品与技术的创作者，专注将想法打造成真正有价值的作品。"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder={loading ? '加载中…' : '介绍一下你自己吧'}
                     className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
 
-                {/* 底部操作区：保存按钮 */}
+                {/* 底部操作区：保存按钮（暂未接入保存逻辑，仅展示 UI） */}
                 <div className="mt-8 border-t border-gray-200 pt-4 flex justify-end">
                   <button
                     type="button"
