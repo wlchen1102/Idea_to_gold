@@ -6,9 +6,11 @@
 
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from "@/lib/supabase";
+import { requireSupabaseClient } from "@/lib/supabase";
 
 export default function LoginPage() {
   const [step, setStep] = useState<'phone' | 'login' | 'signup'>('phone'); // 当前步骤
@@ -34,7 +36,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
 
   // 失焦延迟校验计时器（手机号）
-  const phoneBlurTimer = useRef<any>(null);
+  const phoneBlurTimer = useRef<NodeJS.Timeout | null>(null);
 
   // 根据 URL 查询参数初始化展示模式，例如 /login?mode=signup 直接展示注册页
   useEffect(() => {
@@ -113,11 +115,11 @@ export default function LoginPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: toE164(phone) })
         });
-        const data = await res.json().catch(() => ({} as any));
+        const data = await res.json().catch(() => ({}));
         if (!CN_PHONE_REGEX.test(phone.trim())) return; // 若期间用户已修改为非法值，忽略
 
         if (res.ok) {
-          const exists = !!(data as any).exists;
+          const exists = !!(data as { exists?: boolean }).exists;
           if (exists) {
             // 已注册
             if (currentMode === 'signup') {
@@ -160,10 +162,10 @@ export default function LoginPage() {
         body: JSON.stringify(body)
       });
 
-      const data = await res.json().catch(() => ({} as any));
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
-        if ((data as any).exists) {
+        if ((data as { exists?: boolean }).exists) {
           // 账号已注册，进入登录流程
           setStep('login');
         } else {
@@ -171,10 +173,11 @@ export default function LoginPage() {
           setStep('signup');
         }
       } else {
-        setSubmitError((data as any).error || (data as any).message || '检查账号失败，请稍后再试');
+        setSubmitError((data as { error?: string; message?: string }).error || (data as { error?: string; message?: string }).message || '检查账号失败，请稍后再试');
       }
-    } catch (e: any) {
-      setSubmitError(e?.message || '网络异常，请稍后重试');
+    } catch (e) {
+      const err = e as Error;
+      setSubmitError(err?.message || '网络异常，请稍后重试');
     } finally {
       setIsSubmitting(false);
     }
@@ -201,28 +204,31 @@ export default function LoginPage() {
         body: JSON.stringify(body)
       });
 
-      const data = await res.json().catch(() => ({} as any));
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         setSuccessMessage('登录成功！正在跳转...');
         
-        // 设置本地登录态
-        localStorage.setItem('isLoggedIn', 'true');
-        
-        // 保存当前用户ID（来自后端返回）
-        try {
-          const uid = (data as any)?.userId;
-          if (uid) {
-            localStorage.setItem('userId', String(uid));
-          } else {
-            localStorage.removeItem('userId');
-          }
-        } catch {}
+        // 设置本地登录态 - 仅在浏览器环境中执行
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('isLoggedIn', 'true');
+          
+          // 保存当前用户ID（来自后端返回）
+          try {
+            const uid = (data as { userId?: string | number }).userId;
+            if (uid) {
+              localStorage.setItem('userId', String(uid));
+            } else {
+              localStorage.removeItem('userId');
+            }
+          } catch {}
+        }
 
         // 【关键修复】如果后端返回了 session，设置到 Supabase 客户端
         try {
-          const session = (data as any)?.session;
+          const session = (data as { session?: { access_token?: string; refresh_token?: string } }).session;
           if (session?.access_token && session?.refresh_token) {
+            const supabase = requireSupabaseClient();
             await supabase.auth.setSession({
               access_token: session.access_token,
               refresh_token: session.refresh_token
@@ -232,14 +238,16 @@ export default function LoginPage() {
           console.warn('设置 Supabase 会话失败:', e);
         }
         
-        // 通知全局监听者（Header/AvatarMenu）更新登录态
-        window.dispatchEvent(new Event('auth:changed'));
+        // 通知全局监听者（Header/AvatarMenu）更新登录态 - 仅在浏览器环境中执行
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth:changed'));
+        }
         
         setTimeout(() => {
           router.push('/'); // 跳转到点子广场页面
         }, 1200);
       } else {
-        const serverMsg = (data as any).error || (data as any).message || '登录失败，请检查密码';
+        const serverMsg = (data as { error?: string; message?: string }).error || (data as { error?: string; message?: string }).message || '登录失败，请检查密码';
         // 将 Supabase 的英文错误映射为中文（仅手机号登录场景）
         if (inputType === 'phone' && typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('invalid login credentials')) {
           setSubmitError('手机号未注册，请先注册');
@@ -247,8 +255,9 @@ export default function LoginPage() {
           setSubmitError(serverMsg);
         }
       }
-    } catch (e: any) {
-      setSubmitError(e?.message || '网络异常，请稍后重试');
+    } catch (e) {
+      const error = e as Error;
+      setSubmitError(error?.message || '网络异常，请稍后重试');
     } finally {
       setIsSubmitting(false);
     }
@@ -279,23 +288,25 @@ export default function LoginPage() {
         body: JSON.stringify(body)
       });
 
-      const data = await res.json().catch(() => ({} as any));
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && (res.status === 201 || res.status === 200)) {
         setSuccessMessage('注册成功！正在跳转...');
         
-        // 设置本地登录态
-        localStorage.setItem('isLoggedIn', 'true');
-        
-        // 保存当前用户ID（来自后端返回）
-        try {
-          const uid = (data as any)?.userId;
-          if (uid) {
-            localStorage.setItem('userId', String(uid));
-          } else {
-            localStorage.removeItem('userId');
-          }
-        } catch {}
+        // 设置本地登录态 - 仅在浏览器环境中执行
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('isLoggedIn', 'true');
+          
+          // 保存当前用户ID（来自后端返回）
+          try {
+            const uid = (data as { userId?: string | number }).userId;
+            if (uid) {
+              localStorage.setItem('userId', String(uid));
+            } else {
+              localStorage.removeItem('userId');
+            }
+          } catch {}
+        }
 
         // 【关键修复】注册成功后，用相同的账号密码创建 Supabase 会话
         try {
@@ -303,7 +314,8 @@ export default function LoginPage() {
             ? { phone: toE164(phone), password: newPassword }
             : { email: email.trim(), password: newPassword };
         
-          const { data: signedIn, error: signInErr } = await supabase.auth.signInWithPassword(credentials as any);
+          const supabase = requireSupabaseClient();
+          const { data: signedIn, error: signInErr } = await supabase.auth.signInWithPassword(credentials);
           if (signInErr) {
             console.warn('注册后自动登录失败:', signInErr);
           }
@@ -316,10 +328,11 @@ export default function LoginPage() {
         }, 1200);
       } else {
         // 直接使用服务端归一化后的中文 message
-        setSubmitError((data as any).message || '注册失败，请稍后重试');
+        setSubmitError((data as { message?: string }).message || '注册失败，请稍后重试');
       }
-    } catch (e: any) {
-      setSubmitError(e?.message || '网络异常，请稍后重试');
+    } catch (e) {
+      const err = e as Error;
+      setSubmitError(err?.message || '网络异常，请稍后重试');
     } finally {
       setIsSubmitting(false);
     }
@@ -338,13 +351,13 @@ export default function LoginPage() {
                 ，让世界看到你的创造
               </h2>
               <p className="text-gray-600 leading-7">
-                一个连接真实需求与顶尖AI开发者的孵化平台。在这里，每个好创意都能"点石成金"。
+                一个连接真实需求与顶尖AI开发者的孵化平台。在这里，每个好创意都能&quot;点石成金&quot;。
               </p>
 
               <div className="mt-4 space-y-4">
                 <FeatureItem title="AI需求分析师" desc="多轮对话澄清需求，自动生成可执行方案" />
                 <FeatureItem title="透明化的项目空间" desc="阶段式进度与开发日志，实时可见" />
-                <FeatureItem title="社区驱动的价值发现" desc="'我也要'投票，真实市场信号" />
+                <FeatureItem title="社区驱动的价值发现" desc="&apos;我也要&apos;投票，真实市场信号" />
               </div>
 
               <div className="pt-2 text-sm text-gray-500">

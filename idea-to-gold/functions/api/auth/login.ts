@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
+import type { CloudflareContext, AuthResponse } from '../../types'
 
 // Cloudflare Pages Function: handle POST /api/auth/login
-export async function onRequestPost(context: any): Promise<Response> {
+export async function onRequestPost(context: CloudflareContext): Promise<Response> {
   try {
     // 1) 解析请求体
-    const body = await context.request.json().catch(() => null)
+    const body = await context.request.json().catch(() => null) as { phone?: string; email?: string; password?: string } | null
     const phone = body?.phone
     const email = body?.email
     const password = body?.password
@@ -34,9 +35,11 @@ export async function onRequestPost(context: any): Promise<Response> {
       global: { fetch }, // 适配 Cloudflare Workers 环境
     })
 
-    // 4) 使用邮箱或手机号 + 密码登录
-    const credentials = phone ? { phone, password } : { email, password }
-    const { data, error } = await supabase.auth.signInWithPassword(credentials as any)
+    // 4) 使用邮箱或手机号 + 密码登录（分别调用以满足重载类型要求）
+    const signInResult = phone
+      ? await supabase.auth.signInWithPassword({ phone, password: password as string })
+      : await supabase.auth.signInWithPassword({ email: email as string, password: password as string })
+    const { data, error } = signInResult
 
     if (error) {
       return new Response(
@@ -45,17 +48,26 @@ export async function onRequestPost(context: any): Promise<Response> {
       )
     }
 
+    const resp: AuthResponse = {
+      message: '登录成功',
+      userId: data.user?.id ?? null,
+      session: data.session
+        ? {
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: data.session.expires_at ?? undefined,
+          }
+        : null,
+    }
+
     return new Response(
-      JSON.stringify({
-        message: '登录成功',
-        userId: data.user?.id ?? null,
-        session: data.session ?? null,
-      }),
+      JSON.stringify(resp),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
-  } catch (e: any) {
+  } catch (e) {
+    const msg = (e instanceof Error && e.message) ? e.message : 'unknown error'
     return new Response(
-      JSON.stringify({ message: '服务器内部错误', error: e?.message ?? 'unknown error' }),
+      JSON.stringify({ message: '服务器内部错误', error: msg }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }

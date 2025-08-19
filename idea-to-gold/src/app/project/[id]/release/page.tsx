@@ -143,6 +143,7 @@ export default function ProductReleasePage(): React.ReactElement {
                 {logoPreview ? (
                   <>
                     {/* 预览Logo（正方形裁切） */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={logoPreview} alt="logo preview" className="h-full w-full object-cover" />
                   </>
                 ) : (
@@ -213,6 +214,7 @@ export default function ProductReleasePage(): React.ReactElement {
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   {promoPreviews.map((src, idx) => (
                     <div key={idx} className="relative aspect-video overflow-hidden rounded-md border border-gray-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={src} alt={`screenshot-${idx + 1}`} className="h-full w-full object-cover" />
                     </div>
                   ))}

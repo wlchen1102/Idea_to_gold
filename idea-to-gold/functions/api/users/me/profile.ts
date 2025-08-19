@@ -1,81 +1,63 @@
 import { createClient } from '@supabase/supabase-js'
+import type { CloudflareContext, UserProfile } from '../../../types'
 
-// 更新当前登录用户的公开资料（昵称、简介）
-// 路由：PATCH /api/users/me/profile
-export async function onRequestPatch(context: any): Promise<Response> {
+// PATCH /api/users/me/profile 更新当前用户的资料
+export async function onRequestPatch(context: CloudflareContext): Promise<Response> {
   try {
-    // 1) 读取服务端环境变量并初始化服务端 Supabase 客户端
     const supabaseUrl = context.env?.SUPABASE_URL
     const serviceRoleKey = context.env?.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(
-        JSON.stringify({ message: '服务端环境变量未配置：请配置 SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY' }),
-        { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      )
+      return new Response(JSON.stringify({ message: '服务端环境变量未配置' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      global: { fetch }, // 适配 Cloudflare Workers 环境
-    })
+    const authHeader = context.request.headers.get('Authorization') || ''
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ message: '未授权' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+    }
+    const token = authHeader.slice(7)
 
-    // 2) 从请求头中读取并验证 JWT 令牌，获取 user.id
-    const authHeader = context.request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ message: '未提供有效的访问令牌，请先登录' }),
-        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      )
+    const body = await context.request.json().catch(() => null) as Partial<UserProfile> | null
+    if (!body) {
+      return new Response(JSON.stringify({ message: '请求体解析失败' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
     }
 
-    const accessToken = authHeader.replace('Bearer ', '').trim()
+    const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch } })
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-    if (authError || !user?.id) {
-      return new Response(
-        JSON.stringify({ message: '访问令牌无效或已过期，请重新登录' }),
-        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      )
+    // 可选：校验 token 是否有效
+    const { data: userInfo, error: authErr } = await supabase.auth.getUser(token)
+    if (authErr || !userInfo?.user?.id) {
+      return new Response(JSON.stringify({ message: '访问令牌无效或已过期' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
     }
 
-    // 3) 解析请求体，读取 nickname 与 bio（PATCH 语义：允许部分字段更新）
-    const body = await context.request.json().catch(() => null)
-    const nickname = body?.nickname
-    const bio = body?.bio
+    type ProfilePatch = { nickname?: string; avatar_url?: string; bio?: string }
+    const safeBody = body as unknown as ProfilePatch
 
-    const updateData: Record<string, any> = {}
-    if (typeof nickname !== 'undefined') updateData.nickname = nickname
-    if (typeof bio !== 'undefined') updateData.bio = bio
-
-    if (Object.keys(updateData).length === 0) {
-      return new Response(
-        JSON.stringify({ message: '未提供需要更新的字段' }),
-        { status: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      )
-    }
-
-    // 4) 更新数据库，仅允许更新自己 id 对应的那一行
-    const { error: updateError } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .update(updateData)
-      .eq('id', user.id)
+      .update({
+        nickname: safeBody.nickname,
+        avatar_url: safeBody.avatar_url ?? undefined,
+        bio: safeBody.bio ?? undefined, // 若定义中暂时没有 bio，可先兜底
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userInfo.user.id)
+      .select('*')
+      .single()
 
-    if (updateError) {
-      return new Response(
-        JSON.stringify({ message: '更新资料失败', error: updateError.message }),
-        { status: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      )
+    if (error) {
+      return new Response(JSON.stringify({ message: '更新失败', error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
 
-    // 5) 返回成功响应
-    return new Response(
-      JSON.stringify({ message: '更新成功' }),
-      { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-    )
-  } catch (e: any) {
-    return new Response(
-      JSON.stringify({ message: '服务器内部错误', error: e?.message ?? 'unknown error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-    )
+    return new Response(JSON.stringify({ message: '更新成功' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  } catch (e) {
+    const msg = (e instanceof Error && e.message) ? e.message : 'unknown error'
+    return new Response(JSON.stringify({ message: '服务器内部错误', error: msg }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }

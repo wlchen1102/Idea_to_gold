@@ -5,7 +5,7 @@ export interface CreativityCardProps {
   authorName: string;
   /** 作者头像地址（可选） */
   authorAvatarUrl?: string;
-  /** 发布时间显示，如 “3小时前” */
+  /** 发布时间显示，如 "3小时前" */
   publishedAtText: string;
   /** 点子标题 */
   title: string;
@@ -65,6 +65,7 @@ export default function CreativityCard(props: CreativityCardProps) {
       {/* 头部：头像、昵称、发布时间 */}
       <div className="flex items-center gap-3">
         {authorAvatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={authorAvatarUrl}
             alt={`${authorName} avatar`}

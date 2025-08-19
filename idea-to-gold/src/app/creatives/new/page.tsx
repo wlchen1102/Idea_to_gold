@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 // import Modal from "@/components/Modal";
 // import CloseButton from "@/components/CloseButton";
 import Breadcrumb from "@/components/Breadcrumb";
-import { supabase } from "@/lib/supabase";
+import { requireSupabaseClient } from "@/lib/supabase";
 import Checkbox from "@/components/ui/Checkbox";
 import TextInput from "@/components/ui/TextInput";
 import Textarea from "@/components/ui/Textarea";
@@ -87,6 +87,7 @@ export default function NewCreativePage() {
     
     try {
       // 检查登录：需要有效的 Supabase 会话
+      const supabase = requireSupabaseClient();
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
@@ -130,15 +131,16 @@ export default function NewCreativePage() {
         }, 1500);
       } else {
         // 失败：显示错误提示，停留在当前页面
-        const errorData = await response.json().catch(() => ({} as any));
-        const detail = errorData?.error || errorData?.message || '未知错误';
+        const errorData = await response.json().catch(() => ({}));
+        const detail = (errorData as { error?: string; message?: string })?.error || (errorData as { error?: string; message?: string })?.message || '未知错误';
         localStorage.setItem("pendingToast", `发布失败：${detail}`);
         window.dispatchEvent(new Event("localToast"));
       }
-    } catch (error: any) {
+    } catch (error) {
       // 网络错误等异常
-      console.error('提交创意时发生错误:', error);
-      localStorage.setItem("pendingToast", `发布失败：${error?.message || '网络错误，请稍后重试'}`);
+      const err = error as Error;
+      console.error('提交创意时发生错误:', err);
+      localStorage.setItem("pendingToast", `发布失败：${err?.message || '网络错误，请稍后重试'}`);
       window.dispatchEvent(new Event("localToast"));
     } finally {
       setSubmitting(false);

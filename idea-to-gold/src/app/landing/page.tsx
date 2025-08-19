@@ -9,9 +9,13 @@ import Link from 'next/link';
 declare global {
   interface Window {
     Motion: {
-      animate: (target: string | Element | Element[], properties: any, options?: any) => any;
-      scroll: (callback: any, options?: any) => any;
-      inView: (target: string | Element, callback: any, options?: any) => any;
+      animate: (
+        target: string | Element | Element[],
+        properties: Keyframe[] | PropertyIndexedKeyframes | Record<string, unknown>,
+        options?: { duration?: number; delay?: number | ((i: number) => number); ease?: unknown; [key: string]: unknown }
+      ) => unknown;
+      scroll: (callback: (arg: { y: number }) => void, options?: Record<string, unknown>) => unknown;
+      inView: (target: string | Element, callback: (...args: unknown[]) => void, options?: Record<string, unknown>) => unknown;
     };
   }
 }
@@ -159,7 +163,7 @@ export default function LandingPage() {
               </h1>
               
               <p className="hero-subtitle mx-auto mt-6 max-w-3xl text-xl text-gray-600 leading-8">
-                一个连接真实需求与顶尖AI开发者的孵化平台。在这里，每个好创意都能"点石成金"。
+                一个连接真实需求与顶尖AI开发者的孵化平台。在这里，每个好创意都能&quot;点石成金&quot;。
               </p>
 
               <div className="hero-cta mt-10">
@@ -199,7 +203,7 @@ export default function LandingPage() {
                   <i className="fas fa-code text-3xl text-red-400"></i>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  "手握AI的锤子，却找不到市场的钉子"
+                  &quot;手握AI的锤子，却找不到市场的钉子&quot;
                 </h3>
                 <p className="text-gray-700 leading-7 mb-6">
                   作为AI开发者，你拥有前沿的技术能力和无限的创造潜能。但现实是残酷的——你苦苦寻找真正有价值的应用场景，
@@ -217,7 +221,7 @@ export default function LandingPage() {
                   <i className="fas fa-lightbulb text-3xl text-blue-400"></i>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  "我有绝佳的想法，却无法让它变为现实"
+                  &quot;我有绝佳的想法，却无法让它变为现实&quot;
                 </h3>
                 <p className="text-gray-700 leading-7 mb-6">
                   你是敏锐的观察者，总能发现生活中的痛点和机会。你的脑海中涌现着改变世界的创意，
@@ -273,7 +277,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">开发实现</h3>
                 <p className="text-gray-600 leading-6">
-                  全球的"造物者"认领项目，透明化开发过程，实时追踪进度。
+                  全球的&quot;造物者&quot;认领项目，透明化开发过程，实时追踪进度。
                 </p>
               </div>
 
@@ -393,7 +397,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-3xl font-bold text-gray-900 mb-4">社区驱动的价值发现</h3>
                   <p className="text-lg text-gray-600 leading-8 mb-6">
-                    最好的创意由市场决定。通过'我也要'投票，让每一个创意在投入开发前，
+                    最好的创意由市场决定。通过&nbsp;&apos;我也要&apos;&nbsp;投票，让每一个创意在投入开发前，
                     都经过真实用户的验证。
                   </p>
                   <div className="flex items-center gap-4 text-purple-600">
@@ -436,7 +440,7 @@ export default function LandingPage() {
         <section ref={showcaseRef} className="showcase-section py-20 bg-gradient-to-b from-gray-50 to-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">正在"点石成金"的创意</h2>
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">正在&quot;点石成金&quot;的创意</h2>
               <div className="h-1 w-24 bg-gradient-to-r from-emerald-500 to-blue-500 mx-auto rounded-full"></div>
             </div>
 

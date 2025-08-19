@@ -1,197 +1,182 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { requireSupabaseClient } from "@/lib/supabase";
 
-export default function AvatarMenu() {
-  const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [nickname, setNickname] = useState<string>("");
-  const [avatarUrl, setAvatarUrl] = useState<string>("");
-  const ref = useRef<HTMLDivElement | null>(null);
-  const router = useRouter();
+interface UserProfile {
+  id: string;
+  nickname: string;
+  avatar_url?: string;
+}
 
-  // 计算展示用字符：中文取后2位；英文取前2位（大写）；数字取后2位；否则为 U
-  const getInitials = (name: string): string => {
-    const input = (name || "").trim();
-    if (!input) return "U";
-    const chinese = Array.from(input).filter((ch) => /[\u4e00-\u9fa5]/.test(ch));
-    if (chinese.length) return chinese.slice(-2).join("");
-    const letters = input.replace(/[^a-zA-Z]/g, "").toUpperCase();
-    if (letters) return letters.slice(0, 2);
-    const digits = input.replace(/\D/g, "");
-    if (digits) return digits.slice(-2);
-    return "U";
-  };
-
-  function onDocClick(e: MouseEvent) {
-    if (!ref.current) return;
-    if (!ref.current.contains(e.target as Node)) setOpen(false);
-  }
+function AvatarMenu() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
-  }, []);
+    let unsub: (() => void) | undefined;
 
-  // 读取当前用户ID，并监听登录态变化；若本地没有，尝试从 Supabase 回填
-  useEffect(() => {
-    const readUser = async () => {
+    const init = async () => {
       try {
-        const id = localStorage.getItem("userId");
-        if (id) {
-          setUserId(id);
-          return id;
-        }
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
-          localStorage.setItem("userId", user.id);
-          setUserId(user.id);
-          return user.id;
-        }
-      } catch {}
-      setUserId(null);
-      return null;
-    };
+        // 确保只在浏览器环境中执行
+        if (typeof window === 'undefined') return;
+        
+        const supabase = requireSupabaseClient();
+        
+        // 获取当前用户
+        const { data } = await supabase.auth.getUser();
+        const authUser = data.user;
 
-    const fetchProfile = async (uid: string | null) => {
-      if (!uid) {
-        setNickname("");
-        setAvatarUrl("");
-        return;
-      }
-      try {
-        // 从 profiles 读取昵称与头像
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("nickname, avatar_url")
-          .eq("id", uid)
-          .single();
-        if (!error && data) {
-          setNickname(data.nickname || "");
-          setAvatarUrl(data.avatar_url || "");
+        if (authUser) {
+          setIsLoggedIn(true);
+          await fetchProfile(authUser.id);
         } else {
-          setNickname("");
-          setAvatarUrl("");
+          setIsLoggedIn(false);
+          setUser(null);
         }
-      } catch {
-        setNickname("");
-        setAvatarUrl("");
+
+        // 监听会话变化
+        const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (session?.user) {
+            setIsLoggedIn(true);
+            await fetchProfile(session.user.id);
+          } else {
+            setIsLoggedIn(false);
+            setUser(null);
+          }
+        });
+
+        unsub = () => {
+          try { listener.subscription.unsubscribe(); } catch {}
+        };
+      } catch (e) {
+        console.warn("获取用户失败:", e);
       }
     };
 
-    const run = async () => {
-      const uid = await readUser();
-      await fetchProfile(uid);
+    const fetchProfile = async (userId: string) => {
+      try {
+        if (typeof window === 'undefined') return;
+        
+        const supabase = requireSupabaseClient();
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, nickname, avatar_url")
+          .eq("id", userId)
+          .single();
+        
+        if (data) {
+          setUser(data);
+        }
+      } catch (error) {
+        console.error("获取用户资料失败:", error);
+      }
     };
 
-    run();
-
-    const handler = async () => {
-      const uid = await readUser();
-      await fetchProfile(uid);
+    // 订阅 auth:changed 自定义事件，当登录状态变化时触发
+    const handleAuthChange = async (event: Event) => {
+      if (typeof window === 'undefined') return;
+      
+      const { userId } = (event as CustomEvent<{ userId: string | null }>).detail || {};
+      if (userId) {
+        const storedUserId = localStorage.getItem("userId");
+        if (storedUserId) {
+          await fetchProfile(storedUserId);
+        }
+      } else {
+        setUser(null);
+      }
     };
-    window.addEventListener("auth:changed", handler);
-    return () => window.removeEventListener("auth:changed", handler);
+
+    // 初始加载
+    const initializeUser = async () => {
+      if (typeof window === 'undefined') return;
+      
+      const storedUserId = localStorage.getItem("userId");
+      if (storedUserId) {
+        await fetchProfile(storedUserId);
+      }
+    };
+
+    initializeUser();
+    init();
+
+    // 监听事件
+    if (typeof window !== 'undefined') {
+      window.addEventListener("auth:changed", handleAuthChange);
+    }
+
+    return () => {
+      if (unsub) unsub();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener("auth:changed", handleAuthChange);
+      }
+    };
   }, []);
 
   const handleLogout = async () => {
     try {
+      if (typeof window === 'undefined') return;
+      
+      const supabase = requireSupabaseClient();
       await supabase.auth.signOut();
-    } catch {}
-    try {
+      
+      // 清理本地存储
       localStorage.removeItem("isLoggedIn");
       localStorage.removeItem("userId");
-      window.dispatchEvent(new Event("auth:changed"));
-      setOpen(false);
-      router.push("/");
-    } catch {}
-  };
-
-  const handleGoProfile: React.MouseEventHandler<HTMLAnchorElement> = async (e) => {
-    e.preventDefault();
-    try {
-      let id = localStorage.getItem("userId");
-      if (!id) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
-          id = user.id;
-          localStorage.setItem("userId", id);
-          setUserId(id);
-        }
-      }
-      setOpen(false);
-      if (id) {
-        router.push(`/profile/${id}`);
-      } else {
-        router.push('/login');
-      }
-    } catch {
-      router.push('/login');
+      
+      // 触发登录状态变更
+      window.dispatchEvent(
+        new CustomEvent("auth:changed", {
+          detail: { userId: null },
+        })
+      );
+      
+      // 跳转到首页
+      window.location.href = "/";
+    } catch (error) {
+      console.error("登出失败:", error);
     }
   };
 
-  const profileHref = userId ? `/profile/${userId}` : "/login";
-  const showName = nickname && nickname.trim().length > 0 ? nickname.trim() : "我的账户";
-  const initials = getInitials(nickname || "");
+  if (!user) return null;
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-gray-50 transition-colors"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={showName}
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="flex items-center gap-3 rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-200 hover:shadow-md transition-shadow"
       >
-        {/* 头像：优先显示头像URL，否则回退到首字母块 */}
-        <div className="h-9 w-9 overflow-hidden rounded-full ring-1 ring-[#95a5a6]/40 bg-[#ecf0f1] flex items-center justify-center text-sm font-semibold text-[#2c3e50]">
-          {avatarUrl ? (
-            // 使用原生 img，避免 Next/Image 配置复杂化
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt={showName} className="h-full w-full object-cover" />
-          ) : (
-            <span>{initials}</span>
-          )}
-        </div>
-        {/* 昵称：小屏隐藏，中等及以上屏幕展示 */}
-        <span className="hidden md:block max-w-[8rem] truncate text-sm text-[#2c3e50]">{showName}</span>
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
-        >
-          {/* 头部：展示昵称与头像（弱化） */}
-          <div className="flex items-center gap-2 px-2 py-2">
-            <div className="h-8 w-8 overflow-hidden rounded-full ring-1 ring-gray-200 bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-700">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={showName} className="h-full w-full object-cover" />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium text-gray-900">{showName}</div>
-              <div className="text-xs text-gray-500">{userId ? userId.slice(0, 8) + "…" : "未登录"}</div>
-            </div>
+        {user.avatar_url ? (
+          <img
+            src={user.avatar_url}
+            alt={user.nickname}
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold">
+            {user.nickname?.charAt(0) || "用"}
           </div>
+        )}
+        <span className="hidden md:block text-sm font-medium text-gray-700 pr-3">
+          {user.nickname}
+        </span>
+      </button>
 
-          <div className="my-1 h-px bg-gray-100" />
-          <Link href={profileHref} onClick={handleGoProfile} className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
-            个人中心
+      {isMenuOpen && (
+        <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white py-2 shadow-lg ring-1 ring-gray-200">
+          <Link
+            href="/settings/account"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            账户设置
           </Link>
-          <Link href="/projects" className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
-            我的项目
-          </Link>
-          <Link href="/settings/account" className="block rounded-md px-3 py-2 text-sm text-[#2c3e50] hover:bg-gray-100" role="menuitem">
-            账号设置
-          </Link>
-          <div className="my-1 h-px bg-gray-100" />
-          <button onClick={handleLogout} className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50" role="menuitem">
+          <button
+            onClick={handleLogout}
+            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+          >
             退出登录
           </button>
         </div>
@@ -199,5 +184,7 @@ export default function AvatarMenu() {
     </div>
   );
 }
+
+export default AvatarMenu;
 
 
