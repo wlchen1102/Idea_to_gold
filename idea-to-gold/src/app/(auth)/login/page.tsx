@@ -5,7 +5,8 @@
 // 3. 如果账号不存在 → 显示昵称输入框 + 设置密码 + 确认密码 + "注册"按钮
 
 'use client'
-
+// 在文件的最顶部添加这一行
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 import React, { useEffect, useRef, useState } from "react";

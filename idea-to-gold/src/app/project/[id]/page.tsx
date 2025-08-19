@@ -2,6 +2,8 @@
 
 "use client";
 
+// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+export const runtime = 'edge';
 import Link from "next/link";
 import React, { useState, use } from "react";
 import Breadcrumb from "@/components/Breadcrumb";

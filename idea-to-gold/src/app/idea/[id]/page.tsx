@@ -1,4 +1,6 @@
 // 创意详情页面
+// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ideas } from "@/data/ideas";
