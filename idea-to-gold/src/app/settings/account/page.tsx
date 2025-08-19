@@ -18,9 +18,12 @@ function AccountSettingsPage() {
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  // 增加加载态，避免错误时一直显示"加载中"而不结束
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadUserProfile = async () => {
+      setLoading(true);
       try {
         const supabase = requireSupabaseClient();
         
@@ -28,6 +31,7 @@ function AccountSettingsPage() {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) {
           setMessage("请先登录");
+          setLoading(false);
           return;
         }
 
@@ -43,10 +47,14 @@ function AccountSettingsPage() {
           setNickname(profile.nickname || "");
           setAvatar(profile.avatar_url || "");
           setBio(profile.bio || "");
+        } else {
+          setMessage("未找到用户资料");
         }
       } catch (error) {
         console.error("加载用户资料失败:", error);
         setMessage("加载用户资料失败");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -99,19 +107,28 @@ function AccountSettingsPage() {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">加载中...</div>
-      </div>
-    );
-  }
+  // 统一渲染页面结构：加载中/未登录时用占位与禁用，避免整页卡住
+  const inputsDisabled = loading || !user || saving;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">账户设置</h1>
+
+          {/* 顶部提示：优先展示友好提示，不阻断布局 */}
+          {(message || (!user && !loading)) && (
+            <div className={`mb-4 p-3 rounded-lg text-sm ${
+              message.includes("成功")
+                ? "bg-green-50 text-green-800"
+                : "bg-yellow-50 text-yellow-800"
+            }`}>
+              {message || "未登录状态下信息不可编辑，请先登录。"}
+              {!user && (
+                <a href="/login" className="ml-3 underline text-emerald-700 hover:text-emerald-800">去登录</a>
+              )}
+            </div>
+          )}
 
           <div className="space-y-6">
             {/* 基本信息 */}
@@ -123,7 +140,10 @@ function AccountSettingsPage() {
                     头像
                   </label>
                   <div className="flex items-center gap-4">
-                    {avatar ? (
+                    {/* 加载骨架 */}
+                    {loading ? (
+                      <div className="h-16 w-16 rounded-full bg-gray-200 animate-pulse" />
+                    ) : avatar ? (
                       <img
                         src={avatar}
                         alt="头像预览"
@@ -135,7 +155,6 @@ function AccountSettingsPage() {
                         {nickname?.charAt(0) || "用"}
                       </div>
                     )}
-                    {/* 移除头像URL输入框，仅保留头像展示 */}
                   </div>
                 </div>
 
@@ -146,7 +165,8 @@ function AccountSettingsPage() {
                   </label>
                   <input
                     type="text"
-                    value={user.id}
+                    value={user?.id || ""}
+                    placeholder={loading ? "加载中..." : user ? user.id : "未登录"}
                     disabled
                     className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-gray-500"
                   />
@@ -161,8 +181,9 @@ function AccountSettingsPage() {
                     type="text"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
-                    placeholder="请输入昵称"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder={loading ? "加载中..." : "请输入昵称"}
+                    disabled={inputsDisabled}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
 
@@ -174,15 +195,16 @@ function AccountSettingsPage() {
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    placeholder="请输入个人简介"
+                    placeholder={loading ? "加载中..." : "请输入个人简介"}
                     rows={4}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    disabled={inputsDisabled}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
               </div>
             </div>
 
-            {/* 消息提示 */}
+            {/* 消息提示（成功/失败）*/}
             {message && (
               <div
                 className={`p-3 rounded-lg text-sm ${
@@ -199,10 +221,10 @@ function AccountSettingsPage() {
             <div className="flex justify-end">
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || loading || !user}
                 className="rounded-lg bg-emerald-600 px-6 py-2 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? "保存中..." : "保存更改"}
+                {saving ? "保存中..." : (loading || !user) ? "等待数据..." : "保存更改"}
               </button>
             </div>
           </div>
