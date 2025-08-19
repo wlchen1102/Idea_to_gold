@@ -1,4 +1,6 @@
 // 创意详情页面
+// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ideas } from "@/data/ideas";
@@ -40,7 +42,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function IdeaDetailPage({ params }: PageProps) {
   const { id } = await params;
   
-  let creative: any = null;
+  // 使用后端类型定义的 Creative 结构
+  type Creative = {
+    id: string | number
+    title: string
+    description?: string
+    created_at: string
+    terminals: string[] | string
+    bounty_amount?: number
+    profiles?: { nickname?: string; avatar_url?: string }
+  }
+
+  let creative: Creative | null = null;
   let error: string | null = null;
   
   try {
@@ -109,7 +122,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     author: {
       name: creative?.profiles?.nickname ?? "匿名用户",
       time: new Date(creative.created_at).toLocaleDateString('zh-CN'),
-      avatarUrl: creative?.profiles?.avatar_url as string | undefined,
+      avatarUrl: creative?.profiles?.avatar_url || undefined,
     },
     description: descriptionParas,
     platforms: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
@@ -159,7 +172,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
         <CommentsSection initialComments={initialComments} />
       </section>
 
-      <ClientEffects ideaId={idea.id} />
+      <ClientEffects ideaId={String(idea.id)} />
     </>
   );
 }

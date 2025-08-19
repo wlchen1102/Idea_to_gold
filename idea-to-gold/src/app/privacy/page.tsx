@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-white">
@@ -11,7 +13,7 @@ export default function PrivacyPage() {
           <p>4. 本政策可能会根据法律与业务调整进行更新。</p>
         </section>
         <div className="mt-10">
-          <a href="/" className="text-emerald-600 hover:underline">返回首页</a>
+          <Link href="/" className="text-emerald-600 hover:underline">返回首页</Link>
         </div>
       </div>
     </main>

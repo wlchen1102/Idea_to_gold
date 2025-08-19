@@ -1,6 +1,7 @@
 // 用户个人中心页面
 "use client";
-
+// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+export const runtime = 'edge';
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";

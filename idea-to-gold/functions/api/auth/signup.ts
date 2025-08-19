@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { CloudflareContext } from '../../types'
 
 // 生成头像相关的工具函数
 // 高饱和度、漂亮的颜色集合（十六进制）
@@ -51,8 +52,8 @@ function isValidE164Phone(phone: string): boolean {
 }
 
 // 统一错误归一化，返回友好提示
-function normalizeAuthError(err: any, channel: 'phone' | 'email'): { status: number; message: string; raw?: string } {
-  const raw = (err?.message || '').toString()
+function normalizeAuthError(err: unknown, channel: 'phone' | 'email'): { status: number; message: string; raw?: string } {
+  const raw = (typeof err === 'object' && err && 'message' in err) ? String((err as { message?: unknown }).message ?? '') : ''
   const rawLower = raw.toLowerCase()
 
   // 常见重复注册 / 唯一约束冲突
@@ -81,10 +82,10 @@ function normalizeAuthError(err: any, channel: 'phone' | 'email'): { status: num
 }
 
 // Cloudflare Pages Function: handle POST /api/auth/signup
-export async function onRequestPost(context: any): Promise<Response> {
+export async function onRequestPost(context: CloudflareContext): Promise<Response> {
   try {
     // 1) 解析请求体
-    const body = await context.request.json().catch(() => null)
+    const body = await context.request.json().catch(() => null) as { phone?: string; email?: string; password?: string; nickname?: string } | null
     const phone = body?.phone as string | undefined
     const email = body?.email as string | undefined
     const password = body?.password as string | undefined
@@ -125,7 +126,7 @@ export async function onRequestPost(context: any): Promise<Response> {
       }
 
       // 准备用户元数据
-      const userMetadata: any = {}
+      const userMetadata: Record<string, unknown> = {}
       if (typeof body?.nickname === 'string' && body.nickname.trim()) {
         userMetadata.nickname = body.nickname.trim()
       }
@@ -142,7 +143,7 @@ export async function onRequestPost(context: any): Promise<Response> {
       if (error) {
         const friendly = normalizeAuthError(error, 'phone')
         // 记录详细日志（仅服务端控制台），便于排查
-        console.error('手机号注册失败：', { error: error.message, phoneMasked: phone.replace(/.(?=.{4})/g, '*') })
+        console.error('手机号注册失败：', { error: error.message, phoneMasked: phone.replace(/.(?=. {4})/g, '*') })
         return new Response(
           JSON.stringify({ message: friendly.message, error: error.message }),
           { status: friendly.status, headers: { 'Content-Type': 'application/json' } }
@@ -160,7 +161,7 @@ export async function onRequestPost(context: any): Promise<Response> {
           const display = extractAvatarText(nameSource)
           const color = pickRandomColor()
           const avatarUrl = buildUiAvatarUrl(display, color)
-          const updates: any = { avatar_url: avatarUrl }
+          const updates: Record<string, unknown> = { avatar_url: avatarUrl }
           if (typeof body?.nickname === 'string' && body.nickname.trim()) {
             updates.nickname = body.nickname.trim()
           }
@@ -181,12 +182,12 @@ export async function onRequestPost(context: any): Promise<Response> {
     } else {
       // 邮箱注册仍使用标准 signUp（是否需要邮件验证由项目设置决定）
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: email as string,
+        password: password as string,
         options: {
           data: (typeof body?.nickname === 'string' && body.nickname.trim()) ? { nickname: body.nickname.trim() } : undefined
         }
-      } as any)
+      })
 
       if (error) {
         const friendly = normalizeAuthError(error, 'email')
@@ -208,7 +209,7 @@ export async function onRequestPost(context: any): Promise<Response> {
           const display = extractAvatarText(nameSource)
           const color = pickRandomColor()
           const avatarUrl = buildUiAvatarUrl(display, color)
-          const updates: any = { avatar_url: avatarUrl }
+          const updates: Record<string, unknown> = { avatar_url: avatarUrl }
           if (typeof body?.nickname === 'string' && body.nickname.trim()) {
             updates.nickname = body.nickname.trim()
           }
@@ -227,10 +228,11 @@ export async function onRequestPost(context: any): Promise<Response> {
         { status: 201, headers: { 'Content-Type': 'application/json' } }
       )
     }
-  } catch (e: any) {
+  } catch (e) {
+    const msg = (e instanceof Error && e.message) ? e.message : 'unknown error'
     console.error('注册接口内部错误：', e)
     return new Response(
-      JSON.stringify({ message: '服务器内部错误', error: e?.message ?? 'unknown error' }),
+      JSON.stringify({ message: '服务器内部错误', error: msg }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }

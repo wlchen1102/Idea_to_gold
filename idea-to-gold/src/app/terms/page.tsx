@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-white">
@@ -11,7 +13,7 @@ export default function TermsPage() {
           <p>4. 我们可能在不另行通知的情况下对本协议进行更新。</p>
         </section>
         <div className="mt-10">
-          <a href="/" className="text-emerald-600 hover:underline">返回首页</a>
+          <Link href="/" className="text-emerald-600 hover:underline">返回首页</Link>
         </div>
       </div>
     </main>

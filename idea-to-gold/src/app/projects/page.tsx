@@ -179,6 +179,7 @@ export default function ProjectsPage(): React.ReactElement {
       {/* 空状态 */}
       {!hasProjects && (
         <section className="mt-16 flex flex-col items-center justify-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/globe.svg" alt="empty" className="h-28 w-28 opacity-70" />
           <h3 className="mt-6 text-xl font-semibold text-[#2c3e50]">你还没有开始任何项目</h3>
           <p className="mt-2 text-sm text-gray-600">

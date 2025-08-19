@@ -4,7 +4,7 @@
 import Link from "next/link";
 import AvatarMenu from "@/components/AvatarMenu";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { requireSupabaseClient } from "@/lib/supabase";
 
 function Header() {
   // 登录态来源：Supabase 会话
@@ -15,21 +15,26 @@ function Header() {
 
     const init = async () => {
       try {
+        // 确保只在浏览器环境中执行
+        if (typeof window === 'undefined') return;
+        
+        const supabase = requireSupabaseClient();
+        
         // 获取当前用户
         const { data } = await supabase.auth.getUser();
         setIsLoggedIn(!!data.user);
+
+        // 监听会话变化
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+          setIsLoggedIn(!!session?.user);
+        });
+
+        unsub = () => {
+          try { listener.subscription.unsubscribe(); } catch {}
+        };
       } catch (e) {
         console.warn("获取用户失败:", e);
       }
-
-      // 监听会话变化
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-        setIsLoggedIn(!!session?.user);
-      });
-
-      unsub = () => {
-        try { listener.subscription.unsubscribe(); } catch {}
-      };
     };
 
     init();
@@ -104,3 +109,4 @@ function Header() {
 }
 
 export default Header;
+export const dynamic = 'force-dynamic'

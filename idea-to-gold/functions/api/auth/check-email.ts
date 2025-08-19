@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
+import type { CloudflareContext } from '../../types'
 
 // Cloudflare Pages Function: handle POST /api/auth/check-email
 // 检查邮箱是否已经注册
-export async function onRequestPost(context: any): Promise<Response> {
+export async function onRequestPost(context: CloudflareContext): Promise<Response> {
   try {
     // 1) 解析请求体
-    const body = await context.request.json().catch(() => null)
+    const body = await context.request.json().catch(() => null) as { email?: string } | null
     const email = body?.email
 
     if (!email) {
@@ -55,9 +56,10 @@ export async function onRequestPost(context: any): Promise<Response> {
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
-  } catch (e: any) {
+  } catch (e) {
+    const msg = (e instanceof Error && e.message) ? e.message : 'unknown error'
     return new Response(
-      JSON.stringify({ message: '服务器内部错误', error: e?.message ?? 'unknown error' }),
+      JSON.stringify({ message: '服务器内部错误', error: msg }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
