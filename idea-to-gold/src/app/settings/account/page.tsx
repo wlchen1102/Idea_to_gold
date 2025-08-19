@@ -1,3 +1,4 @@
+// 账户设置页面
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,12 +8,14 @@ interface UserProfile {
   id: string;
   nickname: string;
   avatar_url?: string;
+  bio?: string;
 }
 
 function AccountSettingsPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [nickname, setNickname] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -39,6 +42,7 @@ function AccountSettingsPage() {
           setUser(profile);
           setNickname(profile.nickname || "");
           setAvatar(profile.avatar_url || "");
+          setBio(profile.bio || "");
         }
       } catch (error) {
         console.error("加载用户资料失败:", error);
@@ -69,8 +73,9 @@ function AccountSettingsPage() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
+          // 不再保存 avatar_url，后续再实现
           nickname: nickname.trim() || null,
-          avatar_url: avatar.trim() || null,
+          bio: bio.trim() || null,
         }),
       });
 
@@ -111,8 +116,30 @@ function AccountSettingsPage() {
           <div className="space-y-6">
             {/* 基本信息 */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">基本信息</h2>
               <div className="grid gap-4">
+                {/* 头像展示（优先） */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    头像
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt="头像预览"
+                        className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-emerald-500 text-white flex items-center justify-center text-lg font-bold">
+                        {nickname?.charAt(0) || "用"}
+                      </div>
+                    )}
+                    {/* 移除头像URL输入框，仅保留头像展示 */}
+                  </div>
+                </div>
+
+                {/* 用户ID */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     用户ID
@@ -125,6 +152,7 @@ function AccountSettingsPage() {
                   />
                 </div>
 
+                {/* 昵称 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     昵称
@@ -138,35 +166,19 @@ function AccountSettingsPage() {
                   />
                 </div>
 
+                {/* 个人简介 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    头像URL
+                    个人简介
                   </label>
-                  <input
-                    type="url"
-                    value={avatar}
-                    onChange={(e) => setAvatar(e.target.value)}
-                    placeholder="请输入头像图片链接"
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="请输入个人简介"
+                    rows={4}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
-                {/* 头像预览 */}
-                {avatar && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      头像预览
-                    </label>
-                    <img
-                      src={avatar}
-                      alt="头像预览"
-                      className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
               </div>
             </div>
 

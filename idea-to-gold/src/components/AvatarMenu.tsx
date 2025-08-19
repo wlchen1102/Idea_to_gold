@@ -120,12 +120,19 @@ function AvatarMenu() {
     try {
       if (typeof window === 'undefined') return;
       
+      // 关闭菜单
+      setIsMenuOpen(false);
+      
       const supabase = requireSupabaseClient();
       await supabase.auth.signOut();
       
       // 清理本地存储
       localStorage.removeItem("isLoggedIn");
       localStorage.removeItem("userId");
+      
+      // 更新本地状态
+      setIsLoggedIn(false);
+      setUser(null);
       
       // 触发登录状态变更
       window.dispatchEvent(
@@ -139,6 +146,11 @@ function AvatarMenu() {
     } catch (error) {
       console.error("登出失败:", error);
     }
+  };
+
+  // 处理菜单项点击，关闭菜单
+  const handleMenuItemClick = () => {
+    setIsMenuOpen(false);
   };
 
   if (!user) return null;
@@ -168,14 +180,29 @@ function AvatarMenu() {
       {isMenuOpen && (
         <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white py-2 shadow-lg ring-1 ring-gray-200">
           <Link
+            href="/projects"
+            onClick={handleMenuItemClick}
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            我的项目
+          </Link>
+          <Link
+            href={`/profile/${user.id}`}
+            onClick={handleMenuItemClick}
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            个人中心
+          </Link>
+          <Link
             href="/settings/account"
+            onClick={handleMenuItemClick}
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             账户设置
           </Link>
           <button
             onClick={handleLogout}
-            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
           >
             退出登录
           </button>

@@ -8647,13 +8647,12 @@ async function onRequestPatch(context) {
       return new Response(JSON.stringify({ message: "\u8BBF\u95EE\u4EE4\u724C\u65E0\u6548\u6216\u5DF2\u8FC7\u671F" }), { status: 401, headers: { "Content-Type": "application/json" } });
     }
     const safeBody = body;
-    const { data, error } = await supabase.from("profiles").update({
-      nickname: safeBody.nickname,
+    const { error } = await supabase.from("profiles").update({
+      nickname: safeBody.nickname ?? void 0,
       avatar_url: safeBody.avatar_url ?? void 0,
       bio: safeBody.bio ?? void 0,
-      // 若定义中暂时没有 bio，可先兜底
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", userInfo.user.id).select("*").single();
+    }).eq("id", userInfo.user.id);
     if (error) {
       return new Response(JSON.stringify({ message: "\u66F4\u65B0\u5931\u8D25", error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
     }

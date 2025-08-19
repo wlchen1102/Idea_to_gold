@@ -36,17 +36,15 @@ export async function onRequestPatch(context: CloudflareContext): Promise<Respon
     type ProfilePatch = { nickname?: string; avatar_url?: string; bio?: string }
     const safeBody = body as unknown as ProfilePatch
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
       .update({
-        nickname: safeBody.nickname,
+        nickname: safeBody.nickname ?? undefined,
         avatar_url: safeBody.avatar_url ?? undefined,
-        bio: safeBody.bio ?? undefined, // 若定义中暂时没有 bio，可先兜底
+        bio: safeBody.bio ?? undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userInfo.user.id)
-      .select('*')
-      .single()
 
     if (error) {
       return new Response(JSON.stringify({ message: '更新失败', error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
