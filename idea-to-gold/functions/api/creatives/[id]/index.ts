@@ -25,7 +25,7 @@ export async function onRequestGet(context: CloudflareContext): Promise<Response
     const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch } })
 
     const { data, error } = await supabase
-      .from('creatives')
+      .from('user_creatives')
       .select('*')
       .eq('id', id)
       .single()

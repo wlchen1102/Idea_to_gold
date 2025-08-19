@@ -8859,7 +8859,7 @@ async function onRequestGet(context) {
       );
     }
     const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch } });
-    const { data, error } = await supabase.from("creatives").select("*").eq("id", id).single();
+    const { data, error } = await supabase.from("user_creatives").select("*").eq("id", id).single();
     if (error) {
       return new Response(
         JSON.stringify({ message: "\u67E5\u8BE2\u521B\u610F\u5931\u8D25", error: error.message }),
@@ -8895,6 +8895,13 @@ var init_id = __esm({
 });
 
 // api/creatives/index.ts
+function slugifyTitle(title) {
+  return String(title).normalize("NFKC").trim().replace(/\s+/g, "-").replace(/[^\u4e00-\u9fa5\w\-]/g, "").toLowerCase();
+}
+function makeSlugUnique(base) {
+  const rand = Math.random().toString(36).slice(2, 7);
+  return `${base}-${rand}`;
+}
 async function onRequestGet2(context) {
   try {
     const supabaseUrl = context.env?.SUPABASE_URL;
@@ -8906,7 +8913,7 @@ async function onRequestGet2(context) {
       });
     }
     const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch } });
-    const { data, error } = await supabase.from("creatives").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("user_creatives").select("*").order("created_at", { ascending: false });
     if (error) {
       return new Response(
         JSON.stringify({ message: "\u67E5\u8BE2\u521B\u610F\u5931\u8D25", error: error.message }),
@@ -8938,7 +8945,20 @@ async function onRequestPost5(context) {
     }
     const authHeader = context.request.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) {
+      return new Response(
+        JSON.stringify({ message: "\u7F3A\u5C11\u8BA4\u8BC1\u4EE4\u724C\uFF0C\u8BF7\u5148\u767B\u5F55" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch } });
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ message: "\u8BA4\u8BC1\u4EE4\u724C\u65E0\u6548\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const body = await context.request.json().catch(() => null);
     if (!body?.title || !body?.description) {
       return new Response(
@@ -8946,12 +8966,19 @@ async function onRequestPost5(context) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
+    const baseSlug = slugifyTitle(body.title);
+    const uniqueSlug = makeSlugUnique(baseSlug);
     const insertPayload = {
       title: body.title,
       description: body.description,
-      author_id: body.author_id ?? null
+      author_id: user.id,
+      // 从认证用户中获取
+      slug: uniqueSlug,
+      // 从请求体获取，提供默认值
+      terminals: Array.isArray(body.terminals) ? body.terminals : [],
+      bounty_amount: typeof body.bounty_amount === "number" ? body.bounty_amount : 0
     };
-    const { data, error } = await supabase.from("creatives").insert(insertPayload).select("*").single();
+    const { data, error } = await supabase.from("user_creatives").insert(insertPayload).select("*").single();
     if (error) {
       return new Response(
         JSON.stringify({ message: "\u521B\u5EFA\u521B\u610F\u5931\u8D25", error: error.message }),
@@ -8976,6 +9003,8 @@ var init_creatives = __esm({
     "use strict";
     init_functionsRoutes_0_21501692187229904();
     init_module5();
+    __name(slugifyTitle, "slugifyTitle");
+    __name(makeSlugUnique, "makeSlugUnique");
     __name(onRequestGet2, "onRequestGet");
     __name(onRequestPost5, "onRequestPost");
   }
@@ -9055,10 +9084,10 @@ var init_functionsRoutes_0_21501692187229904 = __esm({
   }
 });
 
-// ../.wrangler/tmp/bundle-IDvXrE/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-s62lgt/middleware-loader.entry.ts
 init_functionsRoutes_0_21501692187229904();
 
-// ../.wrangler/tmp/bundle-IDvXrE/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-s62lgt/middleware-insertion-facade.js
 init_functionsRoutes_0_21501692187229904();
 
 // C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/pages-template-worker.ts
@@ -9554,7 +9583,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-IDvXrE/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-s62lgt/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9587,7 +9616,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-IDvXrE/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-s62lgt/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

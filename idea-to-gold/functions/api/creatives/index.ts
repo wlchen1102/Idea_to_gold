@@ -1,3 +1,4 @@
+// 点子广场接口
 import { createClient } from '@supabase/supabase-js'
 import type { CloudflareContext, CreateCreativeResponse, CreativesResponse, Creative } from '../../types'
 
@@ -34,7 +35,7 @@ export async function onRequestGet(context: CloudflareContext): Promise<Response
 
     // 简单列表，可根据需要添加分页、排序
     const { data, error } = await supabase
-      .from('creatives')
+      .from('user_creatives')
       .select('*')
       .order('created_at', { ascending: false })
 
@@ -76,10 +77,27 @@ export async function onRequestPost(context: CloudflareContext): Promise<Respons
     const authHeader = context.request.headers.get('Authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
+    if (!token) {
+      return new Response(
+        JSON.stringify({ message: '缺少认证令牌，请先登录' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabase = createClient(supabaseUrl, serviceRoleKey, { global: { fetch } })
 
+    // 验证 token 并获取用户信息
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ message: '认证令牌无效，请重新登录' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     // 字段校验
-    const body = await context.request.json().catch(() => null) as { title?: string; description?: string; author_id?: string | null } | null
+    const body = await context.request.json().catch(() => null) as { title?: string; description?: string; terminals?: string[]; bounty_amount?: number } | null
     if (!body?.title || !body?.description) {
        return new Response(
          JSON.stringify({ message: '缺少必填字段：title 或 description' }),
@@ -87,17 +105,22 @@ export async function onRequestPost(context: CloudflareContext): Promise<Respons
        )
      }
 
-     // 如果需要用户身份，可以使用 access token 与 supabase 验证
-     // 这里只做演示：允许匿名创建，若需要强制登录，请在此校验
+    // 生成唯一的 slug
+    const baseSlug = slugifyTitle(body.title)
+    const uniqueSlug = makeSlugUnique(baseSlug)
 
     const insertPayload = {
       title: body.title,
       description: body.description,
-      author_id: body.author_id ?? null,
+      author_id: user.id, // 从认证用户中获取
+      slug: uniqueSlug,
+      // 从请求体获取，提供默认值
+      terminals: Array.isArray(body.terminals) ? body.terminals : [],
+      bounty_amount: typeof body.bounty_amount === 'number' ? body.bounty_amount : 0,
     }
 
     const { data, error } = await supabase
-      .from('creatives')
+      .from('user_creatives')
       .insert(insertPayload)
       .select('*')
       .single()
