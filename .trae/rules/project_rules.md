@@ -129,6 +129,7 @@
   - **运行时**: Node.js
   - **框架**: **无特定框架 (如 Express)，直接使用 Cloudflare Workers 的原生 API**。我们的后端逻辑将以无服务器函数 (Serverless Functions) 的形式运行
   - **语言**: TypeScript
+  - 每次写好接口，都需要使用测试命令测试接口，确保接口返回的状态码是200，并且返回的数据是正确的。
 
 - **数据库 (Database)**:
   - **服务**: Supabase
@@ -178,9 +179,62 @@ idea-to-gold/
 ├─ tsconfig.json                 # TypeScript 配置（路径别名等）
 ├─ package.json                  # 依赖与脚本
 ├─ eslint.config.mjs             # ESLint 配置
-└─ PROJECT_CONTEXT.md            # 项目上下文/规则文档
 
 ```
+*本规则集旨在为项目提供一套清晰、可扩展的文件组织规范。所有未来的代码生成与修改，都必须严格遵守。*
+
+#### **核心设计哲学：路由即结构，万物皆组件**
+
+1.  **前端页面**和**后端API**共享同一套**基于文件系统的路由系统**。
+2.  严格遵循**按功能/资源模块**进行文件夹组织。
+3.  通过**路由组 (Route Groups)** 实现不同场景下的布局隔离。
+
+---
+
+### **通用规则**
+
+#### **规则1：前端页面 (Frontend Pages)**
+
+1.  **【必须】使用路由组进行场景隔离**。所有页面都必须归属于以下三大路由组之一：
+    *   `(marketing)`: **访客区**。用于放置落地页、关于我们、价格等对外营销页面。
+    *   `(auth)`: **入口区**。用于放置登录、注册、忘记密码等认证流程页面。
+    *   `(app)`: **核心区**。用于放置登录后才能访问的核心应用页面，如创意广场、项目主页等。
+
+2.  **【必须】按功能模块组织文件夹**。
+    *   在各自的路由组内部，相关的页面应组织在同一个文件夹下。
+    *   **示例**:
+        *   `src/app/(app)/creatives/new/page.tsx` (发布新创意)
+        *   `src/app/(app)/settings/account/page.tsx` (账号设置)
+
+3.  **【必须】页面UI由 `page.tsx` 文件定义**。
+    *   每个URL路径下，用户直接看到的UI内容，必须定义在 `page.tsx` 文件中。
+
+#### **规则2：后端API (Backend APIs)**
+
+1.  **【必须】所有后端API都存放在 `src/app/api/` 目录下**。
+    *   这是我们项目中**唯一**的后端代码入口。
+
+2.  **【必须】严格按照RESTful资源进行文件夹组织**。
+    *   API的目录结构应清晰地反映出它所操作的资源。
+    *   **示例**:
+        *   所有与用户认证相关的API -> `src/app/api/auth/...`
+        *   所有与创意相关的API -> `src/app/api/creatives/...`
+
+3.  **【必须】API逻辑由 `route.ts` 文件定义**。
+    *   在每个API路由文件夹下，必须使用名为 `route.ts` 的文件来定义API逻辑。
+    *   **【必须】** 在 `route.ts` 文件中，使用导出的、以HTTP方法命名的大写函数（`GET`, `POST`, `PATCH`, `DELETE`）来处理对应的请求。
+    *   **示例**:
+        *   `src/app/api/creatives/route.ts` 文件中，会包含 `export async function GET(request) {...}` 和 `export async function POST(request) {...}`。
+
+#### **规则3：共享代码 (Shared Code)**
+
+1.  **【必须】可复用的UI组件存放在 `src/components/`**。
+    *   所有非页面级的、可在多个页面复用的React组件（如按钮、卡片、弹窗），都必须放在这里。
+
+2.  **【必须】通用工具函数和SDK客户端存放在 `src/lib/`**。
+    *   所有与UI无关的、可在前后端复用的工具函数（如日期格式化、slug生成器）或SDK客户端实例（如 `supabase.ts`），都必须放在这里。
+
+---
 
 ## 5. 环境变量 (Environment Variables)
 
@@ -210,5 +264,7 @@ idea-to-gold/
 2.  **无服务器思维**: 所有后端 API 必须是无状态的 (Stateless)。不要在函数内存中存储任何需要在多次请求之间保持的数据。所有状态都应持久化到 Supabase。
 
 3.  **前后端分离**: 前端通过 `fetch` API 调用相对路径 `/api/...` 上的后端端点。后端 API 负责与数据库和 R2 等服务交互，并将数据返回给前端。
+
+4. 
 
 ---
