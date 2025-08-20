@@ -85,8 +85,26 @@
 6.  **审查 (Review):** 查看自己的修改有没有问题。
 7.  **解释说明 (Explain):** 解释你做了哪些修改以及为什么。
 
+## Next.js + Cloudflare Pages（next-on-pages）的代码部署要求：
+### 背景：
+因为我们使用的是next框架，部署到cloudflare上，构建命令是：npx @cloudflare/next-on-pages@1，所以请求会优先进入它生成的 Worker，我们曾因混用 functions/ 目录和Next.js API路由，导致了404和路由冲突。所以为了能够满足cloudflare的要求，我们需要遵循以下规则：
+
+### 要求1：严格遵守Next.js App Router的API路由规范
+- 唯一的API路径: 本项目所有的后端API接口，必须创建在 src/app/api/ 目录之下。严禁使用项目根目录下的 functions/ 目录。
+- 文件命名: 每一个API端点，都必须是一个名为 route.ts 的文件，并放置在对应的URL路径文件夹中。
+- 示例: 创建 POST /api/auth/login 接口，文件路径必须是 src/app/api/auth/login/route.ts。
+- 函数签名: 所有API路由的导出函数，其函数签名必须严格遵循Next.js App Router的规范。
+
+### 要求2：Next.js 15 Route Handlers 类型签名注意事项（关键踩坑）
+- 在 [id]/route.ts 的 GET 函数中，第二个参数在本项目当前依赖组合下需要声明为 { params: Promise<{ id: string }> }，并在函数内 await params 取 id。否则会在构建时触发 “invalid GET export” 类型错误。
+- 这是当前仓库的约定（和 next-on-pages/版本组合有关），写新动态路由时照此处理，保证可编译通过。
+
+### 要求3：
+- 后端函数禁止使用any类型，必须根据上下文推断使用具体的TypeScript类型;
+
+
 ## 项目运行
-- 我会 npm run dev 启动开发服务，运行在http://127.0.0.1:8788/，你不需要再次启动服务
+- 我会 npm run dev:cf 启动cloudflare开发服务，运行在http://127.0.0.1:8788/，你不需要再次启动服务
 
 # 项目上下文说明书：Idea-to-Gold
 
@@ -101,7 +119,9 @@
 ## 2. 技术栈 (Tech Stack)
 
 - **前端 (Frontend)**:
-  - **框架**: React+next.js
+  - **框架**: React+next.js 15
+  - **状态管理**: React Query
+  - **路由**: Next.js App Router
   - **语言**: TypeScript / TSX
   - **组件**: 函数式组件 (Functional Components) with Hooks
 
@@ -125,27 +145,42 @@
 - **后端部署**: Cloudflare Pages Functions
 - **CI/CD**: 通过将代码推送到 GitHub 主分支，自动触发 Cloudflare Pages 的构建和部署。前端和后端在同一个仓库，一同部署。
 
+Cloudflare Pages 构建配置说明：
+
+- 构建命令：npx @cloudflare/next-on-pages@1
+- 构建输出目录：.vercel/output/static
+- 构建根目录：idea-to-gold
+- 提醒：使用 next-on-pages 时，不要再依赖 functions/ 目录处理 /api/*，以免被 Next Worker 遮蔽。
+
 ## 4. 项目结构 (Project Structure)
 
 请严格遵守以下目录结构：
 
 ```
 idea-to-gold/
-├─ functions/
-│ └─ api/
-│ └─ [...].ts # 所有后端 API 路由都写在这里，采用文件路由系统
 ├─ src/
-│ ├─ app/ # 前端页面路由 (React)
-│ └─ components/ # 可复用的 React 组件
-├─ public/ # 静态资源
-├─ .dev.vars # [本地开发专用] 存储环境变量，绝不能提交到 Git
-├─ .gitignore # 必须包含 .dev.vars
-├─ package.json
-└─ PROJECT_CONTEXT.md # 本文档
+│  ├─ app/                       # 前端页面路由（Next.js App Router）
+│  │  ├─ api/                    # 唯一的后端 API 路由位置（Next.js Route Handlers）
+│  │  │  ├─ creatives/           # 示例业务路由：/api/creatives
+│  │  │  │  ├─ route.ts          # 列表 GET、创建 POST（Edge Runtime）
+│  │  │  │  └─ [id]/             # 动态路由：/api/creatives/[id]
+│  │  │  │     └─ route.ts       # 单条 GET（Edge Runtime；params: Promise<{ id: string }>）
+│  │  │  └─ ...                  # 其他 API 路由，均以 route.ts 命名
+│  │  ├─ page.tsx                # 示例页面文件
+│  │  └─ layout.tsx              # 应用级布局
+│  ├─ components/                # 可复用的 React 组件
+│  ├─ lib/                       # 工具函数、SDK 封装（如 Supabase 客户端）
+│  └─ data/                      # 静态数据或类型（非机密）
+├─ public/                       # 静态资源（图片、favicon 等）
+├─ .dev.vars                     # 本地开发环境变量（切勿提交到 Git）
+├─ .gitignore                    # 必须包含 .dev.vars
+├─ next.config.ts                # Next.js 配置（确保未设置 output: 'export'）
+├─ tsconfig.json                 # TypeScript 配置（路径别名等）
+├─ package.json                  # 依赖与脚本
+├─ eslint.config.mjs             # ESLint 配置
+└─ PROJECT_CONTEXT.md            # 项目上下文/规则文档
+
 ```
-**重要规则**：
-- **`functions/`**: **这是所有后端代码的存放位置**。Cloudflare Pages 会自动将此目录下的文件部署为 Serverless Functions。我们将使用文件系统路由，例如 `functions/api/creatives.ts` 会对应 `/api/creatives` 这个 API 端点。
-- **`src/`**: 所有前端 React 代码。
 
 ## 5. 环境变量 (Environment Variables)
 
