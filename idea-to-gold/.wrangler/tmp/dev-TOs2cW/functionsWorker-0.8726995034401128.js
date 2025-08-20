@@ -1,53 +1,61 @@
-var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+
+// .wrangler/tmp/pages-NNRFtg/functionsWorker-0.8726995034401128.mjs
+var __create = Object.create;
+var __defProp2 = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
-var __esm = (fn, res) => function __init() {
+var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
+var __esm = /* @__PURE__ */ __name((fn, res) => /* @__PURE__ */ __name(function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
-var __commonJS = (cb, mod) => function __require() {
+}, "__init"), "__esm");
+var __commonJS = /* @__PURE__ */ __name((cb, mod) => /* @__PURE__ */ __name(function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-};
-var __export = (target, all) => {
+}, "__require"), "__commonJS");
+var __export = /* @__PURE__ */ __name((target, all) => {
   for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
+    __defProp2(target, name, { get: all[name], enumerable: true });
+}, "__export");
+var __copyProps = /* @__PURE__ */ __name((to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+        __defProp2(to, key, { get: /* @__PURE__ */ __name(() => from[key], "get"), enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
   }
   return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+}, "__copyProps");
+var __toESM = /* @__PURE__ */ __name((mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
   // If the importer is in node compatibility mode or this is not an ESM
   // file that has been converted to a CommonJS file using a Babel-
   // compatible transform (i.e. "__esModule" has not been set), then set
   // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  isNodeMode || !mod || !mod.__esModule ? __defProp2(target, "default", { value: mod, enumerable: true }) : target,
   mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// ../node_modules/@supabase/node-fetch/browser.js
+)), "__toESM");
+var __toCommonJS = /* @__PURE__ */ __name((mod) => __copyProps(__defProp2({}, "__esModule", { value: true }), mod), "__toCommonJS");
 var browser_exports = {};
 __export(browser_exports, {
-  Headers: () => Headers2,
-  Request: () => Request2,
-  Response: () => Response2,
-  default: () => browser_default,
-  fetch: () => fetch2
+  Headers: /* @__PURE__ */ __name(() => Headers2, "Headers"),
+  Request: /* @__PURE__ */ __name(() => Request2, "Request"),
+  Response: /* @__PURE__ */ __name(() => Response2, "Response"),
+  default: /* @__PURE__ */ __name(() => browser_default, "default"),
+  fetch: /* @__PURE__ */ __name(() => fetch2, "fetch")
 });
-var getGlobal, globalObject, fetch2, browser_default, Headers2, Request2, Response2;
+var getGlobal;
+var globalObject;
+var fetch2;
+var browser_default;
+var Headers2;
+var Request2;
+var Response2;
 var init_browser = __esm({
   "../node_modules/@supabase/node-fetch/browser.js"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
-    getGlobal = /* @__PURE__ */ __name(function() {
+    init_functionsRoutes_0_3110068635345318();
+    getGlobal = /* @__PURE__ */ __name2(function() {
       if (typeof self !== "undefined") {
         return self;
       }
@@ -67,18 +75,16 @@ var init_browser = __esm({
     Response2 = globalObject.Response;
   }
 });
-
-// ../node_modules/@supabase/functions-js/dist/module/helper.js
 var resolveFetch;
 var init_helper = __esm({
   "../node_modules/@supabase/functions-js/dist/module/helper.js"() {
-    init_functionsRoutes_0_8865896815142511();
-    resolveFetch = /* @__PURE__ */ __name((customFetch) => {
+    init_functionsRoutes_0_3110068635345318();
+    resolveFetch = /* @__PURE__ */ __name2((customFetch) => {
       let _fetch;
       if (customFetch) {
         _fetch = customFetch;
       } else if (typeof fetch === "undefined") {
-        _fetch = /* @__PURE__ */ __name((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)), "_fetch");
+        _fetch = /* @__PURE__ */ __name2((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)), "_fetch");
       } else {
         _fetch = fetch;
       }
@@ -86,15 +92,20 @@ var init_helper = __esm({
     }, "resolveFetch");
   }
 });
-
-// ../node_modules/@supabase/functions-js/dist/module/types.js
-var FunctionsError, FunctionsFetchError, FunctionsRelayError, FunctionsHttpError, FunctionRegion;
+var FunctionsError;
+var FunctionsFetchError;
+var FunctionsRelayError;
+var FunctionsHttpError;
+var FunctionRegion;
 var init_types = __esm({
   "../node_modules/@supabase/functions-js/dist/module/types.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     FunctionsError = class extends Error {
       static {
         __name(this, "FunctionsError");
+      }
+      static {
+        __name2(this, "FunctionsError");
       }
       constructor(message, name = "FunctionsError", context) {
         super(message);
@@ -106,6 +117,9 @@ var init_types = __esm({
       static {
         __name(this, "FunctionsFetchError");
       }
+      static {
+        __name2(this, "FunctionsFetchError");
+      }
       constructor(context) {
         super("Failed to send a request to the Edge Function", "FunctionsFetchError", context);
       }
@@ -114,6 +128,9 @@ var init_types = __esm({
       static {
         __name(this, "FunctionsRelayError");
       }
+      static {
+        __name2(this, "FunctionsRelayError");
+      }
       constructor(context) {
         super("Relay Error invoking the Edge Function", "FunctionsRelayError", context);
       }
@@ -121,6 +138,9 @@ var init_types = __esm({
     FunctionsHttpError = class extends FunctionsError {
       static {
         __name(this, "FunctionsHttpError");
+      }
+      static {
+        __name2(this, "FunctionsHttpError");
       }
       constructor(context) {
         super("Edge Function returned a non-2xx status code", "FunctionsHttpError", context);
@@ -145,21 +165,21 @@ var init_types = __esm({
     })(FunctionRegion || (FunctionRegion = {}));
   }
 });
-
-// ../node_modules/@supabase/functions-js/dist/module/FunctionsClient.js
-var __awaiter, FunctionsClient;
+var __awaiter;
+var FunctionsClient;
 var init_FunctionsClient = __esm({
   "../node_modules/@supabase/functions-js/dist/module/FunctionsClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_helper();
     init_types();
-    __awaiter = function(thisArg, _arguments, P, generator) {
+    __awaiter = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -169,6 +189,7 @@ var init_FunctionsClient = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -177,16 +198,21 @@ var init_FunctionsClient = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
+    }, "__awaiter");
     FunctionsClient = class {
       static {
         __name(this, "FunctionsClient");
+      }
+      static {
+        __name2(this, "FunctionsClient");
       }
       constructor(url, { headers = {}, customFetch, region = FunctionRegion.Any } = {}) {
         this.url = url;
@@ -280,24 +306,23 @@ var init_FunctionsClient = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/functions-js/dist/module/index.js
 var init_module = __esm({
   "../node_modules/@supabase/functions-js/dist/module/index.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_FunctionsClient();
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestError.js
 var require_PostgrestError = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestError.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     Object.defineProperty(exports, "__esModule", { value: true });
     var PostgrestError2 = class extends Error {
       static {
-        __name(this, "PostgrestError");
+        __name(this, "PostgrestError2");
+      }
+      static {
+        __name2(this, "PostgrestError");
       }
       constructor(context) {
         super(context.message);
@@ -310,12 +335,10 @@ var require_PostgrestError = __commonJS({
     exports.default = PostgrestError2;
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestBuilder.js
 var require_PostgrestBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -324,7 +347,10 @@ var require_PostgrestBuilder = __commonJS({
     var PostgrestError_1 = __importDefault(require_PostgrestError());
     var PostgrestBuilder2 = class {
       static {
-        __name(this, "PostgrestBuilder");
+        __name(this, "PostgrestBuilder2");
+      }
+      static {
+        __name2(this, "PostgrestBuilder");
       }
       constructor(builder) {
         this.shouldThrowOnError = false;
@@ -516,12 +542,10 @@ var require_PostgrestBuilder = __commonJS({
     exports.default = PostgrestBuilder2;
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestTransformBuilder.js
 var require_PostgrestTransformBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestTransformBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -529,7 +553,10 @@ var require_PostgrestTransformBuilder = __commonJS({
     var PostgrestBuilder_1 = __importDefault(require_PostgrestBuilder());
     var PostgrestTransformBuilder2 = class extends PostgrestBuilder_1.default {
       static {
-        __name(this, "PostgrestTransformBuilder");
+        __name(this, "PostgrestTransformBuilder2");
+      }
+      static {
+        __name2(this, "PostgrestTransformBuilder");
       }
       /**
        * Perform a SELECT on the query result.
@@ -735,12 +762,10 @@ var require_PostgrestTransformBuilder = __commonJS({
     exports.default = PostgrestTransformBuilder2;
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestFilterBuilder.js
 var require_PostgrestFilterBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestFilterBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -748,7 +773,10 @@ var require_PostgrestFilterBuilder = __commonJS({
     var PostgrestTransformBuilder_1 = __importDefault(require_PostgrestTransformBuilder());
     var PostgrestFilterBuilder2 = class extends PostgrestTransformBuilder_1.default {
       static {
-        __name(this, "PostgrestFilterBuilder");
+        __name(this, "PostgrestFilterBuilder2");
+      }
+      static {
+        __name2(this, "PostgrestFilterBuilder");
       }
       /**
        * Match only rows where `column` is equal to `value`.
@@ -1105,12 +1133,10 @@ var require_PostgrestFilterBuilder = __commonJS({
     exports.default = PostgrestFilterBuilder2;
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestQueryBuilder.js
 var require_PostgrestQueryBuilder = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestQueryBuilder.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1118,7 +1144,10 @@ var require_PostgrestQueryBuilder = __commonJS({
     var PostgrestFilterBuilder_1 = __importDefault(require_PostgrestFilterBuilder());
     var PostgrestQueryBuilder2 = class {
       static {
-        __name(this, "PostgrestQueryBuilder");
+        __name(this, "PostgrestQueryBuilder2");
+      }
+      static {
+        __name2(this, "PostgrestQueryBuilder");
       }
       constructor(url, { headers = {}, schema, fetch: fetch3 }) {
         this.url = url;
@@ -1381,35 +1410,29 @@ var require_PostgrestQueryBuilder = __commonJS({
     exports.default = PostgrestQueryBuilder2;
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/version.js
 var require_version = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/version.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.version = void 0;
     exports.version = "0.0.0-automated";
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/constants.js
 var require_constants = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/constants.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DEFAULT_HEADERS = void 0;
     var version_1 = require_version();
     exports.DEFAULT_HEADERS = { "X-Client-Info": `postgrest-js/${version_1.version}` };
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestClient.js
 var require_PostgrestClient = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/PostgrestClient.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1419,7 +1442,10 @@ var require_PostgrestClient = __commonJS({
     var constants_1 = require_constants();
     var PostgrestClient2 = class _PostgrestClient {
       static {
-        __name(this, "PostgrestClient");
+        __name(this, "_PostgrestClient");
+      }
+      static {
+        __name2(this, "PostgrestClient");
       }
       // TODO: Add back shouldThrowOnError once we figure out the typings
       /**
@@ -1518,12 +1544,10 @@ var require_PostgrestClient = __commonJS({
     exports.default = PostgrestClient2;
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/cjs/index.js
 var require_cjs = __commonJS({
   "../node_modules/@supabase/postgrest-js/dist/cjs/index.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     var __importDefault = exports && exports.__importDefault || function(mod) {
       return mod && mod.__esModule ? mod : { "default": mod };
     };
@@ -1551,12 +1575,16 @@ var require_cjs = __commonJS({
     };
   }
 });
-
-// ../node_modules/@supabase/postgrest-js/dist/esm/wrapper.mjs
-var import_cjs, PostgrestClient, PostgrestQueryBuilder, PostgrestFilterBuilder, PostgrestTransformBuilder, PostgrestBuilder, PostgrestError;
+var import_cjs;
+var PostgrestClient;
+var PostgrestQueryBuilder;
+var PostgrestFilterBuilder;
+var PostgrestTransformBuilder;
+var PostgrestBuilder;
+var PostgrestError;
 var init_wrapper = __esm({
   "../node_modules/@supabase/postgrest-js/dist/esm/wrapper.mjs"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     import_cjs = __toESM(require_cjs(), 1);
     ({
       PostgrestClient,
@@ -1568,15 +1596,17 @@ var init_wrapper = __esm({
     } = import_cjs.default);
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/websocket-factory.js
-var WebSocketFactory, websocket_factory_default;
+var WebSocketFactory;
+var websocket_factory_default;
 var init_websocket_factory = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/websocket-factory.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     WebSocketFactory = class {
       static {
         __name(this, "WebSocketFactory");
+      }
+      static {
+        __name2(this, "WebSocketFactory");
       }
       static detectEnvironment() {
         var _a;
@@ -1656,21 +1686,26 @@ Suggested solution: ${env.workaround}`;
     websocket_factory_default = WebSocketFactory;
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/version.js
 var version;
 var init_version = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     version = "2.15.1";
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/constants.js
-var DEFAULT_VERSION, VSN, DEFAULT_TIMEOUT, WS_CLOSE_NORMAL, MAX_PUSH_BUFFER_SIZE, SOCKET_STATES, CHANNEL_STATES, CHANNEL_EVENTS, TRANSPORTS, CONNECTION_STATE;
+var DEFAULT_VERSION;
+var VSN;
+var DEFAULT_TIMEOUT;
+var WS_CLOSE_NORMAL;
+var MAX_PUSH_BUFFER_SIZE;
+var SOCKET_STATES;
+var CHANNEL_STATES;
+var CHANNEL_EVENTS;
+var TRANSPORTS;
+var CONNECTION_STATE;
 var init_constants = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_version();
     DEFAULT_VERSION = `realtime-js/${version}`;
     VSN = "1.0.0";
@@ -1709,15 +1744,16 @@ var init_constants = __esm({
     })(CONNECTION_STATE || (CONNECTION_STATE = {}));
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/serializer.js
 var Serializer;
 var init_serializer = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/serializer.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     Serializer = class {
       static {
         __name(this, "Serializer");
+      }
+      static {
+        __name2(this, "Serializer");
       }
       constructor() {
         this.HEADER_LENGTH = 1;
@@ -1750,15 +1786,16 @@ var init_serializer = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/timer.js
 var Timer;
 var init_timer = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/timer.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     Timer = class {
       static {
         __name(this, "Timer");
+      }
+      static {
+        __name2(this, "Timer");
       }
       constructor(callback, timerCalc) {
         this.callback = callback;
@@ -1784,12 +1821,20 @@ var init_timer = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/transformers.js
-var PostgresTypes, convertChangeData, convertColumn, convertCell, noop, toBoolean, toNumber, toJson, toArray, toTimestampString, httpEndpointURL;
+var PostgresTypes;
+var convertChangeData;
+var convertColumn;
+var convertCell;
+var noop;
+var toBoolean;
+var toNumber;
+var toJson;
+var toArray;
+var toTimestampString;
+var httpEndpointURL;
 var init_transformers = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/transformers.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     (function(PostgresTypes2) {
       PostgresTypes2["abstime"] = "abstime";
       PostgresTypes2["bool"] = "bool";
@@ -1816,7 +1861,7 @@ var init_transformers = __esm({
       PostgresTypes2["tsrange"] = "tsrange";
       PostgresTypes2["tstzrange"] = "tstzrange";
     })(PostgresTypes || (PostgresTypes = {}));
-    convertChangeData = /* @__PURE__ */ __name((columns, record, options = {}) => {
+    convertChangeData = /* @__PURE__ */ __name2((columns, record, options = {}) => {
       var _a;
       const skipTypes = (_a = options.skipTypes) !== null && _a !== void 0 ? _a : [];
       return Object.keys(record).reduce((acc, rec_key) => {
@@ -1824,7 +1869,7 @@ var init_transformers = __esm({
         return acc;
       }, {});
     }, "convertChangeData");
-    convertColumn = /* @__PURE__ */ __name((columnName, columns, record, skipTypes) => {
+    convertColumn = /* @__PURE__ */ __name2((columnName, columns, record, skipTypes) => {
       const column = columns.find((x) => x.name === columnName);
       const colType = column === null || column === void 0 ? void 0 : column.type;
       const value = record[columnName];
@@ -1833,7 +1878,7 @@ var init_transformers = __esm({
       }
       return noop(value);
     }, "convertColumn");
-    convertCell = /* @__PURE__ */ __name((type, value) => {
+    convertCell = /* @__PURE__ */ __name2((type, value) => {
       if (type.charAt(0) === "_") {
         const dataType = type.slice(1, type.length);
         return toArray(value, dataType);
@@ -1879,10 +1924,10 @@ var init_transformers = __esm({
           return noop(value);
       }
     }, "convertCell");
-    noop = /* @__PURE__ */ __name((value) => {
+    noop = /* @__PURE__ */ __name2((value) => {
       return value;
     }, "noop");
-    toBoolean = /* @__PURE__ */ __name((value) => {
+    toBoolean = /* @__PURE__ */ __name2((value) => {
       switch (value) {
         case "t":
           return true;
@@ -1892,7 +1937,7 @@ var init_transformers = __esm({
           return value;
       }
     }, "toBoolean");
-    toNumber = /* @__PURE__ */ __name((value) => {
+    toNumber = /* @__PURE__ */ __name2((value) => {
       if (typeof value === "string") {
         const parsedValue = parseFloat(value);
         if (!Number.isNaN(parsedValue)) {
@@ -1901,7 +1946,7 @@ var init_transformers = __esm({
       }
       return value;
     }, "toNumber");
-    toJson = /* @__PURE__ */ __name((value) => {
+    toJson = /* @__PURE__ */ __name2((value) => {
       if (typeof value === "string") {
         try {
           return JSON.parse(value);
@@ -1912,7 +1957,7 @@ var init_transformers = __esm({
       }
       return value;
     }, "toJson");
-    toArray = /* @__PURE__ */ __name((value, type) => {
+    toArray = /* @__PURE__ */ __name2((value, type) => {
       if (typeof value !== "string") {
         return value;
       }
@@ -1931,13 +1976,13 @@ var init_transformers = __esm({
       }
       return value;
     }, "toArray");
-    toTimestampString = /* @__PURE__ */ __name((value) => {
+    toTimestampString = /* @__PURE__ */ __name2((value) => {
       if (typeof value === "string") {
         return value.replace(" ", "T");
       }
       return value;
     }, "toTimestampString");
-    httpEndpointURL = /* @__PURE__ */ __name((socketUrl) => {
+    httpEndpointURL = /* @__PURE__ */ __name2((socketUrl) => {
       let url = socketUrl;
       url = url.replace(/^ws/i, "http");
       url = url.replace(/(\/socket\/websocket|\/socket|\/websocket)\/?$/i, "");
@@ -1945,16 +1990,17 @@ var init_transformers = __esm({
     }, "httpEndpointURL");
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/lib/push.js
 var Push;
 var init_push = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/lib/push.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_constants();
     Push = class {
       static {
         __name(this, "Push");
+      }
+      static {
+        __name2(this, "Push");
       }
       /**
        * Initializes the Push
@@ -2016,7 +2062,7 @@ var init_push = __esm({
         }
         this.ref = this.channel.socket._makeRef();
         this.refEvent = this.channel._replyEventName(this.ref);
-        const callback = /* @__PURE__ */ __name((payload) => {
+        const callback = /* @__PURE__ */ __name2((payload) => {
           this._cancelRefEvent();
           this._cancelTimeout();
           this.receivedResp = payload;
@@ -2054,12 +2100,11 @@ var init_push = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/RealtimePresence.js
-var REALTIME_PRESENCE_LISTEN_EVENTS, RealtimePresence;
+var REALTIME_PRESENCE_LISTEN_EVENTS;
+var RealtimePresence;
 var init_RealtimePresence = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/RealtimePresence.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     (function(REALTIME_PRESENCE_LISTEN_EVENTS2) {
       REALTIME_PRESENCE_LISTEN_EVENTS2["SYNC"] = "sync";
       REALTIME_PRESENCE_LISTEN_EVENTS2["JOIN"] = "join";
@@ -2067,7 +2112,10 @@ var init_RealtimePresence = __esm({
     })(REALTIME_PRESENCE_LISTEN_EVENTS || (REALTIME_PRESENCE_LISTEN_EVENTS = {}));
     RealtimePresence = class _RealtimePresence {
       static {
-        __name(this, "RealtimePresence");
+        __name(this, "_RealtimePresence");
+      }
+      static {
+        __name2(this, "RealtimePresence");
       }
       /**
        * Initializes the Presence.
@@ -2083,11 +2131,11 @@ var init_RealtimePresence = __esm({
         this.joinRef = null;
         this.enabled = false;
         this.caller = {
-          onJoin: /* @__PURE__ */ __name(() => {
+          onJoin: /* @__PURE__ */ __name2(() => {
           }, "onJoin"),
-          onLeave: /* @__PURE__ */ __name(() => {
+          onLeave: /* @__PURE__ */ __name2(() => {
           }, "onLeave"),
-          onSync: /* @__PURE__ */ __name(() => {
+          onSync: /* @__PURE__ */ __name2(() => {
           }, "onSync")
         };
         const events = (opts === null || opts === void 0 ? void 0 : opts.events) || {
@@ -2188,11 +2236,11 @@ var init_RealtimePresence = __esm({
           leaves: this.transformState(diff.leaves)
         };
         if (!onJoin) {
-          onJoin = /* @__PURE__ */ __name(() => {
+          onJoin = /* @__PURE__ */ __name2(() => {
           }, "onJoin");
         }
         if (!onLeave) {
-          onLeave = /* @__PURE__ */ __name(() => {
+          onLeave = /* @__PURE__ */ __name2(() => {
           }, "onLeave");
         }
         this.map(joins, (key, newPresences) => {
@@ -2286,12 +2334,13 @@ var init_RealtimePresence = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/RealtimeChannel.js
-var REALTIME_POSTGRES_CHANGES_LISTEN_EVENT, REALTIME_LISTEN_TYPES, REALTIME_SUBSCRIBE_STATES, RealtimeChannel;
+var REALTIME_POSTGRES_CHANGES_LISTEN_EVENT;
+var REALTIME_LISTEN_TYPES;
+var REALTIME_SUBSCRIBE_STATES;
+var RealtimeChannel;
 var init_RealtimeChannel = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/RealtimeChannel.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_constants();
     init_push();
     init_timer();
@@ -2318,7 +2367,10 @@ var init_RealtimeChannel = __esm({
     })(REALTIME_SUBSCRIBE_STATES || (REALTIME_SUBSCRIBE_STATES = {}));
     RealtimeChannel = class _RealtimeChannel {
       static {
-        __name(this, "RealtimeChannel");
+        __name(this, "_RealtimeChannel");
+      }
+      static {
+        __name2(this, "RealtimeChannel");
       }
       constructor(topic, params = { config: {} }, socket) {
         this.topic = topic;
@@ -2536,7 +2588,7 @@ var init_RealtimeChannel = __esm({
        */
       unsubscribe(timeout = this.timeout) {
         this.state = CHANNEL_STATES.leaving;
-        const onClose = /* @__PURE__ */ __name(() => {
+        const onClose = /* @__PURE__ */ __name2(() => {
           this.socket.log("channel", `leave ${this.topic}`);
           this._trigger(CHANNEL_EVENTS.close, "leave", this._joinRef());
         }, "onClose");
@@ -2793,19 +2845,22 @@ var init_RealtimeChannel = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js
-var noop2, CONNECTION_TIMEOUTS, RECONNECT_INTERVALS, DEFAULT_RECONNECT_FALLBACK, WORKER_SCRIPT, RealtimeClient;
+var noop2;
+var CONNECTION_TIMEOUTS;
+var RECONNECT_INTERVALS;
+var DEFAULT_RECONNECT_FALLBACK;
+var WORKER_SCRIPT;
+var RealtimeClient;
 var init_RealtimeClient = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_websocket_factory();
     init_constants();
     init_serializer();
     init_timer();
     init_transformers();
     init_RealtimeChannel();
-    noop2 = /* @__PURE__ */ __name(() => {
+    noop2 = /* @__PURE__ */ __name2(() => {
     }, "noop");
     CONNECTION_TIMEOUTS = {
       HEARTBEAT_INTERVAL: 25e3,
@@ -2823,6 +2878,9 @@ var init_RealtimeClient = __esm({
     RealtimeClient = class {
       static {
         __name(this, "RealtimeClient");
+      }
+      static {
+        __name2(this, "RealtimeClient");
       }
       /**
        * Initializes the Socket.
@@ -2878,7 +2936,7 @@ var init_RealtimeClient = __esm({
           if (customFetch) {
             _fetch = customFetch;
           } else if (typeof fetch === "undefined") {
-            _fetch = /* @__PURE__ */ __name((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)).catch((error) => {
+            _fetch = /* @__PURE__ */ __name2((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)).catch((error) => {
               throw new Error(`Failed to load @supabase/node-fetch: ${error.message}. This is required for HTTP requests in Node.js environments without native fetch.`);
             }), "_fetch");
           } else {
@@ -3055,7 +3113,7 @@ Option 2: Install and provide the "ws" package:
        */
       push(data) {
         const { topic, event, payload, ref } = data;
-        const callback = /* @__PURE__ */ __name(() => {
+        const callback = /* @__PURE__ */ __name2(() => {
           this.encode(data, (result) => {
             var _a;
             (_a = this.conn) === null || _a === void 0 ? void 0 : _a.send(result);
@@ -3446,29 +3504,31 @@ Option 2: Install and provide the "ws" package:
     };
   }
 });
-
-// ../node_modules/@supabase/realtime-js/dist/module/index.js
 var init_module2 = __esm({
   "../node_modules/@supabase/realtime-js/dist/module/index.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_RealtimeClient();
     init_RealtimeChannel();
     init_RealtimePresence();
     init_websocket_factory();
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/lib/errors.js
 function isStorageError(error) {
   return typeof error === "object" && error !== null && "__isStorageError" in error;
 }
-var StorageError, StorageApiError, StorageUnknownError;
+__name(isStorageError, "isStorageError");
+var StorageError;
+var StorageApiError;
+var StorageUnknownError;
 var init_errors = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/errors.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     StorageError = class extends Error {
       static {
         __name(this, "StorageError");
+      }
+      static {
+        __name2(this, "StorageError");
       }
       constructor(message) {
         super(message);
@@ -3476,10 +3536,13 @@ var init_errors = __esm({
         this.name = "StorageError";
       }
     };
-    __name(isStorageError, "isStorageError");
+    __name2(isStorageError, "isStorageError");
     StorageApiError = class extends StorageError {
       static {
         __name(this, "StorageApiError");
+      }
+      static {
+        __name2(this, "StorageApiError");
       }
       constructor(message, status, statusCode) {
         super(message);
@@ -3500,6 +3563,9 @@ var init_errors = __esm({
       static {
         __name(this, "StorageUnknownError");
       }
+      static {
+        __name2(this, "StorageUnknownError");
+      }
       constructor(message, originalError) {
         super(message);
         this.name = "StorageUnknownError";
@@ -3508,19 +3574,22 @@ var init_errors = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/lib/helpers.js
-var __awaiter2, resolveFetch2, resolveResponse, recursiveToCamel, isPlainObject;
+var __awaiter2;
+var resolveFetch2;
+var resolveResponse;
+var recursiveToCamel;
+var isPlainObject;
 var init_helpers = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/helpers.js"() {
-    init_functionsRoutes_0_8865896815142511();
-    __awaiter2 = function(thisArg, _arguments, P, generator) {
+    init_functionsRoutes_0_3110068635345318();
+    __awaiter2 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -3530,6 +3599,7 @@ var init_helpers = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -3538,31 +3608,33 @@ var init_helpers = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
-    resolveFetch2 = /* @__PURE__ */ __name((customFetch) => {
+    }, "__awaiter2");
+    resolveFetch2 = /* @__PURE__ */ __name2((customFetch) => {
       let _fetch;
       if (customFetch) {
         _fetch = customFetch;
       } else if (typeof fetch === "undefined") {
-        _fetch = /* @__PURE__ */ __name((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)), "_fetch");
+        _fetch = /* @__PURE__ */ __name2((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)), "_fetch");
       } else {
         _fetch = fetch;
       }
       return (...args) => _fetch(...args);
     }, "resolveFetch");
-    resolveResponse = /* @__PURE__ */ __name(() => __awaiter2(void 0, void 0, void 0, function* () {
+    resolveResponse = /* @__PURE__ */ __name2(() => __awaiter2(void 0, void 0, void 0, function* () {
       if (typeof Response === "undefined") {
         return (yield Promise.resolve().then(() => (init_browser(), browser_exports))).Response;
       }
       return Response;
     }), "resolveResponse");
-    recursiveToCamel = /* @__PURE__ */ __name((item) => {
+    recursiveToCamel = /* @__PURE__ */ __name2((item) => {
       if (Array.isArray(item)) {
         return item.map((el) => recursiveToCamel(el));
       } else if (typeof item === "function" || item !== Object(item)) {
@@ -3575,7 +3647,7 @@ var init_helpers = __esm({
       });
       return result;
     }, "recursiveToCamel");
-    isPlainObject = /* @__PURE__ */ __name((value) => {
+    isPlainObject = /* @__PURE__ */ __name2((value) => {
       if (typeof value !== "object" || value === null) {
         return false;
       }
@@ -3584,8 +3656,6 @@ var init_helpers = __esm({
     }, "isPlainObject");
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/lib/fetch.js
 function _handleRequest(fetcher, method, url, options, parameters, body) {
   return __awaiter3(this, void 0, void 0, function* () {
     return new Promise((resolve, reject) => {
@@ -3599,44 +3669,54 @@ function _handleRequest(fetcher, method, url, options, parameters, body) {
     });
   });
 }
+__name(_handleRequest, "_handleRequest");
 function get(fetcher, url, options, parameters) {
   return __awaiter3(this, void 0, void 0, function* () {
     return _handleRequest(fetcher, "GET", url, options, parameters);
   });
 }
+__name(get, "get");
 function post(fetcher, url, body, options, parameters) {
   return __awaiter3(this, void 0, void 0, function* () {
     return _handleRequest(fetcher, "POST", url, options, parameters, body);
   });
 }
+__name(post, "post");
 function put(fetcher, url, body, options, parameters) {
   return __awaiter3(this, void 0, void 0, function* () {
     return _handleRequest(fetcher, "PUT", url, options, parameters, body);
   });
 }
+__name(put, "put");
 function head(fetcher, url, options, parameters) {
   return __awaiter3(this, void 0, void 0, function* () {
     return _handleRequest(fetcher, "HEAD", url, Object.assign(Object.assign({}, options), { noResolveJson: true }), parameters);
   });
 }
+__name(head, "head");
 function remove(fetcher, url, body, options, parameters) {
   return __awaiter3(this, void 0, void 0, function* () {
     return _handleRequest(fetcher, "DELETE", url, options, parameters, body);
   });
 }
-var __awaiter3, _getErrorMessage, handleError, _getRequestParams;
+__name(remove, "remove");
+var __awaiter3;
+var _getErrorMessage;
+var handleError;
+var _getRequestParams;
 var init_fetch = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/fetch.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_errors();
     init_helpers();
-    __awaiter3 = function(thisArg, _arguments, P, generator) {
+    __awaiter3 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -3646,6 +3726,7 @@ var init_fetch = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -3654,15 +3735,17 @@ var init_fetch = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
-    _getErrorMessage = /* @__PURE__ */ __name((err) => err.msg || err.message || err.error_description || err.error || JSON.stringify(err), "_getErrorMessage");
-    handleError = /* @__PURE__ */ __name((error, reject, options) => __awaiter3(void 0, void 0, void 0, function* () {
+    }, "__awaiter3");
+    _getErrorMessage = /* @__PURE__ */ __name2((err) => err.msg || err.message || err.error_description || err.error || JSON.stringify(err), "_getErrorMessage");
+    handleError = /* @__PURE__ */ __name2((error, reject, options) => __awaiter3(void 0, void 0, void 0, function* () {
       const Res = yield resolveResponse();
       if (error instanceof Res && !(options === null || options === void 0 ? void 0 : options.noResolveJson)) {
         error.json().then((err) => {
@@ -3676,7 +3759,7 @@ var init_fetch = __esm({
         reject(new StorageUnknownError(_getErrorMessage(error), error));
       }
     }), "handleError");
-    _getRequestParams = /* @__PURE__ */ __name((method, options, parameters, body) => {
+    _getRequestParams = /* @__PURE__ */ __name2((method, options, parameters, body) => {
       const params = { method, headers: (options === null || options === void 0 ? void 0 : options.headers) || {} };
       if (method === "GET" || !body) {
         return params;
@@ -3692,30 +3775,32 @@ var init_fetch = __esm({
       }
       return Object.assign(Object.assign({}, params), parameters);
     }, "_getRequestParams");
-    __name(_handleRequest, "_handleRequest");
-    __name(get, "get");
-    __name(post, "post");
-    __name(put, "put");
-    __name(head, "head");
-    __name(remove, "remove");
+    __name2(_handleRequest, "_handleRequest");
+    __name2(get, "get");
+    __name2(post, "post");
+    __name2(put, "put");
+    __name2(head, "head");
+    __name2(remove, "remove");
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/packages/StorageFileApi.js
-var __awaiter4, DEFAULT_SEARCH_OPTIONS, DEFAULT_FILE_OPTIONS, StorageFileApi;
+var __awaiter4;
+var DEFAULT_SEARCH_OPTIONS;
+var DEFAULT_FILE_OPTIONS;
+var StorageFileApi;
 var init_StorageFileApi = __esm({
   "../node_modules/@supabase/storage-js/dist/module/packages/StorageFileApi.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_errors();
     init_fetch();
     init_helpers();
-    __awaiter4 = function(thisArg, _arguments, P, generator) {
+    __awaiter4 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -3725,6 +3810,7 @@ var init_StorageFileApi = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -3733,13 +3819,15 @@ var init_StorageFileApi = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
+    }, "__awaiter4");
     DEFAULT_SEARCH_OPTIONS = {
       limit: 100,
       offset: 0,
@@ -3756,6 +3844,9 @@ var init_StorageFileApi = __esm({
     StorageFileApi = class {
       static {
         __name(this, "StorageFileApi");
+      }
+      static {
+        __name2(this, "StorageFileApi");
       }
       constructor(url, headers = {}, bucketId, fetch3) {
         this.url = url;
@@ -4260,42 +4351,38 @@ var init_StorageFileApi = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/lib/version.js
 var version2;
 var init_version2 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     version2 = "2.11.0";
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/lib/constants.js
 var DEFAULT_HEADERS;
 var init_constants2 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_version2();
     DEFAULT_HEADERS = { "X-Client-Info": `storage-js/${version2}` };
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/packages/StorageBucketApi.js
-var __awaiter5, StorageBucketApi;
+var __awaiter5;
+var StorageBucketApi;
 var init_StorageBucketApi = __esm({
   "../node_modules/@supabase/storage-js/dist/module/packages/StorageBucketApi.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_constants2();
     init_errors();
     init_fetch();
     init_helpers();
-    __awaiter5 = function(thisArg, _arguments, P, generator) {
+    __awaiter5 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -4305,6 +4392,7 @@ var init_StorageBucketApi = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -4313,16 +4401,21 @@ var init_StorageBucketApi = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
+    }, "__awaiter5");
     StorageBucketApi = class {
       static {
         __name(this, "StorageBucketApi");
+      }
+      static {
+        __name2(this, "StorageBucketApi");
       }
       constructor(url, headers = {}, fetch3, opts) {
         const baseUrl = new URL(url);
@@ -4478,17 +4571,18 @@ var init_StorageBucketApi = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/StorageClient.js
 var StorageClient;
 var init_StorageClient = __esm({
   "../node_modules/@supabase/storage-js/dist/module/StorageClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_StorageFileApi();
     init_StorageBucketApi();
     StorageClient = class extends StorageBucketApi {
       static {
         __name(this, "StorageClient");
+      }
+      static {
+        __name2(this, "StorageClient");
       }
       constructor(url, headers = {}, fetch3, opts) {
         super(url, headers, fetch3, opts);
@@ -4504,38 +4598,35 @@ var init_StorageClient = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/lib/types.js
 var init_types2 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/lib/types.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
   }
 });
-
-// ../node_modules/@supabase/storage-js/dist/module/index.js
 var init_module3 = __esm({
   "../node_modules/@supabase/storage-js/dist/module/index.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_StorageClient();
     init_types2();
     init_errors();
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/lib/version.js
 var version3;
 var init_version3 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     version3 = "2.55.0";
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/lib/constants.js
-var JS_ENV, DEFAULT_HEADERS2, DEFAULT_GLOBAL_OPTIONS, DEFAULT_DB_OPTIONS, DEFAULT_AUTH_OPTIONS, DEFAULT_REALTIME_OPTIONS;
+var JS_ENV;
+var DEFAULT_HEADERS2;
+var DEFAULT_GLOBAL_OPTIONS;
+var DEFAULT_DB_OPTIONS;
+var DEFAULT_AUTH_OPTIONS;
+var DEFAULT_REALTIME_OPTIONS;
 var init_constants3 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_version3();
     JS_ENV = "";
     if (typeof Deno !== "undefined") {
@@ -4563,20 +4654,22 @@ var init_constants3 = __esm({
     DEFAULT_REALTIME_OPTIONS = {};
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/lib/fetch.js
-var __awaiter6, resolveFetch3, resolveHeadersConstructor, fetchWithAuth;
+var __awaiter6;
+var resolveFetch3;
+var resolveHeadersConstructor;
+var fetchWithAuth;
 var init_fetch2 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/fetch.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_browser();
-    __awaiter6 = function(thisArg, _arguments, P, generator) {
+    __awaiter6 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -4586,6 +4679,7 @@ var init_fetch2 = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -4594,14 +4688,16 @@ var init_fetch2 = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
-    resolveFetch3 = /* @__PURE__ */ __name((customFetch) => {
+    }, "__awaiter6");
+    resolveFetch3 = /* @__PURE__ */ __name2((customFetch) => {
       let _fetch;
       if (customFetch) {
         _fetch = customFetch;
@@ -4612,13 +4708,13 @@ var init_fetch2 = __esm({
       }
       return (...args) => _fetch(...args);
     }, "resolveFetch");
-    resolveHeadersConstructor = /* @__PURE__ */ __name(() => {
+    resolveHeadersConstructor = /* @__PURE__ */ __name2(() => {
       if (typeof Headers === "undefined") {
         return Headers2;
       }
       return Headers;
     }, "resolveHeadersConstructor");
-    fetchWithAuth = /* @__PURE__ */ __name((supabaseKey, getAccessToken, customFetch) => {
+    fetchWithAuth = /* @__PURE__ */ __name2((supabaseKey, getAccessToken, customFetch) => {
       const fetch3 = resolveFetch3(customFetch);
       const HeadersConstructor = resolveHeadersConstructor();
       return (input, init) => __awaiter6(void 0, void 0, void 0, function* () {
@@ -4636,11 +4732,10 @@ var init_fetch2 = __esm({
     }, "fetchWithAuth");
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/lib/helpers.js
 function ensureTrailingSlash(url) {
   return url.endsWith("/") ? url : url + "/";
 }
+__name(ensureTrailingSlash, "ensureTrailingSlash");
 function applySettingDefaults(options, defaults) {
   var _a, _b;
   const { db: dbOptions, auth: authOptions, realtime: realtimeOptions, global: globalOptions } = options;
@@ -4651,7 +4746,7 @@ function applySettingDefaults(options, defaults) {
     realtime: Object.assign(Object.assign({}, DEFAULT_REALTIME_OPTIONS2), realtimeOptions),
     storage: {},
     global: Object.assign(Object.assign(Object.assign({}, DEFAULT_GLOBAL_OPTIONS2), globalOptions), { headers: Object.assign(Object.assign({}, (_a = DEFAULT_GLOBAL_OPTIONS2 === null || DEFAULT_GLOBAL_OPTIONS2 === void 0 ? void 0 : DEFAULT_GLOBAL_OPTIONS2.headers) !== null && _a !== void 0 ? _a : {}), (_b = globalOptions === null || globalOptions === void 0 ? void 0 : globalOptions.headers) !== null && _b !== void 0 ? _b : {}) }),
-    accessToken: /* @__PURE__ */ __name(() => __awaiter7(this, void 0, void 0, function* () {
+    accessToken: /* @__PURE__ */ __name2(() => __awaiter7(this, void 0, void 0, function* () {
       return "";
     }), "accessToken")
   };
@@ -4662,17 +4757,19 @@ function applySettingDefaults(options, defaults) {
   }
   return result;
 }
+__name(applySettingDefaults, "applySettingDefaults");
 var __awaiter7;
 var init_helpers2 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/helpers.js"() {
-    init_functionsRoutes_0_8865896815142511();
-    __awaiter7 = function(thisArg, _arguments, P, generator) {
+    init_functionsRoutes_0_3110068635345318();
+    __awaiter7 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -4682,6 +4779,7 @@ var init_helpers2 = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -4690,32 +4788,39 @@ var init_helpers2 = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
-    __name(ensureTrailingSlash, "ensureTrailingSlash");
-    __name(applySettingDefaults, "applySettingDefaults");
+    }, "__awaiter7");
+    __name2(ensureTrailingSlash, "ensureTrailingSlash");
+    __name2(applySettingDefaults, "applySettingDefaults");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/version.js
 var version4;
 var init_version4 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/version.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     version4 = "2.71.1";
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/constants.js
-var AUTO_REFRESH_TICK_DURATION_MS, AUTO_REFRESH_TICK_THRESHOLD, EXPIRY_MARGIN_MS, GOTRUE_URL, STORAGE_KEY, DEFAULT_HEADERS3, API_VERSION_HEADER_NAME, API_VERSIONS, BASE64URL_REGEX, JWKS_TTL;
+var AUTO_REFRESH_TICK_DURATION_MS;
+var AUTO_REFRESH_TICK_THRESHOLD;
+var EXPIRY_MARGIN_MS;
+var GOTRUE_URL;
+var STORAGE_KEY;
+var DEFAULT_HEADERS3;
+var API_VERSION_HEADER_NAME;
+var API_VERSIONS;
+var BASE64URL_REGEX;
+var JWKS_TTL;
 var init_constants4 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/constants.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_version4();
     AUTO_REFRESH_TICK_DURATION_MS = 30 * 1e3;
     AUTO_REFRESH_TICK_THRESHOLD = 3;
@@ -4734,30 +4839,47 @@ var init_constants4 = __esm({
     JWKS_TTL = 10 * 60 * 1e3;
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/errors.js
 function isAuthError(error) {
   return typeof error === "object" && error !== null && "__isAuthError" in error;
 }
+__name(isAuthError, "isAuthError");
 function isAuthApiError(error) {
   return isAuthError(error) && error.name === "AuthApiError";
 }
+__name(isAuthApiError, "isAuthApiError");
 function isAuthSessionMissingError(error) {
   return isAuthError(error) && error.name === "AuthSessionMissingError";
 }
+__name(isAuthSessionMissingError, "isAuthSessionMissingError");
 function isAuthImplicitGrantRedirectError(error) {
   return isAuthError(error) && error.name === "AuthImplicitGrantRedirectError";
 }
+__name(isAuthImplicitGrantRedirectError, "isAuthImplicitGrantRedirectError");
 function isAuthRetryableFetchError(error) {
   return isAuthError(error) && error.name === "AuthRetryableFetchError";
 }
-var AuthError, AuthApiError, AuthUnknownError, CustomAuthError, AuthSessionMissingError, AuthInvalidTokenResponseError, AuthInvalidCredentialsError, AuthImplicitGrantRedirectError, AuthPKCEGrantCodeExchangeError, AuthRetryableFetchError, AuthWeakPasswordError, AuthInvalidJwtError;
+__name(isAuthRetryableFetchError, "isAuthRetryableFetchError");
+var AuthError;
+var AuthApiError;
+var AuthUnknownError;
+var CustomAuthError;
+var AuthSessionMissingError;
+var AuthInvalidTokenResponseError;
+var AuthInvalidCredentialsError;
+var AuthImplicitGrantRedirectError;
+var AuthPKCEGrantCodeExchangeError;
+var AuthRetryableFetchError;
+var AuthWeakPasswordError;
+var AuthInvalidJwtError;
 var init_errors2 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/errors.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     AuthError = class extends Error {
       static {
         __name(this, "AuthError");
+      }
+      static {
+        __name2(this, "AuthError");
       }
       constructor(message, status, code) {
         super(message);
@@ -4767,10 +4889,13 @@ var init_errors2 = __esm({
         this.code = code;
       }
     };
-    __name(isAuthError, "isAuthError");
+    __name2(isAuthError, "isAuthError");
     AuthApiError = class extends AuthError {
       static {
         __name(this, "AuthApiError");
+      }
+      static {
+        __name2(this, "AuthApiError");
       }
       constructor(message, status, code) {
         super(message, status, code);
@@ -4779,10 +4904,13 @@ var init_errors2 = __esm({
         this.code = code;
       }
     };
-    __name(isAuthApiError, "isAuthApiError");
+    __name2(isAuthApiError, "isAuthApiError");
     AuthUnknownError = class extends AuthError {
       static {
         __name(this, "AuthUnknownError");
+      }
+      static {
+        __name2(this, "AuthUnknownError");
       }
       constructor(message, originalError) {
         super(message);
@@ -4794,6 +4922,9 @@ var init_errors2 = __esm({
       static {
         __name(this, "CustomAuthError");
       }
+      static {
+        __name2(this, "CustomAuthError");
+      }
       constructor(message, name, status, code) {
         super(message, status, code);
         this.name = name;
@@ -4804,14 +4935,20 @@ var init_errors2 = __esm({
       static {
         __name(this, "AuthSessionMissingError");
       }
+      static {
+        __name2(this, "AuthSessionMissingError");
+      }
       constructor() {
         super("Auth session missing!", "AuthSessionMissingError", 400, void 0);
       }
     };
-    __name(isAuthSessionMissingError, "isAuthSessionMissingError");
+    __name2(isAuthSessionMissingError, "isAuthSessionMissingError");
     AuthInvalidTokenResponseError = class extends CustomAuthError {
       static {
         __name(this, "AuthInvalidTokenResponseError");
+      }
+      static {
+        __name2(this, "AuthInvalidTokenResponseError");
       }
       constructor() {
         super("Auth session or user missing", "AuthInvalidTokenResponseError", 500, void 0);
@@ -4821,6 +4958,9 @@ var init_errors2 = __esm({
       static {
         __name(this, "AuthInvalidCredentialsError");
       }
+      static {
+        __name2(this, "AuthInvalidCredentialsError");
+      }
       constructor(message) {
         super(message, "AuthInvalidCredentialsError", 400, void 0);
       }
@@ -4828,6 +4968,9 @@ var init_errors2 = __esm({
     AuthImplicitGrantRedirectError = class extends CustomAuthError {
       static {
         __name(this, "AuthImplicitGrantRedirectError");
+      }
+      static {
+        __name2(this, "AuthImplicitGrantRedirectError");
       }
       constructor(message, details = null) {
         super(message, "AuthImplicitGrantRedirectError", 500, void 0);
@@ -4843,10 +4986,13 @@ var init_errors2 = __esm({
         };
       }
     };
-    __name(isAuthImplicitGrantRedirectError, "isAuthImplicitGrantRedirectError");
+    __name2(isAuthImplicitGrantRedirectError, "isAuthImplicitGrantRedirectError");
     AuthPKCEGrantCodeExchangeError = class extends CustomAuthError {
       static {
         __name(this, "AuthPKCEGrantCodeExchangeError");
+      }
+      static {
+        __name2(this, "AuthPKCEGrantCodeExchangeError");
       }
       constructor(message, details = null) {
         super(message, "AuthPKCEGrantCodeExchangeError", 500, void 0);
@@ -4866,14 +5012,20 @@ var init_errors2 = __esm({
       static {
         __name(this, "AuthRetryableFetchError");
       }
+      static {
+        __name2(this, "AuthRetryableFetchError");
+      }
       constructor(message, status) {
         super(message, "AuthRetryableFetchError", status, void 0);
       }
     };
-    __name(isAuthRetryableFetchError, "isAuthRetryableFetchError");
+    __name2(isAuthRetryableFetchError, "isAuthRetryableFetchError");
     AuthWeakPasswordError = class extends CustomAuthError {
       static {
         __name(this, "AuthWeakPasswordError");
+      }
+      static {
+        __name2(this, "AuthWeakPasswordError");
       }
       constructor(message, status, reasons) {
         super(message, "AuthWeakPasswordError", status, "weak_password");
@@ -4884,14 +5036,15 @@ var init_errors2 = __esm({
       static {
         __name(this, "AuthInvalidJwtError");
       }
+      static {
+        __name2(this, "AuthInvalidJwtError");
+      }
       constructor(message) {
         super(message, "AuthInvalidJwtError", 400, "invalid_jwt");
       }
     };
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/base64url.js
 function byteToBase64URL(byte, state, emit) {
   if (byte !== null) {
     state.queue = state.queue << 8 | byte;
@@ -4911,6 +5064,7 @@ function byteToBase64URL(byte, state, emit) {
     }
   }
 }
+__name(byteToBase64URL, "byteToBase64URL");
 function byteFromBase64URL(charCode, state, emit) {
   const bits = FROM_BASE64URL[charCode];
   if (bits > -1) {
@@ -4926,9 +5080,10 @@ function byteFromBase64URL(charCode, state, emit) {
     throw new Error(`Invalid Base64-URL character "${String.fromCharCode(charCode)}"`);
   }
 }
+__name(byteFromBase64URL, "byteFromBase64URL");
 function stringFromBase64URL(str) {
   const conv = [];
-  const utf8Emit = /* @__PURE__ */ __name((codepoint) => {
+  const utf8Emit = /* @__PURE__ */ __name2((codepoint) => {
     conv.push(String.fromCodePoint(codepoint));
   }, "utf8Emit");
   const utf8State = {
@@ -4936,7 +5091,7 @@ function stringFromBase64URL(str) {
     codepoint: 0
   };
   const b64State = { queue: 0, queuedBits: 0 };
-  const byteEmit = /* @__PURE__ */ __name((byte) => {
+  const byteEmit = /* @__PURE__ */ __name2((byte) => {
     stringFromUTF8(byte, utf8State, utf8Emit);
   }, "byteEmit");
   for (let i = 0; i < str.length; i += 1) {
@@ -4944,6 +5099,7 @@ function stringFromBase64URL(str) {
   }
   return conv.join("");
 }
+__name(stringFromBase64URL, "stringFromBase64URL");
 function codepointToUTF8(codepoint, emit) {
   if (codepoint <= 127) {
     emit(codepoint);
@@ -4966,6 +5122,7 @@ function codepointToUTF8(codepoint, emit) {
   }
   throw new Error(`Unrecognized Unicode codepoint: ${codepoint.toString(16)}`);
 }
+__name(codepointToUTF8, "codepointToUTF8");
 function stringToUTF8(str, emit) {
   for (let i = 0; i < str.length; i += 1) {
     let codepoint = str.charCodeAt(i);
@@ -4978,6 +5135,7 @@ function stringToUTF8(str, emit) {
     codepointToUTF8(codepoint, emit);
   }
 }
+__name(stringToUTF8, "stringToUTF8");
 function stringFromUTF8(byte, state, emit) {
   if (state.utf8seq === 0) {
     if (byte <= 127) {
@@ -5011,10 +5169,11 @@ function stringFromUTF8(byte, state, emit) {
     }
   }
 }
+__name(stringFromUTF8, "stringFromUTF8");
 function base64UrlToUint8Array(str) {
   const result = [];
   const state = { queue: 0, queuedBits: 0 };
-  const onByte = /* @__PURE__ */ __name((byte) => {
+  const onByte = /* @__PURE__ */ __name2((byte) => {
     result.push(byte);
   }, "onByte");
   for (let i = 0; i < str.length; i += 1) {
@@ -5022,25 +5181,30 @@ function base64UrlToUint8Array(str) {
   }
   return new Uint8Array(result);
 }
+__name(base64UrlToUint8Array, "base64UrlToUint8Array");
 function stringToUint8Array(str) {
   const result = [];
   stringToUTF8(str, (byte) => result.push(byte));
   return new Uint8Array(result);
 }
+__name(stringToUint8Array, "stringToUint8Array");
 function bytesToBase64URL(bytes) {
   const result = [];
   const state = { queue: 0, queuedBits: 0 };
-  const onChar = /* @__PURE__ */ __name((char) => {
+  const onChar = /* @__PURE__ */ __name2((char) => {
     result.push(char);
   }, "onChar");
   bytes.forEach((byte) => byteToBase64URL(byte, state, onChar));
   byteToBase64URL(null, state, onChar);
   return result.join("");
 }
-var TO_BASE64URL, IGNORE_BASE64URL, FROM_BASE64URL;
+__name(bytesToBase64URL, "bytesToBase64URL");
+var TO_BASE64URL;
+var IGNORE_BASE64URL;
+var FROM_BASE64URL;
 var init_base64url = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/base64url.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     TO_BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".split("");
     IGNORE_BASE64URL = " 	\n\r=".split("");
     FROM_BASE64URL = (() => {
@@ -5056,29 +5220,29 @@ var init_base64url = __esm({
       }
       return charMap;
     })();
-    __name(byteToBase64URL, "byteToBase64URL");
-    __name(byteFromBase64URL, "byteFromBase64URL");
-    __name(stringFromBase64URL, "stringFromBase64URL");
-    __name(codepointToUTF8, "codepointToUTF8");
-    __name(stringToUTF8, "stringToUTF8");
-    __name(stringFromUTF8, "stringFromUTF8");
-    __name(base64UrlToUint8Array, "base64UrlToUint8Array");
-    __name(stringToUint8Array, "stringToUint8Array");
-    __name(bytesToBase64URL, "bytesToBase64URL");
+    __name2(byteToBase64URL, "byteToBase64URL");
+    __name2(byteFromBase64URL, "byteFromBase64URL");
+    __name2(stringFromBase64URL, "stringFromBase64URL");
+    __name2(codepointToUTF8, "codepointToUTF8");
+    __name2(stringToUTF8, "stringToUTF8");
+    __name2(stringFromUTF8, "stringFromUTF8");
+    __name2(base64UrlToUint8Array, "base64UrlToUint8Array");
+    __name2(stringToUint8Array, "stringToUint8Array");
+    __name2(bytesToBase64URL, "bytesToBase64URL");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/helpers.js
 function expiresAt(expiresIn) {
   const timeNow = Math.round(Date.now() / 1e3);
   return timeNow + expiresIn;
 }
+__name(expiresAt, "expiresAt");
 function uuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0, v = c == "x" ? r : r & 3 | 8;
     return v.toString(16);
   });
 }
+__name(uuid, "uuid");
 function parseParametersFromURL(href) {
   const result = {};
   const url = new URL(href);
@@ -5096,6 +5260,7 @@ function parseParametersFromURL(href) {
   });
   return result;
 }
+__name(parseParametersFromURL, "parseParametersFromURL");
 function decodeJWT(token) {
   const parts = token.split(".");
   if (parts.length !== 3) {
@@ -5118,11 +5283,13 @@ function decodeJWT(token) {
   };
   return data;
 }
+__name(decodeJWT, "decodeJWT");
 async function sleep(time) {
   return await new Promise((accept) => {
     setTimeout(() => accept(null), time);
   });
 }
+__name(sleep, "sleep");
 function retryable(fn, isRetryable) {
   const promise = new Promise((accept, reject) => {
     ;
@@ -5145,9 +5312,11 @@ function retryable(fn, isRetryable) {
   });
   return promise;
 }
+__name(retryable, "retryable");
 function dec2hex(dec) {
   return ("0" + dec.toString(16)).substr(-2);
 }
+__name(dec2hex, "dec2hex");
 function generatePKCEVerifier() {
   const verifierLength = 56;
   const array = new Uint32Array(verifierLength);
@@ -5163,6 +5332,7 @@ function generatePKCEVerifier() {
   crypto.getRandomValues(array);
   return Array.from(array, dec2hex).join("");
 }
+__name(generatePKCEVerifier, "generatePKCEVerifier");
 async function sha256(randomString) {
   const encoder = new TextEncoder();
   const encodedData = encoder.encode(randomString);
@@ -5170,6 +5340,7 @@ async function sha256(randomString) {
   const bytes = new Uint8Array(hash);
   return Array.from(bytes).map((c) => String.fromCharCode(c)).join("");
 }
+__name(sha256, "sha256");
 async function generatePKCEChallenge(verifier) {
   const hasCryptoSupport = typeof crypto !== "undefined" && typeof crypto.subtle !== "undefined" && typeof TextEncoder !== "undefined";
   if (!hasCryptoSupport) {
@@ -5179,6 +5350,7 @@ async function generatePKCEChallenge(verifier) {
   const hashed = await sha256(verifier);
   return btoa(hashed).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
+__name(generatePKCEChallenge, "generatePKCEChallenge");
 async function getCodeChallengeAndMethod(storage, storageKey, isPasswordRecovery = false) {
   const codeVerifier = generatePKCEVerifier();
   let storedCodeVerifier = codeVerifier;
@@ -5190,6 +5362,7 @@ async function getCodeChallengeAndMethod(storage, storageKey, isPasswordRecovery
   const codeChallengeMethod = codeVerifier === codeChallenge ? "plain" : "s256";
   return [codeChallenge, codeChallengeMethod];
 }
+__name(getCodeChallengeAndMethod, "getCodeChallengeAndMethod");
 function parseResponseAPIVersion(response) {
   const apiVersion = response.headers.get(API_VERSION_HEADER_NAME);
   if (!apiVersion) {
@@ -5205,6 +5378,7 @@ function parseResponseAPIVersion(response) {
     return null;
   }
 }
+__name(parseResponseAPIVersion, "parseResponseAPIVersion");
 function validateExp(exp) {
   if (!exp) {
     throw new Error("Missing exp claim");
@@ -5214,6 +5388,7 @@ function validateExp(exp) {
     throw new Error("JWT has expired");
   }
 }
+__name(validateExp, "validateExp");
 function getAlgorithm(alg) {
   switch (alg) {
     case "RS256":
@@ -5231,15 +5406,17 @@ function getAlgorithm(alg) {
       throw new Error("Invalid alg claim");
   }
 }
+__name(getAlgorithm, "getAlgorithm");
 function validateUUID(str) {
   if (!UUID_REGEX.test(str)) {
     throw new Error("@supabase/auth-js: Expected parameter to be UUID but is not");
   }
 }
+__name(validateUUID, "validateUUID");
 function userNotAvailableProxy() {
   const proxyTarget = {};
   return new Proxy(proxyTarget, {
-    get: /* @__PURE__ */ __name((target, prop) => {
+    get: /* @__PURE__ */ __name2((target, prop) => {
       if (prop === "__isUserNotAvailableProxy") {
         return true;
       }
@@ -5251,32 +5428,44 @@ function userNotAvailableProxy() {
       }
       throw new Error(`@supabase/auth-js: client was created with userStorage option and there was no user stored in the user storage. Accessing the "${prop}" property of the session object is not supported. Please use getUser() instead.`);
     }, "get"),
-    set: /* @__PURE__ */ __name((_target, prop) => {
+    set: /* @__PURE__ */ __name2((_target, prop) => {
       throw new Error(`@supabase/auth-js: client was created with userStorage option and there was no user stored in the user storage. Setting the "${prop}" property of the session object is not supported. Please use getUser() to fetch a user object you can manipulate.`);
     }, "set"),
-    deleteProperty: /* @__PURE__ */ __name((_target, prop) => {
+    deleteProperty: /* @__PURE__ */ __name2((_target, prop) => {
       throw new Error(`@supabase/auth-js: client was created with userStorage option and there was no user stored in the user storage. Deleting the "${prop}" property of the session object is not supported. Please use getUser() to fetch a user object you can manipulate.`);
     }, "deleteProperty")
   });
 }
+__name(userNotAvailableProxy, "userNotAvailableProxy");
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
-var isBrowser, localStorageWriteTests, supportsLocalStorage, resolveFetch4, looksLikeFetchResponse, setItemAsync, getItemAsync, removeItemAsync, Deferred, API_VERSION_REGEX, UUID_REGEX;
+__name(deepClone, "deepClone");
+var isBrowser;
+var localStorageWriteTests;
+var supportsLocalStorage;
+var resolveFetch4;
+var looksLikeFetchResponse;
+var setItemAsync;
+var getItemAsync;
+var removeItemAsync;
+var Deferred;
+var API_VERSION_REGEX;
+var UUID_REGEX;
 var init_helpers3 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/helpers.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_constants4();
     init_errors2();
     init_base64url();
-    __name(expiresAt, "expiresAt");
-    __name(uuid, "uuid");
-    isBrowser = /* @__PURE__ */ __name(() => typeof window !== "undefined" && typeof document !== "undefined", "isBrowser");
+    __name2(expiresAt, "expiresAt");
+    __name2(uuid, "uuid");
+    isBrowser = /* @__PURE__ */ __name2(() => typeof window !== "undefined" && typeof document !== "undefined", "isBrowser");
     localStorageWriteTests = {
       tested: false,
       writable: false
     };
-    supportsLocalStorage = /* @__PURE__ */ __name(() => {
+    supportsLocalStorage = /* @__PURE__ */ __name2(() => {
       if (!isBrowser()) {
         return false;
       }
@@ -5302,25 +5491,25 @@ var init_helpers3 = __esm({
       }
       return localStorageWriteTests.writable;
     }, "supportsLocalStorage");
-    __name(parseParametersFromURL, "parseParametersFromURL");
-    resolveFetch4 = /* @__PURE__ */ __name((customFetch) => {
+    __name2(parseParametersFromURL, "parseParametersFromURL");
+    resolveFetch4 = /* @__PURE__ */ __name2((customFetch) => {
       let _fetch;
       if (customFetch) {
         _fetch = customFetch;
       } else if (typeof fetch === "undefined") {
-        _fetch = /* @__PURE__ */ __name((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)), "_fetch");
+        _fetch = /* @__PURE__ */ __name2((...args) => Promise.resolve().then(() => (init_browser(), browser_exports)).then(({ default: fetch3 }) => fetch3(...args)), "_fetch");
       } else {
         _fetch = fetch;
       }
       return (...args) => _fetch(...args);
     }, "resolveFetch");
-    looksLikeFetchResponse = /* @__PURE__ */ __name((maybeResponse) => {
+    looksLikeFetchResponse = /* @__PURE__ */ __name2((maybeResponse) => {
       return typeof maybeResponse === "object" && maybeResponse !== null && "status" in maybeResponse && "ok" in maybeResponse && "json" in maybeResponse && typeof maybeResponse.json === "function";
     }, "looksLikeFetchResponse");
-    setItemAsync = /* @__PURE__ */ __name(async (storage, key, data) => {
+    setItemAsync = /* @__PURE__ */ __name2(async (storage, key, data) => {
       await storage.setItem(key, JSON.stringify(data));
     }, "setItemAsync");
-    getItemAsync = /* @__PURE__ */ __name(async (storage, key) => {
+    getItemAsync = /* @__PURE__ */ __name2(async (storage, key) => {
       const value = await storage.getItem(key);
       if (!value) {
         return null;
@@ -5331,12 +5520,15 @@ var init_helpers3 = __esm({
         return value;
       }
     }, "getItemAsync");
-    removeItemAsync = /* @__PURE__ */ __name(async (storage, key) => {
+    removeItemAsync = /* @__PURE__ */ __name2(async (storage, key) => {
       await storage.removeItem(key);
     }, "removeItemAsync");
     Deferred = class _Deferred {
       static {
-        __name(this, "Deferred");
+        __name(this, "_Deferred");
+      }
+      static {
+        __name2(this, "Deferred");
       }
       constructor() {
         ;
@@ -5348,26 +5540,24 @@ var init_helpers3 = __esm({
       }
     };
     Deferred.promiseConstructor = Promise;
-    __name(decodeJWT, "decodeJWT");
-    __name(sleep, "sleep");
-    __name(retryable, "retryable");
-    __name(dec2hex, "dec2hex");
-    __name(generatePKCEVerifier, "generatePKCEVerifier");
-    __name(sha256, "sha256");
-    __name(generatePKCEChallenge, "generatePKCEChallenge");
-    __name(getCodeChallengeAndMethod, "getCodeChallengeAndMethod");
+    __name2(decodeJWT, "decodeJWT");
+    __name2(sleep, "sleep");
+    __name2(retryable, "retryable");
+    __name2(dec2hex, "dec2hex");
+    __name2(generatePKCEVerifier, "generatePKCEVerifier");
+    __name2(sha256, "sha256");
+    __name2(generatePKCEChallenge, "generatePKCEChallenge");
+    __name2(getCodeChallengeAndMethod, "getCodeChallengeAndMethod");
     API_VERSION_REGEX = /^2[0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[0-1])$/i;
-    __name(parseResponseAPIVersion, "parseResponseAPIVersion");
-    __name(validateExp, "validateExp");
-    __name(getAlgorithm, "getAlgorithm");
+    __name2(parseResponseAPIVersion, "parseResponseAPIVersion");
+    __name2(validateExp, "validateExp");
+    __name2(getAlgorithm, "getAlgorithm");
     UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-    __name(validateUUID, "validateUUID");
-    __name(userNotAvailableProxy, "userNotAvailableProxy");
-    __name(deepClone, "deepClone");
+    __name2(validateUUID, "validateUUID");
+    __name2(userNotAvailableProxy, "userNotAvailableProxy");
+    __name2(deepClone, "deepClone");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/fetch.js
 async function handleError2(error) {
   var _a;
   if (!looksLikeFetchResponse(error)) {
@@ -5400,6 +5590,7 @@ async function handleError2(error) {
   }
   throw new AuthApiError(_getErrorMessage2(data), error.status || 500, errorCode);
 }
+__name(handleError2, "handleError2");
 async function _request(fetcher, method, url, options) {
   var _a;
   const headers = Object.assign({}, options === null || options === void 0 ? void 0 : options.headers);
@@ -5420,6 +5611,7 @@ async function _request(fetcher, method, url, options) {
   }, {}, options === null || options === void 0 ? void 0 : options.body);
   return (options === null || options === void 0 ? void 0 : options.xform) ? options === null || options === void 0 ? void 0 : options.xform(data) : { data: Object.assign({}, data), error: null };
 }
+__name(_request, "_request");
 async function _handleRequest2(fetcher, method, url, options, parameters, body) {
   const requestParams = _getRequestParams2(method, options, parameters, body);
   let result;
@@ -5441,6 +5633,7 @@ async function _handleRequest2(fetcher, method, url, options, parameters, body) 
     await handleError2(e);
   }
 }
+__name(_handleRequest2, "_handleRequest2");
 function _sessionResponse(data) {
   var _a;
   let session = null;
@@ -5453,6 +5646,7 @@ function _sessionResponse(data) {
   const user = (_a = data.user) !== null && _a !== void 0 ? _a : data;
   return { data: { session, user }, error: null };
 }
+__name(_sessionResponse, "_sessionResponse");
 function _sessionResponsePassword(data) {
   const response = _sessionResponse(data);
   if (!response.error && data.weak_password && typeof data.weak_password === "object" && Array.isArray(data.weak_password.reasons) && data.weak_password.reasons.length && data.weak_password.message && typeof data.weak_password.message === "string" && data.weak_password.reasons.reduce((a, i) => a && typeof i === "string", true)) {
@@ -5460,14 +5654,17 @@ function _sessionResponsePassword(data) {
   }
   return response;
 }
+__name(_sessionResponsePassword, "_sessionResponsePassword");
 function _userResponse(data) {
   var _a;
   const user = (_a = data.user) !== null && _a !== void 0 ? _a : data;
   return { data: { user }, error: null };
 }
+__name(_userResponse, "_userResponse");
 function _ssoResponse(data) {
   return { data, error: null };
 }
+__name(_ssoResponse, "_ssoResponse");
 function _generateLinkResponse(data) {
   const { action_link, email_otp, hashed_token, redirect_to, verification_type } = data, rest = __rest(data, ["action_link", "email_otp", "hashed_token", "redirect_to", "verification_type"]);
   const properties = {
@@ -5486,20 +5683,26 @@ function _generateLinkResponse(data) {
     error: null
   };
 }
+__name(_generateLinkResponse, "_generateLinkResponse");
 function _noResolveJsonResponse(data) {
   return data;
 }
+__name(_noResolveJsonResponse, "_noResolveJsonResponse");
 function hasSession(data) {
   return data.access_token && data.refresh_token && data.expires_in;
 }
-var __rest, _getErrorMessage2, NETWORK_ERROR_CODES, _getRequestParams2;
+__name(hasSession, "hasSession");
+var __rest;
+var _getErrorMessage2;
+var NETWORK_ERROR_CODES;
+var _getRequestParams2;
 var init_fetch3 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/fetch.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_constants4();
     init_helpers3();
     init_errors2();
-    __rest = function(s, e) {
+    __rest = /* @__PURE__ */ __name(function(s, e) {
       var t = {};
       for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
         t[p] = s[p];
@@ -5509,11 +5712,11 @@ var init_fetch3 = __esm({
             t[p[i]] = s[p[i]];
         }
       return t;
-    };
-    _getErrorMessage2 = /* @__PURE__ */ __name((err) => err.msg || err.message || err.error_description || err.error || JSON.stringify(err), "_getErrorMessage");
+    }, "__rest");
+    _getErrorMessage2 = /* @__PURE__ */ __name2((err) => err.msg || err.message || err.error_description || err.error || JSON.stringify(err), "_getErrorMessage");
     NETWORK_ERROR_CODES = [502, 503, 504];
-    __name(handleError2, "handleError");
-    _getRequestParams2 = /* @__PURE__ */ __name((method, options, parameters, body) => {
+    __name2(handleError2, "handleError");
+    _getRequestParams2 = /* @__PURE__ */ __name2((method, options, parameters, body) => {
       const params = { method, headers: (options === null || options === void 0 ? void 0 : options.headers) || {} };
       if (method === "GET") {
         return params;
@@ -5522,37 +5725,34 @@ var init_fetch3 = __esm({
       params.body = JSON.stringify(body);
       return Object.assign(Object.assign({}, params), parameters);
     }, "_getRequestParams");
-    __name(_request, "_request");
-    __name(_handleRequest2, "_handleRequest");
-    __name(_sessionResponse, "_sessionResponse");
-    __name(_sessionResponsePassword, "_sessionResponsePassword");
-    __name(_userResponse, "_userResponse");
-    __name(_ssoResponse, "_ssoResponse");
-    __name(_generateLinkResponse, "_generateLinkResponse");
-    __name(_noResolveJsonResponse, "_noResolveJsonResponse");
-    __name(hasSession, "hasSession");
+    __name2(_request, "_request");
+    __name2(_handleRequest2, "_handleRequest");
+    __name2(_sessionResponse, "_sessionResponse");
+    __name2(_sessionResponsePassword, "_sessionResponsePassword");
+    __name2(_userResponse, "_userResponse");
+    __name2(_ssoResponse, "_ssoResponse");
+    __name2(_generateLinkResponse, "_generateLinkResponse");
+    __name2(_noResolveJsonResponse, "_noResolveJsonResponse");
+    __name2(hasSession, "hasSession");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/types.js
 var SIGN_OUT_SCOPES;
 var init_types3 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/types.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     SIGN_OUT_SCOPES = ["global", "local", "others"];
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/GoTrueAdminApi.js
-var __rest2, GoTrueAdminApi;
+var __rest2;
+var GoTrueAdminApi;
 var init_GoTrueAdminApi = __esm({
   "../node_modules/@supabase/auth-js/dist/module/GoTrueAdminApi.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_fetch3();
     init_helpers3();
     init_types3();
     init_errors2();
-    __rest2 = function(s, e) {
+    __rest2 = /* @__PURE__ */ __name(function(s, e) {
       var t = {};
       for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
         t[p] = s[p];
@@ -5562,10 +5762,13 @@ var init_GoTrueAdminApi = __esm({
             t[p[i]] = s[p[i]];
         }
       return t;
-    };
+    }, "__rest2");
     GoTrueAdminApi = class {
       static {
         __name(this, "GoTrueAdminApi");
+      }
+      static {
+        __name2(this, "GoTrueAdminApi");
       }
       constructor({ url = "", headers = {}, fetch: fetch3 }) {
         this.url = url;
@@ -5786,7 +5989,7 @@ var init_GoTrueAdminApi = __esm({
         try {
           const { data, error } = await _request(this.fetch, "GET", `${this.url}/admin/users/${params.userId}/factors`, {
             headers: this.headers,
-            xform: /* @__PURE__ */ __name((factors) => {
+            xform: /* @__PURE__ */ __name2((factors) => {
               return { data: { factors }, error: null };
             }, "xform")
           });
@@ -5816,35 +6019,32 @@ var init_GoTrueAdminApi = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/local-storage.js
 function memoryLocalStorageAdapter(store = {}) {
   return {
-    getItem: /* @__PURE__ */ __name((key) => {
+    getItem: /* @__PURE__ */ __name2((key) => {
       return store[key] || null;
     }, "getItem"),
-    setItem: /* @__PURE__ */ __name((key, value) => {
+    setItem: /* @__PURE__ */ __name2((key, value) => {
       store[key] = value;
     }, "setItem"),
-    removeItem: /* @__PURE__ */ __name((key) => {
+    removeItem: /* @__PURE__ */ __name2((key) => {
       delete store[key];
     }, "removeItem")
   };
 }
+__name(memoryLocalStorageAdapter, "memoryLocalStorageAdapter");
 var init_local_storage = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/local-storage.js"() {
-    init_functionsRoutes_0_8865896815142511();
-    __name(memoryLocalStorageAdapter, "memoryLocalStorageAdapter");
+    init_functionsRoutes_0_3110068635345318();
+    __name2(memoryLocalStorageAdapter, "memoryLocalStorageAdapter");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/polyfills.js
 function polyfillGlobalThis() {
   if (typeof globalThis === "object")
     return;
   try {
     Object.defineProperty(Object.prototype, "__magic__", {
-      get: /* @__PURE__ */ __name(function() {
+      get: /* @__PURE__ */ __name2(function() {
         return this;
       }, "get"),
       configurable: true
@@ -5857,14 +6057,13 @@ function polyfillGlobalThis() {
     }
   }
 }
+__name(polyfillGlobalThis, "polyfillGlobalThis");
 var init_polyfills = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/polyfills.js"() {
-    init_functionsRoutes_0_8865896815142511();
-    __name(polyfillGlobalThis, "polyfillGlobalThis");
+    init_functionsRoutes_0_3110068635345318();
+    __name2(polyfillGlobalThis, "polyfillGlobalThis");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/lib/locks.js
 async function navigatorLock(name, acquireTimeout, fn) {
   if (internals.debug) {
     console.log("@supabase/gotrue-js: navigatorLock: acquire lock", name, acquireTimeout);
@@ -5917,10 +6116,13 @@ async function navigatorLock(name, acquireTimeout, fn) {
     }
   }));
 }
-var internals, LockAcquireTimeoutError, NavigatorLockAcquireTimeoutError;
+__name(navigatorLock, "navigatorLock");
+var internals;
+var LockAcquireTimeoutError;
+var NavigatorLockAcquireTimeoutError;
 var init_locks = __esm({
   "../node_modules/@supabase/auth-js/dist/module/lib/locks.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_helpers3();
     internals = {
       /**
@@ -5932,6 +6134,9 @@ var init_locks = __esm({
       static {
         __name(this, "LockAcquireTimeoutError");
       }
+      static {
+        __name2(this, "LockAcquireTimeoutError");
+      }
       constructor(message) {
         super(message);
         this.isAcquireTimeout = true;
@@ -5941,19 +6146,23 @@ var init_locks = __esm({
       static {
         __name(this, "NavigatorLockAcquireTimeoutError");
       }
+      static {
+        __name2(this, "NavigatorLockAcquireTimeoutError");
+      }
     };
-    __name(navigatorLock, "navigatorLock");
+    __name2(navigatorLock, "navigatorLock");
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/GoTrueClient.js
 async function lockNoOp(name, acquireTimeout, fn) {
   return await fn();
 }
-var DEFAULT_OPTIONS, GLOBAL_JWKS, GoTrueClient;
+__name(lockNoOp, "lockNoOp");
+var DEFAULT_OPTIONS;
+var GLOBAL_JWKS;
+var GoTrueClient;
 var init_GoTrueClient = __esm({
   "../node_modules/@supabase/auth-js/dist/module/GoTrueClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_GoTrueAdminApi();
     init_constants4();
     init_errors2();
@@ -5977,11 +6186,14 @@ var init_GoTrueClient = __esm({
       debug: false,
       hasCustomAuthorizationHeader: false
     };
-    __name(lockNoOp, "lockNoOp");
+    __name2(lockNoOp, "lockNoOp");
     GLOBAL_JWKS = {};
     GoTrueClient = class _GoTrueClient {
       static {
-        __name(this, "GoTrueClient");
+        __name(this, "_GoTrueClient");
+      }
+      static {
+        __name2(this, "GoTrueClient");
       }
       /**
        * Create a new client for use in the browser.
@@ -6867,7 +7079,7 @@ var init_GoTrueClient = __esm({
             if (this.storage.isServer && currentSession.user) {
               let suppressWarning = this.suppressGetSessionWarning;
               const proxySession = new Proxy(currentSession, {
-                get: /* @__PURE__ */ __name((target, prop, receiver) => {
+                get: /* @__PURE__ */ __name2((target, prop, receiver) => {
                   if (!suppressWarning && prop === "user") {
                     console.warn("Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.");
                     suppressWarning = true;
@@ -7228,7 +7440,7 @@ var init_GoTrueClient = __esm({
         const subscription = {
           id,
           callback,
-          unsubscribe: /* @__PURE__ */ __name(() => {
+          unsubscribe: /* @__PURE__ */ __name2(() => {
             this._debug("#unsubscribe()", "state change callback with id removed", id);
             this.stateChangeEmitters.delete(id);
           }, "unsubscribe")
@@ -8073,30 +8285,25 @@ var init_GoTrueClient = __esm({
     GoTrueClient.nextInstanceID = 0;
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/AuthAdminApi.js
 var init_AuthAdminApi = __esm({
   "../node_modules/@supabase/auth-js/dist/module/AuthAdminApi.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_GoTrueAdminApi();
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/AuthClient.js
-var AuthClient, AuthClient_default;
+var AuthClient;
+var AuthClient_default;
 var init_AuthClient = __esm({
   "../node_modules/@supabase/auth-js/dist/module/AuthClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_GoTrueClient();
     AuthClient = GoTrueClient;
     AuthClient_default = AuthClient;
   }
 });
-
-// ../node_modules/@supabase/auth-js/dist/module/index.js
 var init_module4 = __esm({
   "../node_modules/@supabase/auth-js/dist/module/index.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_GoTrueAdminApi();
     init_GoTrueClient();
     init_AuthAdminApi();
@@ -8106,16 +8313,17 @@ var init_module4 = __esm({
     init_locks();
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/lib/SupabaseAuthClient.js
 var SupabaseAuthClient;
 var init_SupabaseAuthClient = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/lib/SupabaseAuthClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module4();
     SupabaseAuthClient = class extends AuthClient_default {
       static {
         __name(this, "SupabaseAuthClient");
+      }
+      static {
+        __name2(this, "SupabaseAuthClient");
       }
       constructor(options) {
         super(options);
@@ -8123,12 +8331,11 @@ var init_SupabaseAuthClient = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js
-var __awaiter8, SupabaseClient;
+var __awaiter8;
+var SupabaseClient;
 var init_SupabaseClient = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module();
     init_wrapper();
     init_module2();
@@ -8137,13 +8344,14 @@ var init_SupabaseClient = __esm({
     init_fetch2();
     init_helpers2();
     init_SupabaseAuthClient();
-    __awaiter8 = function(thisArg, _arguments, P, generator) {
+    __awaiter8 = /* @__PURE__ */ __name(function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
           resolve(value);
         });
       }
       __name(adopt, "adopt");
+      __name2(adopt, "adopt");
       return new (P || (P = Promise))(function(resolve, reject) {
         function fulfilled(value) {
           try {
@@ -8153,6 +8361,7 @@ var init_SupabaseClient = __esm({
           }
         }
         __name(fulfilled, "fulfilled");
+        __name2(fulfilled, "fulfilled");
         function rejected(value) {
           try {
             step(generator["throw"](value));
@@ -8161,16 +8370,21 @@ var init_SupabaseClient = __esm({
           }
         }
         __name(rejected, "rejected");
+        __name2(rejected, "rejected");
         function step(result) {
           result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         __name(step, "step");
+        __name2(step, "step");
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
-    };
+    }, "__awaiter8");
     SupabaseClient = class {
       static {
         __name(this, "SupabaseClient");
+      }
+      static {
+        __name2(this, "SupabaseClient");
       }
       /**
        * Create a new client for use in the browser.
@@ -8215,7 +8429,7 @@ var init_SupabaseClient = __esm({
         } else {
           this.accessToken = settings.accessToken;
           this.auth = new Proxy({}, {
-            get: /* @__PURE__ */ __name((_, prop) => {
+            get: /* @__PURE__ */ __name2((_, prop) => {
               throw new Error(`@supabase/supabase-js: Supabase Client is configured with the accessToken option, accessing supabase.auth.${String(prop)} is not possible`);
             }, "get")
           });
@@ -8372,8 +8586,6 @@ var init_SupabaseClient = __esm({
     };
   }
 });
-
-// ../node_modules/@supabase/supabase-js/dist/module/index.js
 function shouldShowDeprecationWarning() {
   if (typeof window !== "undefined") {
     return false;
@@ -8392,25 +8604,24 @@ function shouldShowDeprecationWarning() {
   const majorVersion = parseInt(versionMatch[1], 10);
   return majorVersion <= 18;
 }
+__name(shouldShowDeprecationWarning, "shouldShowDeprecationWarning");
 var createClient;
 var init_module5 = __esm({
   "../node_modules/@supabase/supabase-js/dist/module/index.js"() {
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_SupabaseClient();
     init_module4();
     init_wrapper();
     init_module2();
-    createClient = /* @__PURE__ */ __name((supabaseUrl, supabaseKey, options) => {
+    createClient = /* @__PURE__ */ __name2((supabaseUrl, supabaseKey, options) => {
       return new SupabaseClient(supabaseUrl, supabaseKey, options);
     }, "createClient");
-    __name(shouldShowDeprecationWarning, "shouldShowDeprecationWarning");
+    __name2(shouldShowDeprecationWarning, "shouldShowDeprecationWarning");
     if (shouldShowDeprecationWarning()) {
       console.warn(`\u26A0\uFE0F  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217`);
     }
   }
 });
-
-// api/users/me/profile.ts
 async function onRequestPatch(context) {
   try {
     const supabaseUrl = context.env?.SUPABASE_URL;
@@ -8454,16 +8665,15 @@ async function onRequestPatch(context) {
     });
   }
 }
+__name(onRequestPatch, "onRequestPatch");
 var init_profile = __esm({
   "api/users/me/profile.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
-    __name(onRequestPatch, "onRequestPatch");
+    __name2(onRequestPatch, "onRequestPatch");
   }
 });
-
-// api/auth/check-email.ts
 async function onRequestPost(context) {
   try {
     const body = await context.request.json().catch(() => null);
@@ -8512,16 +8722,15 @@ async function onRequestPost(context) {
     );
   }
 }
+__name(onRequestPost, "onRequestPost");
 var init_check_email = __esm({
   "api/auth/check-email.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
-    __name(onRequestPost, "onRequestPost");
+    __name2(onRequestPost, "onRequestPost");
   }
 });
-
-// api/auth/check-phone.ts
 async function onRequestPost2(context) {
   try {
     const body = await context.request.json().catch(() => null);
@@ -8532,7 +8741,7 @@ async function onRequestPost2(context) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-    const normalizeCnPhoneNoPlus = /* @__PURE__ */ __name((raw) => {
+    const normalizeCnPhoneNoPlus = /* @__PURE__ */ __name2((raw) => {
       const s = (raw || "").trim();
       if (!s) return "";
       const digits = s.replace(/[^\d]/g, "");
@@ -8579,16 +8788,15 @@ async function onRequestPost2(context) {
     );
   }
 }
+__name(onRequestPost2, "onRequestPost2");
 var init_check_phone = __esm({
   "api/auth/check-phone.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
-    __name(onRequestPost2, "onRequestPost");
+    __name2(onRequestPost2, "onRequestPost");
   }
 });
-
-// api/auth/login.ts
 async function onRequestPost3(context) {
   try {
     const body = await context.request.json().catch(() => null);
@@ -8644,20 +8852,20 @@ async function onRequestPost3(context) {
     );
   }
 }
+__name(onRequestPost3, "onRequestPost3");
 var init_login = __esm({
   "api/auth/login.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
-    __name(onRequestPost3, "onRequestPost");
+    __name2(onRequestPost3, "onRequestPost");
   }
 });
-
-// api/auth/signup.ts
 function pickRandomColor() {
   const idx = Math.floor(Math.random() * SATURATED_COLORS.length);
   return SATURATED_COLORS[idx];
 }
+__name(pickRandomColor, "pickRandomColor");
 function extractAvatarText(inputRaw) {
   const input = (inputRaw || "").trim();
   if (!input) return "U";
@@ -8676,14 +8884,17 @@ function extractAvatarText(inputRaw) {
   }
   return "U";
 }
+__name(extractAvatarText, "extractAvatarText");
 function buildUiAvatarUrl(name, bgColorHex) {
   const bg = bgColorHex.replace("#", "").toUpperCase();
   const encName = encodeURIComponent(name);
   return `https://ui-avatars.com/api/?name=${encName}&background=${bg}&color=fff&size=128&bold=true`;
 }
+__name(buildUiAvatarUrl, "buildUiAvatarUrl");
 function isValidE164Phone(phone) {
   return /^\+\d{7,15}$/.test(phone);
 }
+__name(isValidE164Phone, "isValidE164Phone");
 function normalizeAuthError(err, channel) {
   const raw = typeof err === "object" && err && "message" in err ? String(err.message ?? "") : "";
   const rawLower = raw.toLowerCase();
@@ -8698,6 +8909,7 @@ function normalizeAuthError(err, channel) {
   }
   return { status: 400, message: "\u6CE8\u518C\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5", raw };
 }
+__name(normalizeAuthError, "normalizeAuthError");
 async function onRequestPost4(context) {
   try {
     const body = await context.request.json().catch(() => null);
@@ -8823,23 +9035,22 @@ async function onRequestPost4(context) {
     );
   }
 }
+__name(onRequestPost4, "onRequestPost4");
 var SATURATED_COLORS;
 var init_signup = __esm({
   "api/auth/signup.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
     SATURATED_COLORS = ["#2ECC71", "#3498DB", "#E74C3C", "#F1C40F", "#9B59B6", "#1ABC9C"];
-    __name(pickRandomColor, "pickRandomColor");
-    __name(extractAvatarText, "extractAvatarText");
-    __name(buildUiAvatarUrl, "buildUiAvatarUrl");
-    __name(isValidE164Phone, "isValidE164Phone");
-    __name(normalizeAuthError, "normalizeAuthError");
-    __name(onRequestPost4, "onRequestPost");
+    __name2(pickRandomColor, "pickRandomColor");
+    __name2(extractAvatarText, "extractAvatarText");
+    __name2(buildUiAvatarUrl, "buildUiAvatarUrl");
+    __name2(isValidE164Phone, "isValidE164Phone");
+    __name2(normalizeAuthError, "normalizeAuthError");
+    __name2(onRequestPost4, "onRequestPost");
   }
 });
-
-// api/creatives/[id]/index.ts
 async function onRequestGet(context) {
   try {
     const supabaseUrl = context.env?.SUPABASE_URL;
@@ -8884,23 +9095,24 @@ async function onRequestGet(context) {
     });
   }
 }
+__name(onRequestGet, "onRequestGet");
 var init_id = __esm({
   "api/creatives/[id]/index.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
-    __name(onRequestGet, "onRequestGet");
+    __name2(onRequestGet, "onRequestGet");
   }
 });
-
-// api/creatives/index.ts
 function slugifyTitle(title) {
   return String(title).normalize("NFKC").trim().replace(/\s+/g, "-").replace(/[^\u4e00-\u9fa5\w\-]/g, "").toLowerCase();
 }
+__name(slugifyTitle, "slugifyTitle");
 function makeSlugUnique(base) {
   const rand = Math.random().toString(36).slice(2, 7);
   return `${base}-${rand}`;
 }
+__name(makeSlugUnique, "makeSlugUnique");
 async function onRequestGet2(context) {
   try {
     const supabaseUrl = context.env?.SUPABASE_URL;
@@ -8932,6 +9144,7 @@ async function onRequestGet2(context) {
     });
   }
 }
+__name(onRequestGet2, "onRequestGet2");
 async function onRequestPost5(context) {
   try {
     const supabaseUrl = context.env?.SUPABASE_URL;
@@ -8997,22 +9210,21 @@ async function onRequestPost5(context) {
     });
   }
 }
+__name(onRequestPost5, "onRequestPost5");
 var init_creatives = __esm({
   "api/creatives/index.ts"() {
     "use strict";
-    init_functionsRoutes_0_8865896815142511();
+    init_functionsRoutes_0_3110068635345318();
     init_module5();
-    __name(slugifyTitle, "slugifyTitle");
-    __name(makeSlugUnique, "makeSlugUnique");
-    __name(onRequestGet2, "onRequestGet");
-    __name(onRequestPost5, "onRequestPost");
+    __name2(slugifyTitle, "slugifyTitle");
+    __name2(makeSlugUnique, "makeSlugUnique");
+    __name2(onRequestGet2, "onRequestGet");
+    __name2(onRequestPost5, "onRequestPost");
   }
 });
-
-// ../.wrangler/tmp/pages-UQtBmd/functionsRoutes-0.8865896815142511.mjs
 var routes;
-var init_functionsRoutes_0_8865896815142511 = __esm({
-  "../.wrangler/tmp/pages-UQtBmd/functionsRoutes-0.8865896815142511.mjs"() {
+var init_functionsRoutes_0_3110068635345318 = __esm({
+  "../.wrangler/tmp/pages-NNRFtg/functionsRoutes-0.3110068635345318.mjs"() {
     "use strict";
     init_profile();
     init_check_email();
@@ -9082,18 +9294,10 @@ var init_functionsRoutes_0_8865896815142511 = __esm({
     ];
   }
 });
-
-// ../.wrangler/tmp/bundle-oE606o/middleware-loader.entry.ts
-init_functionsRoutes_0_8865896815142511();
-
-// ../.wrangler/tmp/bundle-oE606o/middleware-insertion-facade.js
-init_functionsRoutes_0_8865896815142511();
-
-// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_8865896815142511();
-
-// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_8865896815142511();
+init_functionsRoutes_0_3110068635345318();
+init_functionsRoutes_0_3110068635345318();
+init_functionsRoutes_0_3110068635345318();
+init_functionsRoutes_0_3110068635345318();
 function lexer(str) {
   var tokens = [];
   var i = 0;
@@ -9178,6 +9382,7 @@ function lexer(str) {
   return tokens;
 }
 __name(lexer, "lexer");
+__name2(lexer, "lexer");
 function parse(str, options) {
   if (options === void 0) {
     options = {};
@@ -9188,18 +9393,18 @@ function parse(str, options) {
   var key = 0;
   var i = 0;
   var path = "";
-  var tryConsume = /* @__PURE__ */ __name(function(type) {
+  var tryConsume = /* @__PURE__ */ __name2(function(type) {
     if (i < tokens.length && tokens[i].type === type)
       return tokens[i++].value;
   }, "tryConsume");
-  var mustConsume = /* @__PURE__ */ __name(function(type) {
+  var mustConsume = /* @__PURE__ */ __name2(function(type) {
     var value2 = tryConsume(type);
     if (value2 !== void 0)
       return value2;
     var _a2 = tokens[i], nextType = _a2.type, index2 = _a2.index;
     throw new TypeError("Unexpected ".concat(nextType, " at ").concat(index2, ", expected ").concat(type));
   }, "mustConsume");
-  var consumeText = /* @__PURE__ */ __name(function() {
+  var consumeText = /* @__PURE__ */ __name2(function() {
     var result2 = "";
     var value2;
     while (value2 = tryConsume("CHAR") || tryConsume("ESCAPED_CHAR")) {
@@ -9207,7 +9412,7 @@ function parse(str, options) {
     }
     return result2;
   }, "consumeText");
-  var isSafe = /* @__PURE__ */ __name(function(value2) {
+  var isSafe = /* @__PURE__ */ __name2(function(value2) {
     for (var _i = 0, delimiter_1 = delimiter; _i < delimiter_1.length; _i++) {
       var char2 = delimiter_1[_i];
       if (value2.indexOf(char2) > -1)
@@ -9215,7 +9420,7 @@ function parse(str, options) {
     }
     return false;
   }, "isSafe");
-  var safePattern = /* @__PURE__ */ __name(function(prefix2) {
+  var safePattern = /* @__PURE__ */ __name2(function(prefix2) {
     var prev = result[result.length - 1];
     var prevText = prefix2 || (prev && typeof prev === "string" ? prev : "");
     if (prev && !prevText) {
@@ -9278,12 +9483,14 @@ function parse(str, options) {
   return result;
 }
 __name(parse, "parse");
+__name2(parse, "parse");
 function match(str, options) {
   var keys = [];
   var re = pathToRegexp(str, keys, options);
   return regexpToFunction(re, keys, options);
 }
 __name(match, "match");
+__name2(match, "match");
 function regexpToFunction(re, keys, options) {
   if (options === void 0) {
     options = {};
@@ -9297,7 +9504,7 @@ function regexpToFunction(re, keys, options) {
       return false;
     var path = m[0], index2 = m.index;
     var params = /* @__PURE__ */ Object.create(null);
-    var _loop_1 = /* @__PURE__ */ __name(function(i2) {
+    var _loop_1 = /* @__PURE__ */ __name2(function(i2) {
       if (m[i2] === void 0)
         return "continue";
       var key = keys[i2 - 1];
@@ -9316,14 +9523,17 @@ function regexpToFunction(re, keys, options) {
   };
 }
 __name(regexpToFunction, "regexpToFunction");
+__name2(regexpToFunction, "regexpToFunction");
 function escapeString(str) {
   return str.replace(/([.+*?=^!:${}()[\]|/\\])/g, "\\$1");
 }
 __name(escapeString, "escapeString");
+__name2(escapeString, "escapeString");
 function flags(options) {
   return options && options.sensitive ? "" : "i";
 }
 __name(flags, "flags");
+__name2(flags, "flags");
 function regexpToRegexp(path, keys) {
   if (!keys)
     return path;
@@ -9344,6 +9554,7 @@ function regexpToRegexp(path, keys) {
   return path;
 }
 __name(regexpToRegexp, "regexpToRegexp");
+__name2(regexpToRegexp, "regexpToRegexp");
 function arrayToRegexp(paths, keys, options) {
   var parts = paths.map(function(path) {
     return pathToRegexp(path, keys, options).source;
@@ -9351,10 +9562,12 @@ function arrayToRegexp(paths, keys, options) {
   return new RegExp("(?:".concat(parts.join("|"), ")"), flags(options));
 }
 __name(arrayToRegexp, "arrayToRegexp");
+__name2(arrayToRegexp, "arrayToRegexp");
 function stringToRegexp(path, keys, options) {
   return tokensToRegexp(parse(path, options), keys, options);
 }
 __name(stringToRegexp, "stringToRegexp");
+__name2(stringToRegexp, "stringToRegexp");
 function tokensToRegexp(tokens, keys, options) {
   if (options === void 0) {
     options = {};
@@ -9410,6 +9623,7 @@ function tokensToRegexp(tokens, keys, options) {
   return new RegExp(route, flags(options));
 }
 __name(tokensToRegexp, "tokensToRegexp");
+__name2(tokensToRegexp, "tokensToRegexp");
 function pathToRegexp(path, keys, options) {
   if (path instanceof RegExp)
     return regexpToRegexp(path, keys);
@@ -9418,8 +9632,7 @@ function pathToRegexp(path, keys, options) {
   return stringToRegexp(path, keys, options);
 }
 __name(pathToRegexp, "pathToRegexp");
-
-// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/pages-template-worker.ts
+__name2(pathToRegexp, "pathToRegexp");
 var escapeRegex = /[.+?^${}()|[\]\\]/g;
 function* executeRequest(request) {
   const requestPath = new URL(request.url).pathname;
@@ -9470,13 +9683,14 @@ function* executeRequest(request) {
   }
 }
 __name(executeRequest, "executeRequest");
+__name2(executeRequest, "executeRequest");
 var pages_template_worker_default = {
   async fetch(originalRequest, env, workerContext) {
     let request = originalRequest;
     const handlerIterator = executeRequest(request);
     let data = {};
     let isFailOpen = false;
-    const next = /* @__PURE__ */ __name(async (input, init) => {
+    const next = /* @__PURE__ */ __name2(async (input, init) => {
       if (input !== void 0) {
         let url = input;
         if (typeof input === "string") {
@@ -9503,7 +9717,7 @@ var pages_template_worker_default = {
           },
           env,
           waitUntil: workerContext.waitUntil.bind(workerContext),
-          passThroughOnException: /* @__PURE__ */ __name(() => {
+          passThroughOnException: /* @__PURE__ */ __name2(() => {
             isFailOpen = true;
           }, "passThroughOnException")
         };
@@ -9531,17 +9745,15 @@ var pages_template_worker_default = {
     }
   }
 };
-var cloneResponse = /* @__PURE__ */ __name((response) => (
+var cloneResponse = /* @__PURE__ */ __name2((response) => (
   // https://fetch.spec.whatwg.org/#null-body-status
   new Response(
     [101, 204, 205, 304].includes(response.status) ? null : response.body,
     response
   )
 ), "cloneResponse");
-
-// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
-init_functionsRoutes_0_8865896815142511();
-var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+init_functionsRoutes_0_3110068635345318();
+var drainBody = /* @__PURE__ */ __name2(async (request, env, _ctx, middlewareCtx) => {
   try {
     return await middlewareCtx.next(request, env);
   } finally {
@@ -9557,9 +9769,7 @@ var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
   }
 }, "drainBody");
 var middleware_ensure_req_body_drained_default = drainBody;
-
-// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
-init_functionsRoutes_0_8865896815142511();
+init_functionsRoutes_0_3110068635345318();
 function reduceError(e) {
   return {
     name: e?.name,
@@ -9569,7 +9779,8 @@ function reduceError(e) {
   };
 }
 __name(reduceError, "reduceError");
-var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+__name2(reduceError, "reduceError");
+var jsonError = /* @__PURE__ */ __name2(async (request, env, _ctx, middlewareCtx) => {
   try {
     return await middlewareCtx.next(request, env);
   } catch (e) {
@@ -9581,21 +9792,18 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
   }
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
-
-// ../.wrangler/tmp/bundle-oE606o/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
 ];
 var middleware_insertion_facade_default = pages_template_worker_default;
-
-// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/common.ts
-init_functionsRoutes_0_8865896815142511();
+init_functionsRoutes_0_3110068635345318();
 var __facade_middleware__ = [];
 function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
 }
 __name(__facade_register__, "__facade_register__");
+__name2(__facade_register__, "__facade_register__");
 function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
   const [head2, ...tail] = middlewareChain;
   const middlewareCtx = {
@@ -9607,6 +9815,7 @@ function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
   return head2(request, env, ctx, middlewareCtx);
 }
 __name(__facade_invokeChain__, "__facade_invokeChain__");
+__name2(__facade_invokeChain__, "__facade_invokeChain__");
 function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
   return __facade_invokeChain__(request, env, ctx, dispatch, [
     ...__facade_middleware__,
@@ -9614,16 +9823,18 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
   ]);
 }
 __name(__facade_invoke__, "__facade_invoke__");
-
-// ../.wrangler/tmp/bundle-oE606o/middleware-loader.entry.ts
+__name2(__facade_invoke__, "__facade_invoke__");
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
+  static {
+    __name(this, "___Facade_ScheduledController__");
+  }
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
     this.cron = cron;
     this.#noRetry = noRetry;
   }
   static {
-    __name(this, "__Facade_ScheduledController__");
+    __name2(this, "__Facade_ScheduledController__");
   }
   #noRetry;
   noRetry() {
@@ -9640,7 +9851,7 @@ function wrapExportedHandler(worker) {
   for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
     __facade_register__(middleware);
   }
-  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
+  const fetchDispatcher = /* @__PURE__ */ __name2(function(request, env, ctx) {
     if (worker.fetch === void 0) {
       throw new Error("Handler does not export a fetch() function.");
     }
@@ -9649,7 +9860,7 @@ function wrapExportedHandler(worker) {
   return {
     ...worker,
     fetch(request, env, ctx) {
-      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
+      const dispatcher = /* @__PURE__ */ __name2(function(type, init) {
         if (type === "scheduled" && worker.scheduled !== void 0) {
           const controller = new __Facade_ScheduledController__(
             Date.now(),
@@ -9665,6 +9876,7 @@ function wrapExportedHandler(worker) {
   };
 }
 __name(wrapExportedHandler, "wrapExportedHandler");
+__name2(wrapExportedHandler, "wrapExportedHandler");
 function wrapWorkerEntrypoint(klass) {
   if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
     return klass;
@@ -9673,7 +9885,7 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
+    #fetchDispatcher = /* @__PURE__ */ __name2((request, env, ctx) => {
       this.env = env;
       this.ctx = ctx;
       if (super.fetch === void 0) {
@@ -9681,7 +9893,7 @@ function wrapWorkerEntrypoint(klass) {
       }
       return super.fetch(request);
     }, "#fetchDispatcher");
-    #dispatcher = /* @__PURE__ */ __name((type, init) => {
+    #dispatcher = /* @__PURE__ */ __name2((type, init) => {
       if (type === "scheduled" && super.scheduled !== void 0) {
         const controller = new __Facade_ScheduledController__(
           Date.now(),
@@ -9704,6 +9916,7 @@ function wrapWorkerEntrypoint(klass) {
   };
 }
 __name(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
+__name2(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
 var WRAPPED_ENTRY;
 if (typeof middleware_insertion_facade_default === "object") {
   WRAPPED_ENTRY = wrapExportedHandler(middleware_insertion_facade_default);
@@ -9711,8 +9924,178 @@ if (typeof middleware_insertion_facade_default === "object") {
   WRAPPED_ENTRY = wrapWorkerEntrypoint(middleware_insertion_facade_default);
 }
 var middleware_loader_entry_default = WRAPPED_ENTRY;
-export {
-  __INTERNAL_WRANGLER_MIDDLEWARE__,
-  middleware_loader_entry_default as default
+
+// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
+var drainBody2 = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env);
+  } finally {
+    try {
+      if (request.body !== null && !request.bodyUsed) {
+        const reader = request.body.getReader();
+        while (!(await reader.read()).done) {
+        }
+      }
+    } catch (e) {
+      console.error("Failed to drain the unused request body.", e);
+    }
+  }
+}, "drainBody");
+var middleware_ensure_req_body_drained_default2 = drainBody2;
+
+// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
+function reduceError2(e) {
+  return {
+    name: e?.name,
+    message: e?.message ?? String(e),
+    stack: e?.stack,
+    cause: e?.cause === void 0 ? void 0 : reduceError2(e.cause)
+  };
+}
+__name(reduceError2, "reduceError");
+var jsonError2 = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env);
+  } catch (e) {
+    const error = reduceError2(e);
+    return Response.json(error, {
+      status: 500,
+      headers: { "MF-Experimental-Error-Stack": "true" }
+    });
+  }
+}, "jsonError");
+var middleware_miniflare3_json_error_default2 = jsonError2;
+
+// .wrangler/tmp/bundle-30tapT/middleware-insertion-facade.js
+var __INTERNAL_WRANGLER_MIDDLEWARE__2 = [
+  middleware_ensure_req_body_drained_default2,
+  middleware_miniflare3_json_error_default2
+];
+var middleware_insertion_facade_default2 = middleware_loader_entry_default;
+
+// C:/Users/yilai/AppData/Roaming/npm/node_modules/wrangler/templates/middleware/common.ts
+var __facade_middleware__2 = [];
+function __facade_register__2(...args) {
+  __facade_middleware__2.push(...args.flat());
+}
+__name(__facade_register__2, "__facade_register__");
+function __facade_invokeChain__2(request, env, ctx, dispatch, middlewareChain) {
+  const [head2, ...tail] = middlewareChain;
+  const middlewareCtx = {
+    dispatch,
+    next(newRequest, newEnv) {
+      return __facade_invokeChain__2(newRequest, newEnv, ctx, dispatch, tail);
+    }
+  };
+  return head2(request, env, ctx, middlewareCtx);
+}
+__name(__facade_invokeChain__2, "__facade_invokeChain__");
+function __facade_invoke__2(request, env, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__2(request, env, ctx, dispatch, [
+    ...__facade_middleware__2,
+    finalMiddleware
+  ]);
+}
+__name(__facade_invoke__2, "__facade_invoke__");
+
+// .wrangler/tmp/bundle-30tapT/middleware-loader.entry.ts
+var __Facade_ScheduledController__2 = class ___Facade_ScheduledController__2 {
+  constructor(scheduledTime, cron, noRetry) {
+    this.scheduledTime = scheduledTime;
+    this.cron = cron;
+    this.#noRetry = noRetry;
+  }
+  static {
+    __name(this, "__Facade_ScheduledController__");
+  }
+  #noRetry;
+  noRetry() {
+    if (!(this instanceof ___Facade_ScheduledController__2)) {
+      throw new TypeError("Illegal invocation");
+    }
+    this.#noRetry();
+  }
 };
-//# sourceMappingURL=functionsWorker-0.6665785653236438.mjs.map
+function wrapExportedHandler2(worker) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__2 === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__2.length === 0) {
+    return worker;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__2) {
+    __facade_register__2(middleware);
+  }
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
+    if (worker.fetch === void 0) {
+      throw new Error("Handler does not export a fetch() function.");
+    }
+    return worker.fetch(request, env, ctx);
+  }, "fetchDispatcher");
+  return {
+    ...worker,
+    fetch(request, env, ctx) {
+      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
+        if (type === "scheduled" && worker.scheduled !== void 0) {
+          const controller = new __Facade_ScheduledController__2(
+            Date.now(),
+            init.cron ?? "",
+            () => {
+            }
+          );
+          return worker.scheduled(controller, env, ctx);
+        }
+      }, "dispatcher");
+      return __facade_invoke__2(request, env, ctx, dispatcher, fetchDispatcher);
+    }
+  };
+}
+__name(wrapExportedHandler2, "wrapExportedHandler");
+function wrapWorkerEntrypoint2(klass) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__2 === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__2.length === 0) {
+    return klass;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__2) {
+    __facade_register__2(middleware);
+  }
+  return class extends klass {
+    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
+      this.env = env;
+      this.ctx = ctx;
+      if (super.fetch === void 0) {
+        throw new Error("Entrypoint class does not define a fetch() function.");
+      }
+      return super.fetch(request);
+    }, "#fetchDispatcher");
+    #dispatcher = /* @__PURE__ */ __name((type, init) => {
+      if (type === "scheduled" && super.scheduled !== void 0) {
+        const controller = new __Facade_ScheduledController__2(
+          Date.now(),
+          init.cron ?? "",
+          () => {
+          }
+        );
+        return super.scheduled(controller);
+      }
+    }, "#dispatcher");
+    fetch(request) {
+      return __facade_invoke__2(
+        request,
+        this.env,
+        this.ctx,
+        this.#dispatcher,
+        this.#fetchDispatcher
+      );
+    }
+  };
+}
+__name(wrapWorkerEntrypoint2, "wrapWorkerEntrypoint");
+var WRAPPED_ENTRY2;
+if (typeof middleware_insertion_facade_default2 === "object") {
+  WRAPPED_ENTRY2 = wrapExportedHandler2(middleware_insertion_facade_default2);
+} else if (typeof middleware_insertion_facade_default2 === "function") {
+  WRAPPED_ENTRY2 = wrapWorkerEntrypoint2(middleware_insertion_facade_default2);
+}
+var middleware_loader_entry_default2 = WRAPPED_ENTRY2;
+export {
+  __INTERNAL_WRANGLER_MIDDLEWARE__2 as __INTERNAL_WRANGLER_MIDDLEWARE__,
+  middleware_loader_entry_default2 as default
+};
+//# sourceMappingURL=functionsWorker-0.8726995034401128.js.map
