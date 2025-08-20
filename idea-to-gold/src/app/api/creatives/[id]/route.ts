@@ -31,7 +31,7 @@ interface CreativeResponse {
 // GET /api/creatives/:id - 获取单个创意
 export async function GET(
   _request: Request,
-  { params }: { params: { id?: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
     const supabaseUrl = process.env.SUPABASE_URL
@@ -44,8 +44,9 @@ export async function GET(
       )
     }
 
-    const id = params?.id
-    if (!id || typeof id !== 'string') {
+    const awaitedParams = await params
+    const id = awaitedParams?.id
+    if (!id) {
       return NextResponse.json(
         { message: '缺少或非法的参数：id' },
         { status: 400 }
