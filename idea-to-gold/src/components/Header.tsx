@@ -41,12 +41,15 @@ function Header() {
     return () => { if (unsub) unsub(); };
   }, []);
 
+  // Logo 永远返回到首页（落地页）
+  const homeHref = "/";
+
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={homeHref} className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-sm">
               点
             </div>
@@ -55,10 +58,9 @@ function Header() {
 
           {/* 中间：导航 */}
           <div className="hidden gap-8 md:flex" role="navigation">
-            <Link
-              href="/"
-              aria-current="page"
-              className="text-sm font-medium text-gray-900 border-b-2 border-emerald-500 pb-1"
+            <Link 
+              href="/creatives" 
+              className="text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors"
             >
               点子广场
             </Link>

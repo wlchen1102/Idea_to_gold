@@ -85,9 +85,26 @@
 6.  **审查 (Review):** 查看自己的修改有没有问题。
 7.  **解释说明 (Explain):** 解释你做了哪些修改以及为什么。
 
-## 项目运行
-- 我会 npm run dev 启动开发服务，运行在http://127.0.0.1:8788/，你不需要再次启动服务
+## Next.js + Cloudflare Pages（next-on-pages）的代码部署要求：
+### 背景：
+因为我们使用的是next框架，部署到cloudflare上，构建命令是：npx @cloudflare/next-on-pages@1，所以请求会优先进入它生成的 Worker，我们曾因混用 functions/ 目录和Next.js API路由，导致了404和路由冲突。所以为了能够满足cloudflare的要求，我们需要遵循以下规则：
 
+### 要求1：严格遵守Next.js App Router的API路由规范
+- 唯一的API路径: 本项目所有的后端API接口，必须创建在 src/app/api/ 目录之下。严禁使用项目根目录下的 functions/ 目录。
+- 文件命名: 每一个API端点，都必须是一个名为 route.ts 的文件，并放置在对应的URL路径文件夹中。
+- 示例: 创建 POST /api/auth/login 接口，文件路径必须是 src/app/api/auth/login/route.ts。
+- 函数签名: 所有API路由的导出函数，其函数签名必须严格遵循Next.js App Router的规范。
+
+### 要求2：Next.js 15 Route Handlers 类型签名注意事项（关键踩坑）
+- 在 [id]/route.ts 的 GET 函数中，第二个参数在本项目当前依赖组合下需要声明为 { params: Promise<{ id: string }> }，并在函数内 await params 取 id。否则会在构建时触发 “invalid GET export” 类型错误。
+- 这是当前仓库的约定（和 next-on-pages/版本组合有关），写新动态路由时照此处理，保证可编译通过。
+
+### 要求3：
+- 后端函数禁止使用any类型，必须根据上下文推断使用具体的TypeScript类型;
+
+
+## 项目运行
+- 我会 npm run dev:cf 启动cloudflare开发服务，运行在http://127.0.0.1:8788/，你不需要再次启动服务
 
 # 项目上下文说明书：Idea-to-Gold
 
@@ -102,7 +119,9 @@
 ## 2. 技术栈 (Tech Stack)
 
 - **前端 (Frontend)**:
-  - **框架**: React+next.js
+  - **框架**: React+next.js 15
+  - **状态管理**: React Query
+  - **路由**: Next.js App Router
   - **语言**: TypeScript / TSX
   - **组件**: 函数式组件 (Functional Components) with Hooks
 
@@ -110,6 +129,7 @@
   - **运行时**: Node.js
   - **框架**: **无特定框架 (如 Express)，直接使用 Cloudflare Workers 的原生 API**。我们的后端逻辑将以无服务器函数 (Serverless Functions) 的形式运行
   - **语言**: TypeScript
+  - 每次写好接口，都需要使用测试命令测试接口，确保接口返回的状态码是200，并且返回的数据是正确的。
 
 - **数据库 (Database)**:
   - **服务**: Supabase
@@ -126,27 +146,95 @@
 - **后端部署**: Cloudflare Pages Functions
 - **CI/CD**: 通过将代码推送到 GitHub 主分支，自动触发 Cloudflare Pages 的构建和部署。前端和后端在同一个仓库，一同部署。
 
+Cloudflare Pages 构建配置说明：
+
+- 构建命令：npx @cloudflare/next-on-pages@1
+- 构建输出目录：.vercel/output/static
+- 构建根目录：idea-to-gold
+- 提醒：使用 next-on-pages 时，不要再依赖 functions/ 目录处理 /api/*，以免被 Next Worker 遮蔽。
+
 ## 4. 项目结构 (Project Structure)
 
 请严格遵守以下目录结构：
 
 ```
 idea-to-gold/
-├─ functions/
-│ └─ api/
-│ └─ [...].ts # 所有后端 API 路由都写在这里，采用文件路由系统
 ├─ src/
-│ ├─ app/ # 前端页面路由 (React)
-│ └─ components/ # 可复用的 React 组件
-├─ public/ # 静态资源
-├─ .dev.vars # [本地开发专用] 存储环境变量，绝不能提交到 Git
-├─ .gitignore # 必须包含 .dev.vars
-├─ package.json
-└─ PROJECT_CONTEXT.md # 本文档
+│  ├─ app/                       # 前端页面路由（Next.js App Router）
+│  │  ├─ api/                    # 唯一的后端 API 路由位置（Next.js Route Handlers）
+│  │  │  ├─ creatives/           # 示例业务路由：/api/creatives
+│  │  │  │  ├─ route.ts          # 列表 GET、创建 POST（Edge Runtime）
+│  │  │  │  └─ [id]/             # 动态路由：/api/creatives/[id]
+│  │  │  │     └─ route.ts       # 单条 GET（Edge Runtime；params: Promise<{ id: string }>）
+│  │  │  └─ ...                  # 其他 API 路由，均以 route.ts 命名
+│  │  ├─ page.tsx                # 示例页面文件
+│  │  └─ layout.tsx              # 应用级布局
+│  ├─ components/                # 可复用的 React 组件
+│  ├─ lib/                       # 工具函数、SDK 封装（如 Supabase 客户端）
+│  └─ data/                      # 静态数据或类型（非机密）
+├─ public/                       # 静态资源（图片、favicon 等）
+├─ .dev.vars                     # 本地开发环境变量（切勿提交到 Git）
+├─ .gitignore                    # 必须包含 .dev.vars
+├─ next.config.ts                # Next.js 配置（确保未设置 output: 'export'）
+├─ tsconfig.json                 # TypeScript 配置（路径别名等）
+├─ package.json                  # 依赖与脚本
+├─ eslint.config.mjs             # ESLint 配置
+
 ```
-**重要规则**：
-- **`functions/`**: **这是所有后端代码的存放位置**。Cloudflare Pages 会自动将此目录下的文件部署为 Serverless Functions。我们将使用文件系统路由，例如 `functions/api/creatives.ts` 会对应 `/api/creatives` 这个 API 端点。
-- **`src/`**: 所有前端 React 代码。
+*本规则集旨在为项目提供一套清晰、可扩展的文件组织规范。所有未来的代码生成与修改，都必须严格遵守。*
+
+#### **核心设计哲学：路由即结构，万物皆组件**
+
+1.  **前端页面**和**后端API**共享同一套**基于文件系统的路由系统**。
+2.  严格遵循**按功能/资源模块**进行文件夹组织。
+3.  通过**路由组 (Route Groups)** 实现不同场景下的布局隔离。
+
+---
+
+### **通用规则**
+
+#### **规则1：前端页面 (Frontend Pages)**
+
+1.  **【必须】使用路由组进行场景隔离**。所有页面都必须归属于以下三大路由组之一：
+    *   `(marketing)`: **访客区**。用于放置落地页、关于我们、价格等对外营销页面。
+    *   `(auth)`: **入口区**。用于放置登录、注册、忘记密码等认证流程页面。
+    *   `(app)`: **核心区**。用于放置登录后才能访问的核心应用页面，如创意广场、项目主页等。
+
+2.  **【必须】按功能模块组织文件夹**。
+    *   在各自的路由组内部，相关的页面应组织在同一个文件夹下。
+    *   **示例**:
+        *   `src/app/(app)/creatives/new/page.tsx` (发布新创意)
+        *   `src/app/(app)/settings/account/page.tsx` (账号设置)
+
+3.  **【必须】页面UI由 `page.tsx` 文件定义**。
+    *   每个URL路径下，用户直接看到的UI内容，必须定义在 `page.tsx` 文件中。
+
+#### **规则2：后端API (Backend APIs)**
+
+1.  **【必须】所有后端API都存放在 `src/app/api/` 目录下**。
+    *   这是我们项目中**唯一**的后端代码入口。
+
+2.  **【必须】严格按照RESTful资源进行文件夹组织**。
+    *   API的目录结构应清晰地反映出它所操作的资源。
+    *   **示例**:
+        *   所有与用户认证相关的API -> `src/app/api/auth/...`
+        *   所有与创意相关的API -> `src/app/api/creatives/...`
+
+3.  **【必须】API逻辑由 `route.ts` 文件定义**。
+    *   在每个API路由文件夹下，必须使用名为 `route.ts` 的文件来定义API逻辑。
+    *   **【必须】** 在 `route.ts` 文件中，使用导出的、以HTTP方法命名的大写函数（`GET`, `POST`, `PATCH`, `DELETE`）来处理对应的请求。
+    *   **示例**:
+        *   `src/app/api/creatives/route.ts` 文件中，会包含 `export async function GET(request) {...}` 和 `export async function POST(request) {...}`。
+
+#### **规则3：共享代码 (Shared Code)**
+
+1.  **【必须】可复用的UI组件存放在 `src/components/`**。
+    *   所有非页面级的、可在多个页面复用的React组件（如按钮、卡片、弹窗），都必须放在这里。
+
+2.  **【必须】通用工具函数和SDK客户端存放在 `src/lib/`**。
+    *   所有与UI无关的、可在前后端复用的工具函数（如日期格式化、slug生成器）或SDK客户端实例（如 `supabase.ts`），都必须放在这里。
+
+---
 
 ## 5. 环境变量 (Environment Variables)
 
@@ -176,5 +264,7 @@ idea-to-gold/
 2.  **无服务器思维**: 所有后端 API 必须是无状态的 (Stateless)。不要在函数内存中存储任何需要在多次请求之间保持的数据。所有状态都应持久化到 Supabase。
 
 3.  **前后端分离**: 前端通过 `fetch` API 调用相对路径 `/api/...` 上的后端端点。后端 API 负责与数据库和 R2 等服务交互，并将数据返回给前端。
+
+4. 
 
 ---
