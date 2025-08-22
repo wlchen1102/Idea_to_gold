@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 
 function Avatar({ name, src }: { name: string; src?: string }) {
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={name} className="h-10 w-10 rounded-full object-cover" />
+      <Image src={src} alt={name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" unoptimized />
     );
   }
   const initials = name

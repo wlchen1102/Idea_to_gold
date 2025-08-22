@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type React from "react";
 import type { SVGProps } from "react";
-import Breadcrumb from "@/components/Breadcrumb";
+import Image from "next/image";
+// 移除未使用的 Breadcrumb 导入
 
 type Project = {
   id: string;
@@ -179,12 +180,11 @@ export default function ProjectsPage(): React.ReactElement {
       {/* 空状态 */}
       {!hasProjects && (
         <section className="mt-16 flex flex-col items-center justify-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/globe.svg" alt="empty" className="h-28 w-28 opacity-70" />
+          <Image src="/globe.svg" alt="empty" width={112} height={112} className="h-28 w-28 opacity-70" />
           <h3 className="mt-6 text-xl font-semibold text-[#2c3e50]">你还没有开始任何项目</h3>
           <p className="mt-2 text-sm text-gray-600">
             去
-            <Link href="/" className="mx-1 text-[#3498db] hover:underline">
+            <Link href="/creatives" className="mx-1 text-[#3498db] hover:underline">
               创意广场
             </Link>
             发现一个能点燃你热情的想法吧！

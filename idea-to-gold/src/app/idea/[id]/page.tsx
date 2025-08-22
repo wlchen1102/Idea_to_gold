@@ -3,18 +3,20 @@
 export const runtime = 'edge';
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ideas } from "@/data/ideas";
+// 删除未使用的 ideas 导入
 import CommentsSection from "@/components/CommentsSection";
 import RightInfo from "@/components/RightInfo";
 import ClientEffects from "@/components/ClientEffects";
 import Breadcrumb from "@/components/Breadcrumb";
 import { headers } from "next/headers";
+import Image from "next/image";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
   if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={name} className="h-10 w-10 rounded-full object-cover" />;
+    return (
+      <Image src={src} alt={name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" unoptimized />
+    );
   }
   const initials = name
     .trim()
@@ -79,7 +81,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
   if (!creative) {
     return (
       <>
-        <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "创意详情" }]} />
+        <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
         <div className="text-center py-16">
           <h1 className="text-2xl font-bold text-[#2c3e50] mb-4">未找到创意</h1>
           <p className="text-gray-600 mb-6">
@@ -87,10 +89,10 @@ export default async function IdeaDetailPage({ params }: PageProps) {
           </p>
           <div className="space-x-4">
             <Link 
-              href="/" 
+              href="/creatives" 
               className="inline-block px-6 py-2 bg-[#2ECC71] text-white rounded-lg hover:bg-[#27AE60] transition-colors"
             >
-              返回首页
+              返回创意广场
             </Link>
             <Link 
               href="/creatives/new" 
@@ -143,7 +145,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "创意详情" }]} />
+      <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">
           <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>

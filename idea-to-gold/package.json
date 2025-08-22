@@ -4,17 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:next": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "dev:cf": "wrangler pages dev --proxy 3000 -- npm run dev"
+    "dev:cf": "node scripts/dev-cf.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.55.0",
     "next": "15.4.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "slugify": "^1.6.6"
+    "slugify": "^1.6.6",
+    "@cloudflare/next-on-pages": "^1.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

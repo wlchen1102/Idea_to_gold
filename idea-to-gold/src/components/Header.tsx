@@ -5,6 +5,7 @@ import Link from "next/link";
 import AvatarMenu from "@/components/AvatarMenu";
 import { useEffect, useState } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
+import { usePathname } from "next/navigation";
 
 function Header() {
   // 登录态来源：Supabase 会话
@@ -41,8 +42,12 @@ function Header() {
     return () => { if (unsub) unsub(); };
   }, []);
 
-  // 根据登录态决定 Logo 点击去向：未登录 -> /landing；已登录 -> /
-  const homeHref = isLoggedIn ? "/" : "/landing";
+  // 当前路由，用于导航高亮
+  const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+
+  // Logo 永远返回到首页（落地页）
+  const homeHref = "/";
 
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
@@ -58,16 +63,20 @@ function Header() {
 
           {/* 中间：导航 */}
           <div className="hidden gap-8 md:flex" role="navigation">
-            <Link
-              href="/"
-              aria-current="page"
-              className="text-sm font-medium text-gray-900 border-b-2 border-emerald-500 pb-1"
+            <Link 
+              href="/creatives" 
+              className={`text-sm font-medium transition-colors px-1 pb-1 border-b-2 ${
+                isActive('/creatives')
+                  ? 'text-emerald-600 border-emerald-500'
+                  : 'text-gray-700 hover:text-emerald-600 border-transparent'
+              }`}
+              aria-current={isActive('/creatives') ? 'page' : undefined}
             >
-              点子广场
+              创意广场
             </Link>
             <Link 
               href="#" 
-              className="text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors px-1 pb-1 border-b-2 border-transparent"
             >
               产品库
             </Link>

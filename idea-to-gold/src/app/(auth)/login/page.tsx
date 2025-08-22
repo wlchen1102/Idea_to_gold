@@ -14,12 +14,12 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { requireSupabaseClient } from "@/lib/supabase";
 
 export default function LoginPage() {
-  const [step, setStep] = useState<'phone' | 'login' | 'signup'>('phone'); // 当前步骤
-  const [inputType, setInputType] = useState<'phone' | 'email'>('phone'); // 输入类型
+  // 移除未使用的变量： step, setStep, setInputType
+  const [inputType] = useState<'phone' | 'email'>('phone'); // 输入类型（保留但移除setter）
   const [phone, setPhone] = useState(''); // 手机号（仅输入11位数字）
-  const [email, setEmail] = useState(''); // 邮箱
+  const [email] = useState(''); // 邮箱（仅用于判定与构建凭证，当前未暴露 setter）
+  // 移除未使用的变量： email, setEmail, emailError, setEmailError
   const [phoneError, setPhoneError] = useState(''); // 手机号错误信息
-  const [emailError, setEmailError] = useState(''); // 邮箱错误信息
   const [password, setPassword] = useState(''); // 登录密码
   const [nickname, setNickname] = useState(''); // 注册昵称
   const [newPassword, setNewPassword] = useState(''); // 注册-设置密码
@@ -47,7 +47,7 @@ export default function LoginPage() {
       else if (m === 'login') setMode('login');
     } catch {}
     // 仅在首次挂载时读取一次
-  }, []);
+  }, [searchParams]); // 修复：添加缺失的依赖
 
   useEffect(() => {
     // 组件卸载时清理定时器
@@ -57,7 +57,7 @@ export default function LoginPage() {
   // 中国大陆手机号：以1开头，第2位3-9，总共11位
   const CN_PHONE_REGEX = /^1[3-9]\d{9}$/;
   
-  // 邮箱正则表达式
+  // 邮箱正则表达式（暂时保留，可能后续会用到）
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // 将11位中国大陆手机号转换为E.164格式（+86开头）。若已是+开头则原样返回。
@@ -92,7 +92,6 @@ export default function LoginPage() {
   const validateEmail = (value: string) => {
     const v = value.trim();
     const ok = EMAIL_REGEX.test(v);
-    setEmailError(ok || v === '' ? '' : '请输入一个有效的邮箱地址');
     return ok;
   };
 
@@ -101,9 +100,8 @@ export default function LoginPage() {
   
   const getCurrentInput = () => inputType === 'phone' ? phone : email;
   const isCurrentInputValid = () => inputType === 'phone' ? isPhoneValid : isEmailValid;
-  const canContinue = getCurrentInput().trim() !== '' && isCurrentInputValid();
 
-  // 统一：调度“手机号失焦2秒后自动校验是否存在”
+  // 统一：调度"手机号失焦2秒后自动校验是否存在"
   const schedulePhoneExistenceCheck = (currentMode: 'login' | 'signup') => {
     if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current);
     // 只有输入了有效手机号时才调度
@@ -143,47 +141,6 @@ export default function LoginPage() {
     }, 1000);
   };
 
-  // 检查账号是否存在（手机号或邮箱）
-  const handleContinue = async () => {
-    const isValid = inputType === 'phone' ? validatePhone(phone) : validateEmail(email);
-    if (!isValid) return;
-
-    try {
-      setIsSubmitting(true);
-      setSubmitError('');
-
-      const endpoint = inputType === 'phone' ? '/api/auth/check-phone' : '/api/auth/check-email';
-      const body = inputType === 'phone'
-        ? { phone: toE164(phone) }
-        : { email: email.trim() };
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok) {
-        if ((data as { exists?: boolean }).exists) {
-          // 账号已注册，进入登录流程
-          setStep('login');
-        } else {
-          // 账号未注册，进入注册流程
-          setStep('signup');
-        }
-      } else {
-        setSubmitError((data as { error?: string; message?: string }).error || (data as { error?: string; message?: string }).message || '检查账号失败，请稍后再试');
-      }
-    } catch (e) {
-      const err = e as Error;
-      setSubmitError(err?.message || '网络异常，请稍后重试');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // 登录提交
   const handleLogin = async () => {
     if (!password) {
@@ -195,67 +152,48 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setSubmitError('');
 
-      const body = inputType === 'phone'
+      // 改为在前端直接使用 supabase-js 登录，由 SDK 负责管理会话
+      const credentials = inputType === 'phone'
         ? { phone: toE164(phone), password }
         : { email: email.trim(), password };
 
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      const supabase = requireSupabaseClient();
+      // 修复：明确类型而不是使用 any
+      const { data, error } = await supabase.auth.signInWithPassword(credentials as { phone: string; password: string } | { email: string; password: string });
 
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok) {
-        setSuccessMessage('登录成功！正在跳转...');
-        
-        // 设置本地登录态 - 仅在浏览器环境中执行
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('isLoggedIn', 'true');
-          
-          // 保存当前用户ID（来自后端返回）
-          try {
-            const uid = (data as { userId?: string | number }).userId;
-            if (uid) {
-              localStorage.setItem('userId', String(uid));
-            } else {
-              localStorage.removeItem('userId');
-            }
-          } catch {}
-        }
-
-        // 【关键修复】如果后端返回了 session，设置到 Supabase 客户端
-        try {
-          const session = (data as { session?: { access_token?: string; refresh_token?: string } }).session;
-          if (session?.access_token && session?.refresh_token) {
-            const supabase = requireSupabaseClient();
-            await supabase.auth.setSession({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token
-            });
-          }
-        } catch (e) {
-          console.warn('设置 Supabase 会话失败:', e);
-        }
-        
-        // 通知全局监听者（Header/AvatarMenu）更新登录态 - 仅在浏览器环境中执行
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('auth:changed'));
-        }
-        
-        setTimeout(() => {
-          router.push('/'); // 跳转到点子广场页面
-        }, 1200);
-      } else {
-        const serverMsg = (data as { error?: string; message?: string }).error || (data as { error?: string; message?: string }).message || '登录失败，请检查密码';
-        // 将 Supabase 的英文错误映射为中文（仅手机号登录场景）
-        if (inputType === 'phone' && typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('invalid login credentials')) {
+      if (error) {
+        const msg = error.message || '登录失败，请检查密码';
+        if (inputType === 'phone' && typeof msg === 'string' && msg.toLowerCase().includes('invalid login credentials')) {
           setSubmitError('手机号未注册，请先注册');
         } else {
-          setSubmitError(serverMsg);
+          setSubmitError(msg);
         }
+        return;
       }
+
+      setSuccessMessage('登录成功！正在跳转...');
+
+      // 设置本地登录态 - 仅在浏览器环境中执行
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('isLoggedIn', 'true');
+        try {
+          const uid = data?.user?.id;
+          if (uid) {
+            localStorage.setItem('userId', String(uid));
+          } else {
+            localStorage.removeItem('userId');
+          }
+        } catch {}
+      }
+
+      // 通知全局监听者（Header/AvatarMenu）更新登录态 - 仅在浏览器环境中执行
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth:changed'));
+      }
+
+      setTimeout(() => {
+        router.push('/creatives');
+      }, 1200);
     } catch (e) {
       const error = e as Error;
       setSubmitError(error?.message || '网络异常，请稍后重试');
@@ -316,7 +254,7 @@ export default function LoginPage() {
             : { email: email.trim(), password: newPassword };
         
           const supabase = requireSupabaseClient();
-          const { data: signedIn, error: signInErr } = await supabase.auth.signInWithPassword(credentials);
+          const { error: signInErr } = await supabase.auth.signInWithPassword(credentials as { phone: string; password: string } | { email: string; password: string });
           if (signInErr) {
             console.warn('注册后自动登录失败:', signInErr);
           }
@@ -325,7 +263,7 @@ export default function LoginPage() {
         }
 
         setTimeout(() => {
-          router.push('/');
+          router.push('/creatives');
         }, 1200);
       } else {
         // 直接使用服务端归一化后的中文 message
