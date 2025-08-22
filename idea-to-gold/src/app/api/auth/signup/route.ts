@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getRequestContext } from '@cloudflare/next-on-pages'
 
 export const runtime = 'edge'
 
@@ -24,12 +25,18 @@ const friendly = (raw:string, ch:'phone'|'email')=>{
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json().catch(()=>null) as { phone?: string; email?: string; password?: string; nickname?: string }|null
-    const { phone, email, password } = body||{}
-    if((!phone && !email) || !password) return NextResponse.json({ message:'缺少必填字段：email/phone 和 password' },{ status:400 })
+    const body = await request.json().catch(()=>null) as { email?: string; phone?: string; password?: string; nickname?: string } | null
+    const email = body?.email?.trim()
+    const phone = body?.phone?.trim()
+    const password = body?.password?.trim()
 
-    const supabaseUrl = process.env.SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if ((!email && !phone) || !password) {
+      return NextResponse.json({ message:'缺少必填字段：email/phone 与 password' }, { status:400 })
+    }
+
+    const { env } = getRequestContext()
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
     if(!supabaseUrl || !serviceRoleKey) return NextResponse.json({ message:'服务端环境变量未配置：SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY' },{ status:500 })
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
@@ -86,7 +93,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message:'注册成功', userId: data.user?.id ?? null }, { status:201 })
   } catch(e) {
     const msg = e instanceof Error ? e.message : 'unknown error'
-    console.error('注册接口内部错误：', e)
     return NextResponse.json({ message:'服务器内部错误', error: msg }, { status:500 })
   }
+}
+
+// 下方依赖的工具函数，保持不变
+const friendly = (msg: string, type: 'email'|'phone') => {
+  if (/confirm your email/.test(msg)) return { status: 200, msg: '验证邮件已发送，请前往邮箱完成验证' }
+  if (/Invalid login credentials/.test(msg)) return { status: 400, msg: '凭据无效，请检查后重试' }
+  return { status: 400, msg: type==='email' ? '注册失败(邮箱)' : '注册失败(手机号)' }
+}
+
+const avatarUrl = (text: string, bg: string) => {
+  const t = encodeURIComponent(text)
+  const b = encodeURIComponent(bg)
+  return `https://ui-avatars.com/api/?name=${t}&background=${b}&color=ffffff&bold=true&rounded=true&size=256`
 }

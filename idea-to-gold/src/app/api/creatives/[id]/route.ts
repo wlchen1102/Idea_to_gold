@@ -2,6 +2,7 @@
 // 迁移自 functions/api/creatives/[id]/index.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getRequestContext } from '@cloudflare/next-on-pages'
 
 // 使用 Edge Runtime
 export const runtime = 'edge'
@@ -34,8 +35,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const supabaseUrl = process.env.SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
+    const { env } = getRequestContext()
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(

@@ -1,26 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getRequestContext } from '@cloudflare/next-on-pages'
 
 export const runtime = 'edge'
 
+// 检查邮箱是否已注册
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json().catch(()=>null) as { email?: string } | null
-    const email = body?.email
-    if (!email) return NextResponse.json({ message:'缺少必填字段：email' }, { status:400 })
+    const body = (await request.json().catch(() => null)) as { email?: string } | null
+    const email = body?.email?.trim()
+    if (!email) {
+      return NextResponse.json({ message: '缺少必填字段：email' }, { status: 400 })
+    }
 
-    const supabaseUrl = process.env.SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceRoleKey) return NextResponse.json({ message:'服务端环境变量未配置' }, { status:500 })
+    // 通过 Cloudflare Pages 的运行时上下文获取服务端环境变量
+    const { env } = getRequestContext()
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
 
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
+    }
+
+    // 使用服务角色密钥创建 Supabase 管理客户端
     const supabase = createClient(supabaseUrl, serviceRoleKey)
-    const { data: users, error } = await supabase.auth.admin.listUsers()
-    if (error) return NextResponse.json({ message:'查询失败', error: error.message }, { status:500 })
 
-    const exists = !!users?.users?.find(u => u.email === email)
-    return NextResponse.json({ exists, message: exists ? '邮箱已注册' : '邮箱可用于注册' }, { status:200 })
-  } catch(e) {
+    // 更高效的接口：直接通过邮箱查询而不是遍历所有用户
+    const { data, error } = await supabase.auth.admin.getUserByEmail(email)
+    if (error && error.message && !/User not found/i.test(error.message)) {
+      return NextResponse.json({ message: '查询失败', error: error.message }, { status: 500 })
+    }
+
+    const exists = !!data?.user
+    return NextResponse.json(
+      { exists, message: exists ? '邮箱已注册' : '邮箱可用于注册' },
+      { status: 200 }
+    )
+  } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown error'
-    return NextResponse.json({ message:'服务器内部错误', error: msg }, { status:500 })
+    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@
 // 迁移自 functions/api/creatives/index.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getRequestContext } from '@cloudflare/next-on-pages'
 
 // 使用 Edge Runtime
 export const runtime = 'edge'
@@ -54,8 +55,10 @@ function makeSlugUnique(base: string): string {
 // GET /api/creatives - 获取创意列表
 export async function GET(): Promise<NextResponse> {
   try {
-    const supabaseUrl = process.env.SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
+    const { env } = getRequestContext()
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
@@ -97,8 +100,10 @@ export async function GET(): Promise<NextResponse> {
 // POST /api/creatives - 创建新创意
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabaseUrl = process.env.SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
+    const { env } = getRequestContext()
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
