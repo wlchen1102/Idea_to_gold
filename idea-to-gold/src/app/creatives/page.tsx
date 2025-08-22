@@ -1,4 +1,4 @@
-// 点子广场页面
+// 创意广场页面
 "use client";
 
 import { useState, useEffect } from "react";
@@ -78,7 +78,7 @@ export default function Home() {
   // 首页为创意广场展示，无提交表单
   return (
     <>
-      <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">点子广场</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">创意广场</h1>
       <p className="mt-2 text-[#95a5a6]">连接真实需求与AI开发者，让每个好创意都能&quot;点石成金&quot;。</p>
 
       {/* 筛选 Tab */}

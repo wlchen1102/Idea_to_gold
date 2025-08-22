@@ -3,18 +3,20 @@
 export const runtime = 'edge';
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ideas } from "@/data/ideas";
+// 删除未使用的 ideas 导入
 import CommentsSection from "@/components/CommentsSection";
 import RightInfo from "@/components/RightInfo";
 import ClientEffects from "@/components/ClientEffects";
 import Breadcrumb from "@/components/Breadcrumb";
 import { headers } from "next/headers";
+import Image from "next/image";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
   if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={name} className="h-10 w-10 rounded-full object-cover" />;
+    return (
+      <Image src={src} alt={name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" unoptimized />
+    );
   }
   const initials = name
     .trim()
