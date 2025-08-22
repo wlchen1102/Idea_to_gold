@@ -96,16 +96,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message:'服务器内部错误', error: msg }, { status:500 })
   }
 }
-
-// 下方依赖的工具函数，保持不变
-const friendly = (msg: string, type: 'email'|'phone') => {
-  if (/confirm your email/.test(msg)) return { status: 200, msg: '验证邮件已发送，请前往邮箱完成验证' }
-  if (/Invalid login credentials/.test(msg)) return { status: 400, msg: '凭据无效，请检查后重试' }
-  return { status: 400, msg: type==='email' ? '注册失败(邮箱)' : '注册失败(手机号)' }
-}
-
-const avatarUrl = (text: string, bg: string) => {
-  const t = encodeURIComponent(text)
-  const b = encodeURIComponent(bg)
-  return `https://ui-avatars.com/api/?name=${t}&background=${b}&color=ffffff&bold=true&rounded=true&size=256`
-}

@@ -25,13 +25,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 使用服务角色密钥创建 Supabase 管理客户端
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 更高效的接口：直接通过邮箱查询而不是遍历所有用户
-    const { data, error } = await supabase.auth.admin.getUserByEmail(email)
-    if (error && error.message && !/User not found/i.test(error.message)) {
+    // 通过 auth schema 的 users 表判断邮箱是否存在（service_role 有权限）
+    const { data, error } = await supabase
+      .schema('auth')
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (error) {
       return NextResponse.json({ message: '查询失败', error: error.message }, { status: 500 })
     }
 
-    const exists = !!data?.user
+    const exists = !!data?.id
     return NextResponse.json(
       { exists, message: exists ? '邮箱已注册' : '邮箱可用于注册' },
       { status: 200 }
