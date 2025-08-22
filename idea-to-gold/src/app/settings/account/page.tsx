@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
+import Image from "next/image";
 
 interface UserProfile {
   id: string;
@@ -144,9 +145,12 @@ function AccountSettingsPage() {
                     {loading ? (
                       <div className="h-16 w-16 rounded-full bg-gray-200 animate-pulse" />
                     ) : avatar ? (
-                      <img
+                      <Image
                         src={avatar}
-                        alt="头像预览"
+                        alt="用户头像"
+                        width={64}
+                        height={64}
+                        unoptimized
                         className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
                         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                       />
