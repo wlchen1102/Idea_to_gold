@@ -127,7 +127,7 @@ export default function NewCreativePage() {
         
         // 短暂延迟后跳转到首页
         setTimeout(() => {
-          router.push('/');
+          router.push('/creatives');
         }, 1500);
       } else {
         // 失败：显示错误提示，停留在当前页面
@@ -186,7 +186,7 @@ export default function NewCreativePage() {
 
   return (
     <>
-      <Breadcrumb paths={[{ href: "/", label: "创意广场" }, { label: "发布新创意" }]} />
+      <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "发布新创意" }]} />
       {/* 【暂时注释】动态布局支持AI侧边栏 */}
       {/* <div className={`grid grid-cols-1 gap-6 ${showAISidebar ? "md:grid-cols-3" : ""}`}> */}
       <div className="grid grid-cols-1 gap-6">

@@ -195,67 +195,47 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setSubmitError('');
 
-      const body = inputType === 'phone'
+      // 改为在前端直接使用 supabase-js 登录，由 SDK 负责管理会话
+      const credentials = inputType === 'phone'
         ? { phone: toE164(phone), password }
         : { email: email.trim(), password };
 
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      const supabase = requireSupabaseClient();
+      const { data, error } = await supabase.auth.signInWithPassword(credentials as any);
 
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok) {
-        setSuccessMessage('登录成功！正在跳转...');
-        
-        // 设置本地登录态 - 仅在浏览器环境中执行
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('isLoggedIn', 'true');
-          
-          // 保存当前用户ID（来自后端返回）
-          try {
-            const uid = (data as { userId?: string | number }).userId;
-            if (uid) {
-              localStorage.setItem('userId', String(uid));
-            } else {
-              localStorage.removeItem('userId');
-            }
-          } catch {}
-        }
-
-        // 【关键修复】如果后端返回了 session，设置到 Supabase 客户端
-        try {
-          const session = (data as { session?: { access_token?: string; refresh_token?: string } }).session;
-          if (session?.access_token && session?.refresh_token) {
-            const supabase = requireSupabaseClient();
-            await supabase.auth.setSession({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token
-            });
-          }
-        } catch (e) {
-          console.warn('设置 Supabase 会话失败:', e);
-        }
-        
-        // 通知全局监听者（Header/AvatarMenu）更新登录态 - 仅在浏览器环境中执行
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('auth:changed'));
-        }
-        
-        setTimeout(() => {
-          router.push('/'); // 跳转到点子广场页面
-        }, 1200);
-      } else {
-        const serverMsg = (data as { error?: string; message?: string }).error || (data as { error?: string; message?: string }).message || '登录失败，请检查密码';
-        // 将 Supabase 的英文错误映射为中文（仅手机号登录场景）
-        if (inputType === 'phone' && typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('invalid login credentials')) {
+      if (error) {
+        const msg = error.message || '登录失败，请检查密码';
+        if (inputType === 'phone' && typeof msg === 'string' && msg.toLowerCase().includes('invalid login credentials')) {
           setSubmitError('手机号未注册，请先注册');
         } else {
-          setSubmitError(serverMsg);
+          setSubmitError(msg);
         }
+        return;
       }
+
+      setSuccessMessage('登录成功！正在跳转...');
+
+      // 设置本地登录态 - 仅在浏览器环境中执行
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('isLoggedIn', 'true');
+        try {
+          const uid = data?.user?.id;
+          if (uid) {
+            localStorage.setItem('userId', String(uid));
+          } else {
+            localStorage.removeItem('userId');
+          }
+        } catch {}
+      }
+
+      // 通知全局监听者（Header/AvatarMenu）更新登录态 - 仅在浏览器环境中执行
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth:changed'));
+      }
+
+      setTimeout(() => {
+        router.push('/creatives');
+      }, 1200);
     } catch (e) {
       const error = e as Error;
       setSubmitError(error?.message || '网络异常，请稍后重试');
@@ -325,7 +305,7 @@ export default function LoginPage() {
         }
 
         setTimeout(() => {
-          router.push('/');
+          router.push('/creatives');
         }, 1200);
       } else {
         // 直接使用服务端归一化后的中文 message

@@ -622,7 +622,7 @@ export default function LandingPage() {
               <div>
                 <h3 className="font-semibold mb-4">产品</h3>
                 <ul className="space-y-2 text-gray-400">
-                  <li><Link href="#" className="hover:text-white transition-colors">创意广场</Link></li>
+                  <li><Link href="/creatives" className="hover:text-white transition-colors">创意广场</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">项目空间</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">AI副驾</Link></li>
                 </ul>
