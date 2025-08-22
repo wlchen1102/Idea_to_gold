@@ -113,13 +113,19 @@ export default function LandingPage() {
     }
 
     // 视差滚动效果
-    scroll(({ y }: { y: number }) => {
-      if (heroRef.current) {
-        animate(heroRef.current, {
-          transform: `translateY(${y * 0.5}px)`
-        }, { duration: 0 });
-      }
-    });
+    if (typeof scroll === 'function') {
+      scroll((pos: { y?: number }) => {
+        // 兜底与数值校验，避免出现 translateY(NaNpx)
+        const rawY = typeof pos?.y === 'number' && Number.isFinite(pos.y) ? pos.y : 0;
+        const dy = rawY * 0.5; // 视差强度系数
+
+        if (heroRef.current) {
+          animate(heroRef.current, {
+            transform: `translateY(${dy}px)`
+          }, { duration: 0 });
+        }
+      });
+    }
 
   }, [motionLoaded]);
 
