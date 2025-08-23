@@ -10,6 +10,7 @@ import ClientEffects from "@/components/ClientEffects";
 import Breadcrumb from "@/components/Breadcrumb";
 import { headers } from "next/headers";
 import Image from "next/image";
+import IdeaEditor from "@/components/IdeaEditor";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -53,6 +54,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     terminals: string[] | string
     bounty_amount?: number
     profiles?: { nickname?: string; avatar_url?: string }
+    author_id?: string
   }
 
   let creative: Creative | null = null;
@@ -148,7 +150,18 @@ export default async function IdeaDetailPage({ params }: PageProps) {
       <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">
-          <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
+            {/* 仅作者可见的编辑入口 */}
+            {creative?.author_id ? (
+              <IdeaEditor
+                id={String(creative.id)}
+                initialTitle={creative.title}
+                initialDescription={creative.description ?? ""}
+                authorId={creative.author_id}
+              />
+            ) : null}
+          </div>
           <div className="mt-3 flex items-center gap-3">
             <Avatar name={idea.author.name} src={idea.author.avatarUrl} />
             <div>

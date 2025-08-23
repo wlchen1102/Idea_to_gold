@@ -1,4 +1,4 @@
-// Next.js Route Handler - 点子广场接口
+// Next.js Route Handler - 创意广场接口
 // 迁移自 functions/api/creatives/index.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -71,7 +71,7 @@ export async function GET(): Promise<NextResponse> {
 
     // 简单列表，可根据需要添加分页、排序
     const { data, error } = await supabase
-      .from('user_creatives')
+      .from('creatives')
       .select('*')
       .order('created_at', { ascending: false })
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const { data, error } = await supabase
-      .from('user_creatives')
+      .from('creatives')
       .insert(insertPayload)
       .select('*')
       .single()

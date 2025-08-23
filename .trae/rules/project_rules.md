@@ -89,6 +89,7 @@
 ### **核心技术栈与部署模型**
 *   **【必须】** 本项目采用 **Next.js App Router** 框架，并统一部署到 **Cloudflare Pages**，构建命令是：npx @cloudflare/next-on-pages@1。
 *   **【必须】** 后端API**必须**使用Next.js原生的**API路由 (Route Handlers)**，并存放在 `src/app/api/` 目录下。
+*   **【禁止】** **绝对禁止**在项目中使用 `functions/` 目录，以避免与Next.js API路由产生冲突。
 
 ### **共享代码文件组织**
 

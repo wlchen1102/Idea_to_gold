@@ -65,7 +65,7 @@ function Header() {
           <div className="hidden gap-8 md:flex" role="navigation">
             <Link 
               href="/creatives" 
-              className={`text-sm font-medium transition-colors px-1 pb-1 border-b-2 ${
+              className={`text-base font-medium transition-colors px-1 pb-1 border-b-2 ${
                 isActive('/creatives')
                   ? 'text-emerald-600 border-emerald-500'
                   : 'text-gray-700 hover:text-emerald-600 border-transparent'
@@ -76,7 +76,7 @@ function Header() {
             </Link>
             <Link 
               href="#" 
-              className="text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors px-1 pb-1 border-b-2 border-transparent"
+              className="text-base font-medium text-gray-700 hover:text-emerald-600 transition-colors px-1 pb-1 border-b-2 border-transparent"
             >
               产品库
             </Link>
