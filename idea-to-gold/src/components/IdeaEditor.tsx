@@ -5,7 +5,18 @@ import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import TextInput from "@/components/ui/TextInput";
 import Textarea from "@/components/ui/Textarea";
+import Checkbox from "@/components/ui/Checkbox";
 import { requireSupabaseClient } from "@/lib/supabase";
+
+// 与“发布新创意”页面保持一致的期望终端选项
+const platformOptions = [
+  { id: "web", label: "网页" },
+  { id: "mini", label: "小程序" },
+  { id: "ios", label: "iOS" },
+  { id: "android", label: "安卓" },
+  { id: "win", label: "Windows" },
+  { id: "mac", label: "Mac" },
+] as const;
 
 // 创意编辑按钮与弹窗表单（仅作者可见）
 interface IdeaEditorProps {
@@ -13,13 +24,24 @@ interface IdeaEditorProps {
   initialTitle: string;
   initialDescription: string;
   authorId: string;
+  // 新增：期望终端初始值（例如：["web","ios"]）
+  initialTerminals?: string[];
 }
 
-export default function IdeaEditor({ id, initialTitle, initialDescription, authorId }: IdeaEditorProps) {
+export default function IdeaEditor({ id, initialTitle, initialDescription, authorId, initialTerminals }: IdeaEditorProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState<string>(initialTitle);
   const [description, setDescription] = useState<string>(initialDescription);
+  // 新增：期望终端多选状态（key 为 id）
+  const [targets, setTargets] = useState<Record<string, boolean>>({
+    web: false,
+    mini: false,
+    ios: false,
+    android: false,
+    win: false,
+    mac: false,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAuthor, setIsAuthor] = useState<boolean>(false);
@@ -68,6 +90,16 @@ export default function IdeaEditor({ id, initialTitle, initialDescription, autho
   const handleOpen = () => {
     setTitle(initialTitle);
     setDescription(initialDescription);
+    // 基于传入的初始 terminals 恢复选择状态
+    const set = new Set((initialTerminals ?? []).map((t) => String(t)));
+    setTargets({
+      web: set.has("web"),
+      mini: set.has("mini"),
+      ios: set.has("ios"),
+      android: set.has("android"),
+      win: set.has("win"),
+      mac: set.has("mac"),
+    });
     setError(null);
     setIsOpen(true);
   };
@@ -86,13 +118,15 @@ export default function IdeaEditor({ id, initialTitle, initialDescription, autho
     try {
       setLoading(true);
       setError(null);
+      // 组装 terminals 数组
+      const terminals = Object.keys(targets).filter((k) => targets[k]);
       const res = await fetch(`/api/creatives/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title: title.trim(), description: description.trim() }),
+        body: JSON.stringify({ title: title.trim(), description: description.trim(), terminals }),
       });
 
       const json: { message?: string; error?: string } = await res.json().catch(() => ({}));
@@ -145,6 +179,24 @@ export default function IdeaEditor({ id, initialTitle, initialDescription, autho
             maxLines={18}
             required
           />
+          {/* 新增：期望终端 */}
+          <div>
+            <span className="block text-sm font-medium text-[#2c3e50]">期望终端</span>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {platformOptions.map((opt) => (
+                <Checkbox
+                  key={opt.id}
+                  id={`edit-${opt.id}`}
+                  label={opt.label}
+                  wrapperClassName="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  checked={Boolean(targets[opt.id])}
+                  onChange={(e) =>
+                    setTargets((prev) => ({ ...prev, [opt.id]: (e.target as HTMLInputElement).checked }))
+                  }
+                />
+              ))}
+            </div>
+          </div>
           {error ? <div className="text-sm text-red-600">{error}</div> : null}
           <div className="flex justify-end gap-3 pt-2">
             <button

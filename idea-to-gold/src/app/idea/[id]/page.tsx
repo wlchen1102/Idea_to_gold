@@ -152,15 +152,6 @@ export default async function IdeaDetailPage({ params }: PageProps) {
         <section className="md:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
-            {/* 仅作者可见的编辑入口 */}
-            {creative?.author_id ? (
-              <IdeaEditor
-                id={String(creative.id)}
-                initialTitle={creative.title}
-                initialDescription={creative.description ?? ""}
-                authorId={creative.author_id}
-              />
-            ) : null}
           </div>
           <div className="mt-3 flex items-center gap-3">
             <Avatar name={idea.author.name} src={idea.author.avatarUrl} />
@@ -170,7 +161,19 @@ export default async function IdeaDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <h2 className="mt-6 text-lg font-semibold text-[#2c3e50]">创意描述</h2>
+          {/* 将编辑入口移动到“创意描述”标题的右侧，仅作者可见 */}
+          <div className="mt-6 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-[#2c3e50]">创意描述</h2>
+            {creative?.author_id ? (
+              <IdeaEditor
+                id={String(creative.id)}
+                initialTitle={creative.title}
+                initialDescription={creative.description ?? ""}
+                authorId={creative.author_id}
+                initialTerminals={Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean)}
+              />
+            ) : null}
+          </div>
           <div className="mt-3 rounded-lg border border-gray-200 bg-white p-6 md:p-8">
             {idea.description.map((para, idx) => (
               <p key={idx} className="text-[15px] leading-7 text-gray-700 mb-4 last:mb-0">{para}</p>
@@ -181,11 +184,10 @@ export default async function IdeaDetailPage({ params }: PageProps) {
         <aside className="md:col-span-1">
           <RightInfo supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} ideaId={String(idea.id)} />
         </aside>
+        <section className="md:col-span-2">
+          <CommentsSection initialComments={initialComments} />
+        </section>
       </div>
-
-      <section className="mt-8">
-        <CommentsSection initialComments={initialComments} />
-      </section>
 
       <ClientEffects ideaId={String(idea.id)} />
     </>

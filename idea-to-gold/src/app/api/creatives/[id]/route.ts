@@ -165,17 +165,23 @@ export async function PATCH(
     }
 
     // 读取并校验请求体
-    const body = await request.json().catch(() => null) as { title?: string; description?: string } | null;
+    const body = await request.json().catch(() => null) as { title?: string; description?: string; terminals?: string[] } | null;
     const title = typeof body?.title === 'string' ? body!.title.trim() : '';
     const description = typeof body?.description === 'string' ? body!.description.trim() : '';
+    const terminals = Array.isArray(body?.terminals)
+      ? body!.terminals.filter((t) => typeof t === 'string')
+      : undefined;
 
     if (!title || !description) {
       return NextResponse.json({ message: '缺少必填字段：title 或 description' }, { status: 400 });
     }
 
+    const updatePayload: { title: string; description: string; terminals?: string[] } = { title, description };
+    if (terminals) updatePayload.terminals = terminals;
+
     const { error: updateError } = await supabase
       .from('creatives')
-      .update({ title, description })
+      .update(updatePayload)
       .eq('id', existing.id);
 
     if (updateError) {

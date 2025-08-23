@@ -6,7 +6,7 @@ import Link from "next/link";
 export default function RightInfo({
   supporters,
   platforms,
-  bounty,
+  bounty: _bounty,
   ideaId,
 }: {
   supporters: number;
@@ -60,13 +60,16 @@ export default function RightInfo({
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <ul className="space-y-3 text-[14px] text-[#2c3e50]">
+          {/* 悬赏金额：按需上线，此处先注释掉 */}
+          {/**
           <li className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#F1C40F" className="h-5 w-5">
               <circle cx="12" cy="12" r="10" />
               <circle cx="12" cy="12" r="6" fill="#FFD95E" />
             </svg>
-            <span>悬赏金额：￥{bounty}</span>
+            <span>悬赏金额：￥{_bounty}</span>
           </li>
+          */}
           <li className="flex items-center gap-2">
             <span>期望终端：</span>
             <div className="flex flex-wrap gap-2">
