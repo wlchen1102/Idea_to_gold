@@ -1,7 +1,7 @@
 // 创意广场页面
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import CreativityCard from "@/components/CreativityCard";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ interface Creative {
     nickname?: string;
     avatar_url?: string;
   } | null;
+  upvote_count?: number; // 新增：数据库真实点赞数
 }
 
 export default function Home() {
@@ -28,6 +29,45 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // 记录本次会话已预取过的创意ID，避免重复请求
+  const prefetchedRef = useRef<Set<string>>(new Set());
+
+  // 悬停/预点击时，预取“是否已想要”支持态并写入本地缓存
+  const prefetchSupport = async (creativeId: string | number) => {
+    try {
+      const id = String(creativeId);
+      if (!id || prefetchedRef.current.has(id)) return;
+
+      const supabase = requireSupabaseClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token || "";
+      const userId = data?.session?.user?.id || "";
+      if (!token || !userId) {
+        // 未登录无需预取（详情页会正常显示“我也要”状态）；不记录为已预取，方便登录后再次悬停触发
+        return;
+      }
+
+      const resp = await fetch(`/api/creatives/${id}/upvote`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json: { supported?: boolean } | null = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        prefetchedRef.current.add(id);
+        return;
+      }
+
+      const supported = Boolean(json?.supported);
+      const cacheKey = `supported:${userId}:${id}`;
+      if (supported) localStorage.setItem(cacheKey, "1");
+      else localStorage.removeItem(cacheKey);
+
+      prefetchedRef.current.add(id);
+    } catch (_e) {
+      // 忽略预取失败，不影响后续正常逻辑
+    }
+  };
 
   // 未登录也允许访问首页：直接加载创意列表
   useEffect(() => {
@@ -86,7 +126,7 @@ export default function Home() {
       title: creative.title,
       description: creative.description,
       tags: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
-      upvoteCount: Math.floor(Math.random() * 1000), // 暂时使用随机数，后续可扩展为真实数据
+      upvoteCount: Number(creative.upvote_count ?? 0), // 使用数据库真实点赞数
       commentCount: Math.floor(Math.random() * 100),
       createdAt: new Date(creative.created_at).getTime(),
     };
@@ -94,8 +134,10 @@ export default function Home() {
 
   const ideasToShow = [...creatives].sort((a, b) => {
     if (activeTab === "热门") {
-      // 热门按随机（模拟点赞数）排序
-      return Math.random() - 0.5;
+      // 热门按点赞数降序排序（无值按0处理）
+      const av = Number(a.upvote_count ?? 0);
+      const bv = Number(b.upvote_count ?? 0);
+      return bv - av;
     }
     // 最新按创建时间倒序（API 已按此排序）
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -105,25 +147,25 @@ export default function Home() {
   return (
     <>
       <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">创意广场</h1>
-      <p className="mt-2 text-[#95a5a6]">连接真实需求与AI开发者，让每个好创意都能&quot;点石成金&quot;。</p>
+      <p className="mt-2 text-[#95a5a6]">连接真实需求与AI开发者，让每个好创意都能"点石成金"。</p>
 
       {/* 筛选 Tab 与 发布按钮同一行 */}
       <div className="mt-6 flex items-center justify-between">
         {/* 左侧：筛选 Tab */}
         <div className="rounded-lg bg-gray-100 p-1 inline-flex">
           {(["热门", "最新"] as Array<"热门" | "最新">).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                activeTab === tab
-                  ? "bg-[#2ECC71] text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+             <button
+               key={tab}
+               onClick={() => setActiveTab(tab)}
+               className={`px-4 py-2 text-sm font-medium rounded-md ${
+                 activeTab === tab
+                   ? "bg-[#2ECC71] text-white shadow-sm"
+                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+               }`}
+             >
+               {tab}
+             </button>
+           ))}
         </div>
 
         {/* 右侧：发布创意按钮（含未登录拦截） */}
@@ -160,11 +202,15 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {ideasToShow.map((creative) => {
                 const cardData = convertToCardData(creative);
+                const idStr = String(creative.id);
                 return (
                   <Link
-                    key={String(creative.id)}
-                    href={`/idea/${creative.id}`}
+                    key={idStr}
+                    href={`/idea/${idStr}`}
                     className="block"
+                    onMouseEnter={() => prefetchSupport(idStr)}
+                    onPointerDown={() => prefetchSupport(idStr)}
+                    onFocus={() => prefetchSupport(idStr)}
                   >
                     <CreativityCard
                       {...cardData}

@@ -39,7 +39,7 @@
     *   `description` (text): 项目的一句话简介。
     *   `status` (text): 项目的当前阶段，例如 `'planning'`, `'developing'`, `'beta'`, `'published'`。
     *   `developer_id` (uuid, 外键 -> `public.profiles.id`): **指向**开发这个项目的“造物者”的用户ID。
-    *   `creative_id` (uuid, 外键 -> `public.user_creatives.id`): **指向**这个项目所要实现的那个原始“创意”的ID。
+    *   `creative_id` (uuid, 外键 -> `public.creatives.id`): **指向**这个项目所要实现的那个原始“创意”的ID。
     *   `product_info` (jsonb): 当项目最终发布时，用来存储所有产品信息（如截图URL、下载链接、功能介绍等）的JSON字段。
     *   `created_at` (timestamptz): 项目的创建时间。
     *   `updated_at` (timestamptz): 项目的最后更新时间。
@@ -61,7 +61,7 @@
     *   用来存放用户在【创意详情页】或【项目主页】发表的所有**评论和回复**，是社区互动的主要载体。
 *   **核心字段**:
     *   `id` (uuid, 主键): 评论自己的唯一ID。
-    *   `creative_id` (uuid, 外键 -> `public.user_creatives.id`, 可为NULL): 指向这条评论是关于哪个创意的。
+    *   `creative_id` (uuid, 外键 -> `public.creatives.id`, 可为NULL): 指向这条评论是关于哪个创意的。
     *   `project_log_id` (uuid, 外键 -> `public.project_logs.id`, 可为NULL): 指向这条评论是关于哪条开发日志的。
     *   `parent_comment_id` (uuid, 外键 -> `public.comments.id`, 可为NULL): 如果这是一条“回复”，则指向它所回复的那条父评论的ID。
     *   `content` (text): 评论内容。
@@ -74,7 +74,7 @@
     *   以“**多对多**”的方式，记录“**哪个用户，点赞了，哪个创意**”的行为。这是实现防重复点赞、展示用户支持列表等功能的基础。
 *   **核心字段**:
     *   `user_id` (uuid, 外键 -> `public.profiles.id`): 点赞用户的ID。
-    *   `creative_id` (uuid, 外键 -> `public.user_creatives.id`): 被点赞的创意的ID。
+    *   `creative_id` (uuid, 外键 -> `public.creatives.id`): 被点赞的创意的ID。
     *   `created_at` (timestamptz): 点赞时间。
     *   **联合主键**: `PRIMARY KEY (user_id, creative_id)`
 

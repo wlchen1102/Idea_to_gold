@@ -21,6 +21,7 @@ interface Creative {
     nickname: string | null
     avatar_url: string | null
   } | null
+  upvote_count?: number // 新增：点赞数量字段（若表中存在）
 }
 
 interface CreativeResponse {

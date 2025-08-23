@@ -2,6 +2,37 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { requireSupabaseClient } from "@/lib/supabase";
+
+// 轻量 toast（无外部依赖）
+function toast(message: string) {
+  if (typeof window === "undefined") return;
+  const id = "__mini_toast__";
+  let box = document.getElementById(id);
+  if (!box) {
+    box = document.createElement("div");
+    box.id = id;
+    box.style.position = "fixed";
+    box.style.top = "20px";
+    box.style.left = "50%";
+    box.style.transform = "translateX(-50%)";
+    box.style.zIndex = "9999";
+    box.style.padding = "10px 14px";
+    box.style.borderRadius = "8px";
+    box.style.background = "rgba(0,0,0,0.8)";
+    box.style.color = "#fff";
+    box.style.fontSize = "14px";
+    box.style.boxShadow = "0 4px 10px rgba(0,0,0,0.2)";
+    document.body.appendChild(box);
+  }
+  box.textContent = message;
+  box.style.opacity = "1";
+  setTimeout(() => {
+    if (!box) return;
+    box.style.transition = "opacity .3s ease";
+    box.style.opacity = "0";
+  }, 1800);
+}
 
 export default function RightInfo({
   supporters,
@@ -16,14 +47,114 @@ export default function RightInfo({
 }) {
   const [supported, setSupported] = useState(false);
   const [count, setCount] = useState(supporters);
+  const [pending, setPending] = useState(false);
 
-  function handleSupport() {
-    if (supported) return;
-    setSupported(true);
-    setCount((c) => c + 1);
+  // 新增：首屏初始化真实的点赞数量与当前用户支持状态
+  useEffect(() => {
+    if (!ideaId) return;
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const supabase = requireSupabaseClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token || "";
+        const userId = sessionData?.session?.user?.id || "";
+
+        // 1) 先用本地缓存加速“已想要”的首屏显示（减少等待）
+        if (userId) {
+          const cacheKey = `supported:${userId}:${ideaId}`;
+          if (localStorage.getItem(cacheKey) === "1") {
+            setSupported(true);
+          }
+        }
+
+        // 2) 再请求服务端以“真实结果”对齐（若与本地缓存不一致，会以服务端为准）
+        const resp = await fetch(`/api/creatives/${ideaId}/upvote`, {
+          method: "GET",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          // count 可缓存，但 supported 受用户影响，这里依旧采用默认，避免错误缓存
+        });
+        const json: { upvote_count?: number; supported?: boolean } | null = await resp
+          .json()
+          .catch(() => null);
+
+        if (!resp.ok) {
+          console.warn("Init upvote fetch failed:", json);
+          return;
+        }
+        if (cancelled) return;
+
+        const initCount = typeof json?.upvote_count === "number" ? json?.upvote_count! : supporters;
+        const initSupported = Boolean(json?.supported);
+        setCount(Number(initCount) || 0);
+        setSupported(initSupported);
+
+        // 与本地缓存对齐（便于后续页面秒显）
+        if (userId) {
+          const cacheKey = `supported:${userId}:${ideaId}`;
+          if (initSupported) localStorage.setItem(cacheKey, "1");
+          else localStorage.removeItem(cacheKey);
+        }
+      } catch (e) {
+        console.warn("Init upvote error:", e);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [ideaId, supporters]);
+
+  async function handleSupport() {
+    if (pending || supported) return;
+    if (!ideaId) return;
+
+    try {
+      const supabase = requireSupabaseClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || "";
+      const userId = sessionData?.session?.user?.id || "";
+
+      if (!token) {
+        toast("请先登录");
+        window.location.assign("/login");
+        return;
+      }
+
+      setPending(true);
+      setSupported(true);
+      setCount((c) => c + 1);
+
+      const resp = await fetch(`/api/creatives/${ideaId}/upvote`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!resp.ok) {
+        setSupported(false);
+        setCount((c) => Math.max(0, c - 1));
+        toast("点赞失败，请重试");
+        const text = await resp.text().catch(() => "");
+        console.warn("Upvote failed:", text);
+      } else {
+        // 成功：写入本地缓存，便于后续页面秒显
+        if (userId) localStorage.setItem(`supported:${userId}:${ideaId}`, "1");
+      }
+    } catch (e) {
+      setSupported(false);
+      setCount((c) => Math.max(0, c - 1));
+      console.error(e);
+      toast("点赞失败，请重试");
+    } finally {
+      setPending(false);
+    }
   }
 
-  // 若存在跨页标记 pendingSupport:{id}，则初始化为已支持并+1
+  // 若存在跨页标记 pendingSupport:{id}，则初始化为已支持并+1（保持原逻辑）
   useEffect(() => {
     if (!ideaId) return;
     const key = `pendingSupport:${ideaId}`;
@@ -51,7 +182,7 @@ export default function RightInfo({
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <Link
-          href={`/projects/new?idea_id=${ideaId ?? "123"}`}
+          href={`/projects/new?idea_id=${ideaId ?? ""}`}
           className="block w-full rounded-xl border border-[#2ECC71] px-5 py-3 text-center text-[16px] font-semibold text-[#2ECC71] hover:bg-[#2ECC71]/10"
         >
           我来解决

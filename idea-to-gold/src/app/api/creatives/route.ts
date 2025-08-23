@@ -17,6 +17,7 @@ interface Creative {
   created_at: string
   author_id: string
   slug: string
+  upvote_count?: number // 新增：预先计算的点赞数缓存字段（方案A）
   profiles?: {
     nickname: string | null
     avatar_url: string | null
@@ -72,7 +73,7 @@ export async function GET(): Promise<NextResponse> {
     // 简单列表，可根据需要添加分页、排序
     const { data, error } = await supabase
       .from('creatives')
-      .select('*')
+      .select('*') // 包含 upvote_count 预计算字段
       .order('created_at', { ascending: false })
 
     if (error) {

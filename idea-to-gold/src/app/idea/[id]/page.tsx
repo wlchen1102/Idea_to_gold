@@ -55,6 +55,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     bounty_amount?: number
     profiles?: { nickname?: string; avatar_url?: string }
     author_id?: string
+    upvote_count?: number // 新增：点赞数量
   }
 
   let creative: Creative | null = null;
@@ -131,7 +132,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     description: descriptionParas,
     platforms: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
     bounty: creative.bounty_amount || 500,
-    supporters: Math.floor(Math.random() * 100),
+    supporters: Number(creative.upvote_count ?? 0), // 以真实 upvote_count 初始化
   };
 
   const projects = [
