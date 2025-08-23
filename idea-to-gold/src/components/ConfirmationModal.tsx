@@ -1,3 +1,5 @@
+// 确认弹窗用于在用户进行敏感操作（如删除、发布）前，提示用户确认操作。
+
 "use client";
 
 import React from "react";

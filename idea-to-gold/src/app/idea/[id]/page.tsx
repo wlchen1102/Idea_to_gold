@@ -174,7 +174,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
               />
             ) : null}
           </div>
-          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-6 md:p-8">
+          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
             {idea.description.map((para, idx) => (
               <p key={idx} className="text-[15px] leading-7 text-gray-700 mb-4 last:mb-0">{para}</p>
             ))}

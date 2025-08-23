@@ -1,7 +1,10 @@
+// 评论区组件
+
 "use client";
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import Textarea from "@/components/ui/Textarea";
 
 function Avatar({ name, src }: { name: string; src?: string }) {
   if (src) {
@@ -111,19 +114,20 @@ export default function CommentsSection({
   }
 
   return (
-    <div className="mt-6">
+    <div className="mt-3">
       <div className="flex items-baseline justify-between">
         <h3 className="text-lg font-semibold text-[#2c3e50]">
           评论（{comments.length > 99 ? "99+" : comments.length}）
         </h3>
       </div>
-      <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-6 md:p-8">
-        <textarea
+      <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+        <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="写下你的看法..."
-          rows={3}
-          className="w-full rounded-lg bg-white p-3 text-[14px] border-0 focus:outline-none focus:ring-0"
+          rows={2}
+          autoResize
+          className="border-0 focus:border-transparent focus:ring-0 bg-white"
         />
         <div className="flex justify-end">
           <button
