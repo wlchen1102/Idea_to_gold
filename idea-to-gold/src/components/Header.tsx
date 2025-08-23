@@ -87,12 +87,6 @@ function Header() {
             {isLoggedIn ? (
               // 登录状态
               <>
-                <Link
-                  href="/creatives/new"
-                  className="rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:brightness-110"
-                >
-                  + 发布点子
-                </Link>
                 {/* AvatarMenu 内部已经负责从 profiles 获取 nickname 与 avatar_url 并渲染 */}
                 <AvatarMenu />
               </>

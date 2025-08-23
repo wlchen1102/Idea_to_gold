@@ -4,6 +4,8 @@
 import { useState, useEffect } from "react";
 import CreativityCard from "@/components/CreativityCard";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { requireSupabaseClient } from "@/lib/supabase";
 
 // 定义创意数据类型
 interface Creative {
@@ -25,6 +27,7 @@ export default function Home() {
   const [creatives, setCreatives] = useState<Creative[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   // 未登录也允许访问首页：直接加载创意列表
   useEffect(() => {
@@ -49,6 +52,29 @@ export default function Home() {
 
     fetchCreatives();
   }, []);
+
+  // 点击“发布创意”按钮的处理：未登录 -> 提示并跳登录；已登录 -> 跳转到发布页
+  const handleCreateClick = async (_e: React.MouseEvent<HTMLButtonElement>) => {
+    try {
+      const supabase = requireSupabaseClient();
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = data?.session?.access_token;
+
+      if (sessionError || !accessToken) {
+        localStorage.setItem('pendingToast', '请先登录后再发布创意');
+        window.dispatchEvent(new Event('localToast'));
+        router.push('/login');
+        return;
+      }
+
+      router.push('/creatives/new');
+    } catch (_err) {
+      // 兜底：若出现异常，仍然引导到登录页
+      localStorage.setItem('pendingToast', '请先登录后再发布创意');
+      window.dispatchEvent(new Event('localToast'));
+      router.push('/login');
+    }
+  };
 
   // 转换 Creative 数据为 CreativityCard 组件所需的格式
   const convertToCardData = (creative: Creative) => {
@@ -81,23 +107,34 @@ export default function Home() {
       <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">创意广场</h1>
       <p className="mt-2 text-[#95a5a6]">连接真实需求与AI开发者，让每个好创意都能&quot;点石成金&quot;。</p>
 
-      {/* 筛选 Tab */}
-      <div className="mt-6 w-fit rounded-lg bg-gray-100 p-1">
-        {["热门", "最新"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as "热门" | "最新")}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
-              activeTab === tab
-                ? "bg-[#2ECC71] text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* 筛选 Tab 与 发布按钮同一行 */}
+      <div className="mt-6 flex items-center justify-between">
+        {/* 左侧：筛选 Tab */}
+        <div className="rounded-lg bg-gray-100 p-1 inline-flex">
+          {(["热门", "最新"] as Array<"热门" | "最新">).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium rounded-md ${
+                activeTab === tab
+                  ? "bg-[#2ECC71] text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
+        {/* 右侧：发布创意按钮（含未登录拦截） */}
+        <button
+          type="button"
+          onClick={handleCreateClick}
+          className="rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:brightness-110"
+        >
+          + 发布创意
+        </button>
+      </div>
       {/* 加载状态 */}
       {loading && (
         <div className="mt-8 text-center text-gray-500">
