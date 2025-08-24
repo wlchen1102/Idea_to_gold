@@ -1,12 +1,15 @@
+// 评论区组件
+
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import Textarea from "@/components/ui/Textarea";
 
 function Avatar({ name, src }: { name: string; src?: string }) {
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={name} className="h-10 w-10 rounded-full object-cover" />
+      <Image src={src} alt={name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" unoptimized />
     );
   }
   const initials = name
@@ -111,18 +114,20 @@ export default function CommentsSection({
   }
 
   return (
-    <div className="mt-6">
+    <div className="mt-3">
       <div className="flex items-baseline justify-between">
-        <h3 className="text-lg font-semibold text-[#2c3e50]">评论</h3>
-        <span className="text-sm text-gray-500">共有 {comments.length} 条评论</span>
+        <h3 className="text-lg font-semibold text-[#2c3e50]">
+          评论（{comments.length > 99 ? "99+" : comments.length}）
+        </h3>
       </div>
-      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4">
-        <textarea
+      <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+        <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="写下你的看法..."
-          rows={3}
-          className="w-full rounded-lg border border-gray-300 p-3 text-[14px] focus:border-[#2ECC71] focus:outline-none"
+          rows={2}
+          autoResize
+          className="border-0 focus:border-transparent focus:ring-0 bg-white"
         />
         <div className="flex justify-end">
           <button

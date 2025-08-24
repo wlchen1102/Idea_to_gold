@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { requireSupabaseClient } from "@/lib/supabase";
+import Image from "next/image";
 
 interface UserProfile {
   id: string;
@@ -162,9 +163,12 @@ function AvatarMenu() {
         className="flex items-center gap-3 rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-200 hover:shadow-md transition-shadow"
       >
         {user.avatar_url ? (
-          <img
+          <Image
             src={user.avatar_url}
-            alt={user.nickname}
+            alt={user.nickname || "用户头像"}
+            width={32}
+            height={32}
+            unoptimized
             className="h-8 w-8 rounded-full object-cover"
           />
         ) : (

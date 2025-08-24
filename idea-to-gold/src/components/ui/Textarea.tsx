@@ -7,29 +7,57 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   description?: string;
   error?: string;
   autoResize?: boolean; // 是否启用自适应高度
-  maxLines?: number; // 自适应高度时的最大行数
+  maxLines?: number; // 自适应高度时的最大行数（保留但不强制使用）
 }
 
-export default function Textarea({ label, description, error, className = "", id, autoResize = false, maxLines = 16, ...rest }: TextareaProps) {
+export default function Textarea(props: TextareaProps) {
+  const {
+    label,
+    description,
+    error,
+    className = "",
+    id,
+    autoResize = true, // 默认开启自适应
+    maxLines = 16, // 兼容旧用法，不再强制限制高度
+    ...rest
+  } = props;
+
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  // 提取受控 value，确保受控场景下也会触发重算高度
+  const currentValue = (rest as { value?: string | number | readonly string[] | undefined }).value;
 
   useEffect(() => {
     if (!autoResize || !ref.current) return;
     const el = ref.current;
-    const verticalPadding = 24; // 对齐页面 p-3 的上下 12px
-    const lineHeight = 24; // 与 leading-6 对齐
-    const maxHeight = maxLines * lineHeight + verticalPadding;
+
     const resize = () => {
+      // 先重置高度再取 scrollHeight，避免增长后无法缩回
       el.style.height = "auto";
-      const newHeight = Math.min(el.scrollHeight, maxHeight);
-      el.style.height = `${newHeight}px`;
-      el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+      // 不做最大高度裁剪，完全自适应内容
+      el.style.height = `${el.scrollHeight}px`;
+      el.style.overflowY = "hidden"; // 永远隐藏纵向滚动条
     };
+
+    // 初次执行一次
     resize();
+
+    // 输入事件时自适应
+    const onInput = () => resize();
+    el.addEventListener("input", onInput);
+
+    // 监听字体/容器变化导致的重排
     const obs = new ResizeObserver(resize);
     obs.observe(el);
-    return () => obs.disconnect();
-  }, [autoResize, maxLines]);
+
+    return () => {
+      el.removeEventListener("input", onInput);
+      obs.disconnect();
+    };
+  }, [autoResize, currentValue, maxLines]);
+
+  // 没传 rows 时默认 2 行
+  const rows = (rest as { rows?: number }).rows ?? 2;
 
   return (
     <div className="w-full">
@@ -42,8 +70,10 @@ export default function Textarea({ label, description, error, className = "", id
         id={id}
         ref={ref}
         {...rest}
+        rows={rows}
         className={
-          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] leading-6 focus:border-1 focus:border-[#2ECC71] focus:outline-none resize-none ` + (className || "")
+          `${label ? "mt-2 " : ""}w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none resize-none overflow-hidden ` +
+          (className || "")
         }
       />
       {description && <div className="mt-1 text-xs text-gray-500">{description}</div>}

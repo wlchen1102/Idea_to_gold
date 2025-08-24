@@ -1,8 +1,9 @@
 // 账户设置页面
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
+import Image from "next/image";
 
 interface UserProfile {
   id: string;
@@ -20,33 +21,46 @@ function AccountSettingsPage() {
   const [message, setMessage] = useState("");
   // 增加加载态，避免错误时一直显示"加载中"而不结束
   const [loading, setLoading] = useState(true);
+  // 防止 React 严格模式下 useEffect 执行两次导致的重复请求
+  const loadedRef = useRef(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
+      if (loadedRef.current) return; // 严格模式下第二次调用直接跳过
+      loadedRef.current = true;
       setLoading(true);
       try {
         const supabase = requireSupabaseClient();
-        
-        // 获取用户基本信息
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
+        // 仅从本地取 token，不再直接从浏览器查询 Supabase 数据库
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) {
           setMessage("请先登录");
           setLoading(false);
           return;
         }
 
-        // 获取用户资料
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", authUser.id)
-          .single();
-
-        if (profile) {
-          setUser(profile);
-          setNickname(profile.nickname || "");
-          setAvatar(profile.avatar_url || "");
-          setBio(profile.bio || "");
+        // 改为请求我们在 Edge 上的轻量接口（只返回需要的字段，且离用户更近）
+        const resp = await fetch("/api/users/me/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          setMessage(`加载用户资料失败: ${txt}`);
+          setLoading(false);
+          return;
+        }
+        const json = (await resp.json()) as {
+          profile: UserProfile | null;
+        };
+        if (json.profile) {
+          setUser(json.profile);
+          setNickname(json.profile.nickname || "");
+          setAvatar(json.profile.avatar_url || "");
+          setBio(json.profile.bio || "");
         } else {
           setMessage("未找到用户资料");
         }
@@ -144,9 +158,12 @@ function AccountSettingsPage() {
                     {loading ? (
                       <div className="h-16 w-16 rounded-full bg-gray-200 animate-pulse" />
                     ) : avatar ? (
-                      <img
+                      <Image
                         src={avatar}
-                        alt="头像预览"
+                        alt="用户头像"
+                        width={64}
+                        height={64}
+                        unoptimized
                         className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
                         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                       />

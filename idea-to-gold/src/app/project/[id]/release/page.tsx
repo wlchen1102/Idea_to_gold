@@ -5,9 +5,8 @@ export const runtime = 'edge';
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
+import Image from "next/image";
 
-type PageParams = { id: string };
-type PageProps = { params?: PageParams };
 
 type ProductType = "web" | "mobile" | "desktop" | "other";
 
@@ -140,12 +139,11 @@ export default function ProductReleasePage(): React.ReactElement {
               <label className="block text-sm font-medium text-[#2c3e50]">
                 产品 Logo <span className="text-red-500">*</span>
               </label>
-              <label className="flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white text-gray-500 hover:bg-gray-50">
+              <label className="relative flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white text-gray-500 hover:bg-gray-50">
                 {logoPreview ? (
                   <>
                     {/* 预览Logo（正方形裁切） */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logoPreview} alt="logo preview" className="h-full w-full object-cover" />
+                    <Image src={logoPreview} alt="logo preview" fill className="object-cover" unoptimized />
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center">
@@ -215,8 +213,7 @@ export default function ProductReleasePage(): React.ReactElement {
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   {promoPreviews.map((src, idx) => (
                     <div key={idx} className="relative aspect-video overflow-hidden rounded-md border border-gray-200">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt={`screenshot-${idx + 1}`} className="h-full w-full object-cover" />
+                      <Image src={src} alt={`screenshot-${idx + 1}`} fill className="object-cover" unoptimized />
                     </div>
                   ))}
                 </div>

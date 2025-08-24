@@ -59,7 +59,6 @@
 6. 模仿 apple 官网的动效，向下滚动鼠标配合动效。
 7. 数据可以引用在线的图表组件，样式需要跟主题一致。
 8. 使用 Framer Motion(通过CDN引入)。
-9. 使用HTML5、TailwindCSS 3+ 和必要的JavaScript。
 10. 使用专业图标库如Font Awesome或Material Icons （通过CDN引入)。
 11. 避免使用emoji作为主要图标。
 
@@ -85,23 +84,97 @@
 6.  **审查 (Review):** 查看自己的修改有没有问题。
 7.  **解释说明 (Explain):** 解释你做了哪些修改以及为什么。
 
-## Next.js + Cloudflare Pages（next-on-pages）的代码部署要求：
-### 背景：
-因为我们使用的是next框架，部署到cloudflare上，构建命令是：npx @cloudflare/next-on-pages@1，所以请求会优先进入它生成的 Worker，我们曾因混用 functions/ 目录和Next.js API路由，导致了404和路由冲突。所以为了能够满足cloudflare的要求，我们需要遵循以下规则：
+## 【重要】Next.js + Cloudflare Pages（next-on-pages）项目开发规则：
 
-### 要求1：严格遵守Next.js App Router的API路由规范
-- 唯一的API路径: 本项目所有的后端API接口，必须创建在 src/app/api/ 目录之下。严禁使用项目根目录下的 functions/ 目录。
-- 文件命名: 每一个API端点，都必须是一个名为 route.ts 的文件，并放置在对应的URL路径文件夹中。
-- 示例: 创建 POST /api/auth/login 接口，文件路径必须是 src/app/api/auth/login/route.ts。
-- 函数签名: 所有API路由的导出函数，其函数签名必须严格遵循Next.js App Router的规范。
+### **核心技术栈与部署模型**
+*   **【必须】** 本项目采用 **Next.js App Router** 框架，并统一部署到 **Cloudflare Pages**，构建命令是：npx @cloudflare/next-on-pages@1。
+*   **【必须】** 后端API**必须**使用Next.js原生的**API路由 (Route Handlers)**，并存放在 `src/app/api/` 目录下。
+*   **【禁止】** **绝对禁止**在项目中使用 `functions/` 目录，以避免与Next.js API路由产生冲突。
 
-### 要求2：Next.js 15 Route Handlers 类型签名注意事项（关键踩坑）
-- 在 [id]/route.ts 的 GET 函数中，第二个参数在本项目当前依赖组合下需要声明为 { params: Promise<{ id: string }> }，并在函数内 await params 取 id。否则会在构建时触发 “invalid GET export” 类型错误。
-- 这是当前仓库的约定（和 next-on-pages/版本组合有关），写新动态路由时照此处理，保证可编译通过。
+### **共享代码文件组织**
 
-### 要求3：
-- 后端函数禁止使用any类型，必须根据上下文推断使用具体的TypeScript类型;
+1.  **【必须】可复用的UI组件存放在 `src/components/`**。
+    *   所有非页面级的、可在多个页面复用的React组件（如按钮、卡片、弹窗），都必须放在这里。
 
+2.  **【必须】通用工具函数和SDK客户端存放在 `src/lib/`**。
+    *   所有与UI无关的、可在前后端复用的工具函数（如日期格式化、slug生成器）或SDK客户端实例（如 `supabase.ts`），都必须放在这里。
+
+---
+
+### **后端代码生成规则**
+
+#### **规则一：严格的API路由与文件结构 (Routing & Structure)**
+
+1.  **【必须】API必须按照RESTful资源进行文件夹组织**。所有API都必须存放在 `src/app/api/`下。
+    *   **示例**: `/api/auth`, `/api/creatives`, `/api/users`。
+2.  **【必须】API逻辑由 `route.ts` 文件定义**，API逻辑必须由大写的 `GET`, `POST`, `PATCH`, `DELETE` 函数来处理请求。
+
+#### **规则二：安全第一 (Security First)**
+
+1.  **【绝对禁止】硬编码任何密钥**。所有敏感信息（数据库连接、密钥）**必须**通过环境变量 (`context.env.VARIABLE_NAME`) 来获取。
+2.  **【必须】对所有“写入”操作进行身份验证**。任何会修改数据的API（`POST`, `PATCH`, `DELETE`），**必须**在执行核心逻辑前，先从请求头中获取JWT令牌，并验证用户是否已登录。
+3.  **【必须】永远不要相信前端的数据**。后端在将数据写入数据库之前，**必须**对所有从前端接收到的数据，进行**服务器端的校验**（例如，检查字段是否为空、格式是否正确）。
+4.  **【必须】使用`service_role`密钥进行数据库操作**。在后端API中初始化Supabase客户端时，**必须**使用具有最高权限的`service_role`密钥，以绕过RLS策略进行内部管理。
+
+#### **规则三：数据库交互最佳实践 (Database Best Practices)**
+
+1.  **【必须】使用UUID作为主键，使用Slug作为URL标识符**。
+2.  **【必须】写入操作要明确归属**。在向数据库 `insert` 或 `update` 数据时，`author_id` 或 `user_id` 这类字段，**必须**从**后端验证过的JWT令牌**中获取，**绝对不能**使用前端直接传递过来的用户ID。
+
+---
+
+### **前端代码生成规则(Frontend Pages)**
+*本规则旨在指导AI生成更高质量、更规范的前端代码，以确保顺利通过CI/CD构建流程，并提升项目的可维护性。在生成任何`.tsx`或`.ts`文件时，都必须严格遵守以下规则。*
+
+#### **规则一：前端页面文件组织 (`src/app/`)**
+*   **【必须】使用路由组 (Route Groups) 进行场景隔离**。所有页面都必须归属于以下三大路由组之一：
+    *   `(marketing)`: **访客区** (落地页、关于我们等)。
+    *   `(auth)`: **入口区** (登录、注册等)。
+    *   `(app)`: **核心区** (登录后才能访问的核心应用页面)。
+*   **【必须】页面UI由 `page.tsx` 文件定义**。
+*   **【必须】** 在路由组内部，应按功能模块（如`creatives`, `settings`）进一步组织文件夹。
+
+#### **规则二：杜绝“Any”类型 (Zero Tolerance for `any`)**
+
+1.  **【绝对禁止】** 在任何变量、函数参数或返回值的类型定义中，**绝对禁止**使用 `any` 类型。
+2.  **【必须】寻求具体类型**:
+    *   对于**事件对象**，必须使用React提供的具体类型，如 `React.MouseEvent`, `React.ChangeEvent<HTMLInputElement>`。
+    *   对于从**API返回的数据**，必须为其定义一个清晰的 `interface` 或 `type`。如果数据结构不确定，可以使用 `unknown` 并进行类型守卫，但不能用 `any`。
+    *   **示例 (错误)**: `function handleClick(event: any) { ... }`
+    *   **示例 (正确)**: `function handleClick(event: React.MouseEvent<HTMLButtonElement>) { ... }`
+
+#### **规则三：代码整洁度(Code Cleanliness)**
+
+1.  **【必须】代码即意图**: 最终生成的代码中，**不应该包含**任何被定义了但从未被使用过的变量、函数或导入。
+2.  **【必须】对“有意为之”进行标记**:
+    *   如果在函数参数中，某个变量（如 `event` 或 `_`）因为函数签名而必须存在，但其内部逻辑确实没有使用到它，**必须**在该变量名前加上**下划线 `_`** (例如 `_event`)，以明确告知ESLint这是“有意为之”。
+    *   **示例 (错误)**: `myArray.map((item, index) => { return <div>{item.name}</div> })` (这里的 `index` 未被使用)
+    *   **示例 (正确)**: `myArray.map((item, _index) => { return <div>{item.name}</div> })`
+
+#### **规则四：遵守“Hooks规则” (Respect the Rules of Hooks)**
+
+1.  **【必须】补全`useEffect`依赖项**:
+    *   在生成任何 `useEffect` Hook时，**必须**仔细检查其内部逻辑引用了哪些外部变量或函数。
+    *   所有被引用的外部依赖，都**必须**被完整地、无遗漏地添加到`useEffect`末尾的依赖数组 `[...]` 中。
+    *   **示例 (错误)**: `const [id, setId] = useState(1); useEffect(() => { fetch('/api/data/' + id); }, [])` (遗漏了 `id` 依赖)
+    *   **示例 (正确)**: `const [id, setId] = useState(1); useEffect(() => { fetch('/api/data/'' + id); }, [id])`
+
+#### **规则五：遵循“Next.js最佳实践” (Next.js Best Practices)**
+
+1.  **【必须】使用 `<Image />` 组件**:
+    *   在任何需要显示图片的地方，**必须**优先使用从 `next/image` 导入的 `<Image />` 组件，而不是原生的 `<img>` 标签。
+    *   **必须**为 `<Image />` 组件提供明确的 `width`, `height`, 和 `alt` 属性，以实现最佳的性能和可访问性。
+2.  **绝对禁止** 把“代码 diff 标记”（行首的 + / -）误带进源码，因为这样会导致 TSX 无法解析。
+
+#### **规则六：禁止把 git diff 风格的 “- … / + …” 行误带进源码**
+- 严禁将任何代码 diff 标记混入源码：包括行首的 “+ ”、“- ”、以及 “@@ … @@”、“+++ …”、“--- …” 等统一 diff 语法元素。
+- 生成或修改代码时，必须输出“最终代码”，不得使用补丁/差异（diff）样式。
+- 在 TSX/TS 文件中，任何以 “+ ”或 “- ”开头的行，除非是字符串字面量中的业务文案，均视为非法。
+- JSX 中的数组 map 等复杂表达式，类型断言若改变了优先级，必须用括号包裹断言后的表达式，确保括号配平再提交。
+
+本规则集旨在为项目提供一套清晰、可扩展的文件组织规范。所有未来的代码生成与修改，都必须严格遵守。*
+
+---
 
 ## 项目运行
 - 我会 npm run dev:cf 启动cloudflare开发服务，运行在http://127.0.0.1:8788/，你不需要再次启动服务
@@ -191,51 +264,6 @@ idea-to-gold/
 
 ---
 
-### **通用规则**
-
-#### **规则1：前端页面 (Frontend Pages)**
-
-1.  **【必须】使用路由组进行场景隔离**。所有页面都必须归属于以下三大路由组之一：
-    *   `(marketing)`: **访客区**。用于放置落地页、关于我们、价格等对外营销页面。
-    *   `(auth)`: **入口区**。用于放置登录、注册、忘记密码等认证流程页面。
-    *   `(app)`: **核心区**。用于放置登录后才能访问的核心应用页面，如创意广场、项目主页等。
-
-2.  **【必须】按功能模块组织文件夹**。
-    *   在各自的路由组内部，相关的页面应组织在同一个文件夹下。
-    *   **示例**:
-        *   `src/app/(app)/creatives/new/page.tsx` (发布新创意)
-        *   `src/app/(app)/settings/account/page.tsx` (账号设置)
-
-3.  **【必须】页面UI由 `page.tsx` 文件定义**。
-    *   每个URL路径下，用户直接看到的UI内容，必须定义在 `page.tsx` 文件中。
-
-#### **规则2：后端API (Backend APIs)**
-
-1.  **【必须】所有后端API都存放在 `src/app/api/` 目录下**。
-    *   这是我们项目中**唯一**的后端代码入口。
-
-2.  **【必须】严格按照RESTful资源进行文件夹组织**。
-    *   API的目录结构应清晰地反映出它所操作的资源。
-    *   **示例**:
-        *   所有与用户认证相关的API -> `src/app/api/auth/...`
-        *   所有与创意相关的API -> `src/app/api/creatives/...`
-
-3.  **【必须】API逻辑由 `route.ts` 文件定义**。
-    *   在每个API路由文件夹下，必须使用名为 `route.ts` 的文件来定义API逻辑。
-    *   **【必须】** 在 `route.ts` 文件中，使用导出的、以HTTP方法命名的大写函数（`GET`, `POST`, `PATCH`, `DELETE`）来处理对应的请求。
-    *   **示例**:
-        *   `src/app/api/creatives/route.ts` 文件中，会包含 `export async function GET(request) {...}` 和 `export async function POST(request) {...}`。
-
-#### **规则3：共享代码 (Shared Code)**
-
-1.  **【必须】可复用的UI组件存放在 `src/components/`**。
-    *   所有非页面级的、可在多个页面复用的React组件（如按钮、卡片、弹窗），都必须放在这里。
-
-2.  **【必须】通用工具函数和SDK客户端存放在 `src/lib/`**。
-    *   所有与UI无关的、可在前后端复用的工具函数（如日期格式化、slug生成器）或SDK客户端实例（如 `supabase.ts`），都必须放在这里。
-
----
-
 ## 5. 环境变量 (Environment Variables)
 
 所有敏感信息（密钥、URL）都必须通过环境变量注入，**严禁硬编码**。
@@ -264,7 +292,4 @@ idea-to-gold/
 2.  **无服务器思维**: 所有后端 API 必须是无状态的 (Stateless)。不要在函数内存中存储任何需要在多次请求之间保持的数据。所有状态都应持久化到 Supabase。
 
 3.  **前后端分离**: 前端通过 `fetch` API 调用相对路径 `/api/...` 上的后端端点。后端 API 负责与数据库和 R2 等服务交互，并将数据返回给前端。
-
-4. 
-
 ---
