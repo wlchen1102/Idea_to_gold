@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 interface SupportButtonProps {
   creativeId: string;
@@ -58,11 +59,12 @@ export default function SupportButton({ creativeId, initialCount, initiallySuppo
         setSupported(true);
         setCount((c) => c + 1);
 
-        const resp = await fetch(`/api/creatives/${creativeId}/upvote`, {
+        const resp = await fetchWithTimeout(`/api/creatives/${creativeId}/upvote`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
           },
+          timeoutMs: 10000,
         });
 
         if (!resp.ok) {
@@ -86,11 +88,12 @@ export default function SupportButton({ creativeId, initialCount, initiallySuppo
         setSupported(false);
         setCount((c) => Math.max(0, c - 1));
 
-        const resp = await fetch(`/api/creatives/${creativeId}/upvote`, {
+        const resp = await fetchWithTimeout(`/api/creatives/${creativeId}/upvote`, {
           method: "DELETE",
           headers: {
             "Authorization": `Bearer ${token}`,
           },
+          timeoutMs: 10000,
         });
 
         if (!resp.ok) {

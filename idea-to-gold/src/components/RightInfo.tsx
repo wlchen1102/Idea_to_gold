@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { requireSupabaseClient } from "@/lib/supabase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 // 轻量 toast（无外部依赖）
 function toast(message: string) {
@@ -47,7 +48,10 @@ export default function RightInfo({
 }) {
   const [supported, setSupported] = useState(false);
   const [count, setCount] = useState(supporters);
-  const [pending, setPending] = useState(false);
+
+  // 新增：跟踪“当前是否已支持”的期望状态 & 当前在途请求控制器
+  const desiredRef = useRef<boolean>(false);
+  const controllerRef = useRef<AbortController | null>(null);
 
   // 新增：首屏初始化真实的点赞数量与当前用户支持状态
   useEffect(() => {
@@ -66,6 +70,7 @@ export default function RightInfo({
           const cacheKey = `supported:${userId}:${ideaId}`;
           if (localStorage.getItem(cacheKey) === "1") {
             setSupported(true);
+            desiredRef.current = true;
           }
         }
 
@@ -89,6 +94,7 @@ export default function RightInfo({
         const initSupported = Boolean(json?.supported);
         setCount(Number(initCount) || 0);
         setSupported(initSupported);
+        desiredRef.current = initSupported;
 
         // 与本地缓存对齐（便于后续页面秒显）
         if (userId) {
@@ -107,9 +113,11 @@ export default function RightInfo({
     };
   }, [ideaId, supporters]);
 
+  // 点赞/取消点赞：改为“最后一次点击生效”，会中止上一次在途请求
   async function handleSupport() {
-    if (pending || supported) return;
     if (!ideaId) return;
+
+    const nextSupported = !supported; // 本次点击后的期望状态
 
     try {
       const supabase = requireSupabaseClient();
@@ -123,34 +131,65 @@ export default function RightInfo({
         return;
       }
 
-      setPending(true);
-      setSupported(true);
-      setCount((c) => c + 1);
+      // 1) 立刻乐观更新（UI 秒变）；并记录期望状态
+      setSupported(nextSupported);
+      setCount((c) => (nextSupported ? c + 1 : Math.max(0, c - 1)));
+      desiredRef.current = nextSupported;
 
-      const resp = await fetch(`/api/creatives/${ideaId}/upvote`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // 2) 中止上一次在途请求
+      if (controllerRef.current) {
+        try { controllerRef.current.abort(); } catch { /* ignore */ }
+      }
+      const controller = new AbortController();
+      controllerRef.current = controller;
+
+      // 3) 发起与期望状态一致的请求
+      const method = nextSupported ? "POST" : "DELETE";
+      const resp = await fetchWithTimeout(`/api/creatives/${ideaId}/upvote`, {
+        method,
+        headers: { Authorization: `Bearer ${token}` },
+        timeoutMs: 10000,
+        signal: controller.signal,
       });
 
+      // 仅当该请求仍是“最新请求”时，才根据返回值对齐计数
+      if (controllerRef.current !== controller) return;
+
       if (!resp.ok) {
-        setSupported(false);
-        setCount((c) => Math.max(0, c - 1));
-        toast("点赞失败，请重试");
-        const text = await resp.text().catch(() => "");
-        console.warn("Upvote failed:", text);
-      } else {
-        // 成功：写入本地缓存，便于后续页面秒显
-        if (userId) localStorage.setItem(`supported:${userId}:${ideaId}`, "1");
+        // 非 2xx：若仍是最新请求，则回滚并提示
+        if (desiredRef.current === nextSupported) {
+          setSupported(!nextSupported);
+          setCount((c) => (!nextSupported ? c + 1 : Math.max(0, c - 1)));
+          toast(nextSupported ? "点赞失败，请重试" : "取消失败，请重试");
+          const txt = await resp.text().catch(() => "");
+          console.warn("Upvote toggle failed:", txt);
+        }
+        return;
+      }
+
+      const json = (await resp.json().catch(() => null)) as { upvote_count?: number } | null;
+      if (controllerRef.current !== controller) return; // 已有新请求发出，忽略旧结果
+
+      if (json?.upvote_count != null) setCount(json.upvote_count);
+
+      // 本地缓存：仅当仍为最新请求时才写
+      if (userId) {
+        const cacheKey = `supported:${userId}:${ideaId}`;
+        if (nextSupported) localStorage.setItem(cacheKey, "1");
+        else localStorage.removeItem(cacheKey);
       }
     } catch (e) {
-      setSupported(false);
-      setCount((c) => Math.max(0, c - 1));
-      console.error(e);
-      toast("点赞失败，请重试");
-    } finally {
-      setPending(false);
+      // 中止错误直接忽略（因为用户触发了新的点击）
+      const isAbort = typeof e === "object" && e !== null && (e as any).name === "AbortError";
+      if (isAbort) return;
+
+      // 其它错误：若仍是最新期望，则回滚
+      if (desiredRef.current === nextSupported) {
+        setSupported(!nextSupported);
+        setCount((c) => (!nextSupported ? c + 1 : Math.max(0, c - 1)));
+        console.error(e);
+        toast("操作失败，请稍后重试");
+      }
     }
   }
 
@@ -162,6 +201,7 @@ export default function RightInfo({
       localStorage.removeItem(key);
       setSupported(true);
       setCount((c) => c + 1);
+      desiredRef.current = true;
     }
   }, [ideaId]);
 
@@ -170,8 +210,7 @@ export default function RightInfo({
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <button
           onClick={handleSupport}
-          disabled={supported}
-          className={`w-full rounded-xl px-5 py-3 text-[16px] font-semibold text-white ${supported ? "bg-gray-400" : "bg-[#2ECC71] hover:bg-[#27AE60]"}`}
+          className={`w-full rounded-xl px-5 py-3 text-[16px] font-semibold text-white ${supported ? "bg-gray-400 hover:bg-gray-400" : "bg-[#2ECC71] hover:bg-[#27AE60]"}`}
         >
           {supported ? "✓ 已想要" : "我也要"}
         </button>
