@@ -10,6 +10,7 @@ import ClientEffects from "@/components/ClientEffects";
 import Breadcrumb from "@/components/Breadcrumb";
 import { headers } from "next/headers";
 import Image from "next/image";
+import IdeaEditor from "@/components/IdeaEditor";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -53,6 +54,8 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     terminals: string[] | string
     bounty_amount?: number
     profiles?: { nickname?: string; avatar_url?: string }
+    author_id?: string
+    upvote_count?: number // 新增：点赞数量
   }
 
   let creative: Creative | null = null;
@@ -129,7 +132,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     description: descriptionParas,
     platforms: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
     bounty: creative.bounty_amount || 500,
-    supporters: Math.floor(Math.random() * 100),
+    supporters: Number(creative.upvote_count ?? 0), // 以真实 upvote_count 初始化
   };
 
   const projects = [
@@ -148,7 +151,9 @@ export default async function IdeaDetailPage({ params }: PageProps) {
       <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">
-          <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
+          </div>
           <div className="mt-3 flex items-center gap-3">
             <Avatar name={idea.author.name} src={idea.author.avatarUrl} />
             <div>
@@ -157,8 +162,20 @@ export default async function IdeaDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <h2 className="mt-6 text-lg font-semibold text-[#2c3e50]">创意描述</h2>
-          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-6 md:p-8">
+          {/* 将编辑入口移动到“创意描述”标题的右侧，仅作者可见 */}
+          <div className="mt-6 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-[#2c3e50]">创意描述</h2>
+            {creative?.author_id ? (
+              <IdeaEditor
+                id={String(creative.id)}
+                initialTitle={creative.title}
+                initialDescription={creative.description ?? ""}
+                authorId={creative.author_id}
+                initialTerminals={Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean)}
+              />
+            ) : null}
+          </div>
+          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
             {idea.description.map((para, idx) => (
               <p key={idx} className="text-[15px] leading-7 text-gray-700 mb-4 last:mb-0">{para}</p>
             ))}
@@ -168,11 +185,10 @@ export default async function IdeaDetailPage({ params }: PageProps) {
         <aside className="md:col-span-1">
           <RightInfo supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} ideaId={String(idea.id)} />
         </aside>
+        <section className="md:col-span-2">
+          <CommentsSection initialComments={initialComments} />
+        </section>
       </div>
-
-      <section className="mt-8">
-        <CommentsSection initialComments={initialComments} />
-      </section>
 
       <ClientEffects ideaId={String(idea.id)} />
     </>

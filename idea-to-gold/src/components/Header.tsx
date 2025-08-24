@@ -65,7 +65,7 @@ function Header() {
           <div className="hidden gap-8 md:flex" role="navigation">
             <Link 
               href="/creatives" 
-              className={`text-sm font-medium transition-colors px-1 pb-1 border-b-2 ${
+              className={`text-base font-medium transition-colors px-1 pb-1 border-b-2 ${
                 isActive('/creatives')
                   ? 'text-emerald-600 border-emerald-500'
                   : 'text-gray-700 hover:text-emerald-600 border-transparent'
@@ -76,7 +76,7 @@ function Header() {
             </Link>
             <Link 
               href="#" 
-              className="text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors px-1 pb-1 border-b-2 border-transparent"
+              className="text-base font-medium text-gray-700 hover:text-emerald-600 transition-colors px-1 pb-1 border-b-2 border-transparent"
             >
               产品库
             </Link>
@@ -87,12 +87,6 @@ function Header() {
             {isLoggedIn ? (
               // 登录状态
               <>
-                <Link
-                  href="/creatives/new"
-                  className="rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:brightness-110"
-                >
-                  + 发布点子
-                </Link>
                 {/* AvatarMenu 内部已经负责从 profiles 获取 nickname 与 avatar_url 并渲染 */}
                 <AvatarMenu />
               </>

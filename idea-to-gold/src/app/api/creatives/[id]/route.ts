@@ -21,6 +21,7 @@ interface Creative {
     nickname: string | null
     avatar_url: string | null
   } | null
+  upvote_count?: number // 新增：点赞数量字段（若表中存在）
 }
 
 interface CreativeResponse {
@@ -59,29 +60,52 @@ export async function GET(
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
     const { data, error } = await supabase
-      .from('user_creatives')
+      .from('creatives')
       .select('*')
       .eq('id', id)
       .single()
 
     if (error) {
       return NextResponse.json(
-        { message: '查询创意失败', error: error.message } satisfies Partial<CreativeResponse>,
-        { status: 404 }
+        { message: '数据库查询失败（获取创意）', error: error.message } satisfies Partial<CreativeResponse>,
+        { status: 500 }
       )
     }
 
     if (!data) {
       return NextResponse.json(
-        { message: '未找到资源' },
+        { message: '未找到创意' },
         { status: 404 }
       )
     }
 
     const creative = data as unknown as Creative
 
+    // 新增：计算 upvote_count（优先关联表 COUNT，失败或表缺失则回退到列值）
+    let total = 0;
+    let upvoteTableMissing = false;
+    const { count, error: countError } = await supabase
+      .from('creative_upvotes')
+      .select('*', { count: 'exact', head: true })
+      .eq('creative_id', id);
+
+    if (countError) {
+      const code = (countError as { code?: string } | null)?.code || '';
+      const msg = (countError as { message?: string } | null)?.message?.toLowerCase?.() || '';
+      upvoteTableMissing = code === '42P01' || (msg.includes('relation') && msg.includes('does not exist'));
+      console.warn('[CREATIVE_DETAIL_GET_COUNT_ERROR]', { code, msg });
+    }
+    if (typeof count === 'number' && count >= 0) total = count;
+
+    if ((countError && !upvoteTableMissing) || total === 0) {
+      const fallback = (creative as unknown as { upvote_count?: unknown })?.upvote_count;
+      if (typeof fallback === 'number') total = Number(fallback || 0);
+    }
+
+    const creativeWithCount: Creative = { ...creative, upvote_count: Number(total || 0) };
+
     return NextResponse.json(
-      { message: '获取创意成功', creative } satisfies CreativeResponse,
+      { message: '获取创意成功', creative: creativeWithCount } satisfies CreativeResponse,
       { status: 200 }
     )
   } catch (e) {
@@ -90,5 +114,107 @@ export async function GET(
       { message: '服务器内部错误', error: msg },
       { status: 500 }
     )
+  }
+}
+
+// PATCH /api/creatives/:id - 更新单个创意（仅作者可修改）
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  try {
+    const { env } = getRequestContext();
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL;
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 });
+    }
+
+    const awaitedParams = await params;
+    const idOrSlug = awaitedParams?.id;
+    if (!idOrSlug) {
+      return NextResponse.json({ message: '缺少或非法的参数：id' }, { status: 400 });
+    }
+
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) {
+      return NextResponse.json({ message: '缺少认证令牌，请先登录' }, { status: 401 });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // 验证 token
+    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    const currentUserId = userData?.user?.id;
+    if (authError || !currentUserId) {
+      return NextResponse.json({ message: '认证令牌无效，请重新登录' }, { status: 401 });
+    }
+
+    // 读取现有记录，优先按 id 查询，若未命中则回退按 slug 查询
+    let existing: { id: string; author_id: string } | null = null;
+    {
+      const { data, error } = await supabase
+        .from('creatives')
+        .select('id, author_id')
+        .eq('id', idOrSlug)
+        .maybeSingle();
+      if (error) {
+        // 如果发生了非“未命中”的错误，直接返回
+        // 对 maybeSingle 来说，未命中不视为错误，data 为 null
+        return NextResponse.json({ message: '数据库查询失败（按ID查找）', error: error.message }, { status: 500 });
+      }
+      if (data) existing = data as { id: string; author_id: string };
+    }
+
+    if (!existing) {
+      const { data, error } = await supabase
+        .from('creatives')
+        .select('id, author_id')
+        .eq('slug', idOrSlug)
+        .maybeSingle();
+      if (error) {
+        return NextResponse.json({ message: '数据库查询失败（按Slug查找）', error: error.message }, { status: 500 });
+      }
+      if (data) existing = data as { id: string; author_id: string };
+    }
+
+    if (!existing) {
+      return NextResponse.json({ message: '未找到创意' }, { status: 404 });
+    }
+
+    if (existing.author_id !== currentUserId) {
+      return NextResponse.json({ message: '无权限：仅作者可编辑该创意' }, { status: 403 });
+    }
+
+    // 读取并校验请求体
+    const body = await request.json().catch(() => null) as { title?: string; description?: string; terminals?: string[] } | null;
+    const title = typeof body?.title === 'string' ? body!.title.trim() : '';
+    const description = typeof body?.description === 'string' ? body!.description.trim() : '';
+    const terminals = Array.isArray(body?.terminals)
+      ? body!.terminals.filter((t) => typeof t === 'string')
+      : undefined;
+
+    if (!title || !description) {
+      return NextResponse.json({ message: '缺少必填字段：title 或 description' }, { status: 400 });
+    }
+
+    const updatePayload: { title: string; description: string; terminals?: string[] } = { title, description };
+    if (terminals) updatePayload.terminals = terminals;
+
+    const { error: updateError } = await supabase
+      .from('creatives')
+      .update(updatePayload)
+      .eq('id', existing.id);
+
+    if (updateError) {
+      return NextResponse.json({ message: '更新失败', error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '更新成功' }, { status: 200 });
+  } catch (e) {
+    const msg = e instanceof Error && e.message ? e.message : 'unknown error';
+    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 });
   }
 }
