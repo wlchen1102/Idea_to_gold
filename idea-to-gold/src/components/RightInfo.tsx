@@ -96,7 +96,7 @@ export default function RightInfo({
         // 若用户在首屏请求期间已经点击过按钮，则认为首屏结果已过期，避免覆盖当前 UI
         if (interactedRef.current) return;
 
-        const initCount = typeof json?.upvote_count === "number" ? json?.upvote_count! : supporters;
+        const initCount = json?.upvote_count ?? supporters;
         const initSupported = Boolean(json?.supported);
         setCount(Number(initCount) || 0);
         setSupported(initSupported);

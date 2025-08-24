@@ -190,10 +190,18 @@ export async function PATCH(
 
     // 读取并校验请求体
     const body = await request.json().catch(() => null) as { title?: string; description?: string; terminals?: string[] } | null;
-    const title = typeof body?.title === 'string' ? body!.title.trim() : '';
-    const description = typeof body?.description === 'string' ? body!.description.trim() : '';
-    const terminals = Array.isArray(body?.terminals)
-      ? body!.terminals.filter((t) => typeof t === 'string')
+
+    // 更安全的写法：避免对 body 使用非空断言，先取出局部变量再进行类型判断
+    const rawTitle = body?.title;
+    const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+
+    const rawDescription = body?.description;
+    const description = typeof rawDescription === 'string' ? rawDescription.trim() : '';
+
+    // 安全处理可选的 terminals 字段，避免非空断言
+    const terminalsCandidate = body?.terminals;
+    const terminals = Array.isArray(terminalsCandidate)
+      ? terminalsCandidate.filter((t): t is string => typeof t === 'string')
       : undefined;
 
     if (!title || !description) {
