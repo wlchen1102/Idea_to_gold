@@ -9,8 +9,13 @@ export async function fetchWithTimeout(
 
   // 若用户自己传入了 signal，则同时响应两者的中断
   if (userSignal) {
-    if ((userSignal as AbortSignal).aborted) controller.abort((userSignal as any).reason ?? 'external-signal');
-    else (userSignal as AbortSignal).addEventListener("abort", () => controller.abort((userSignal as any).reason ?? 'external-signal'), { once: true });
+    const sig = userSignal as AbortSignal & { reason?: unknown };
+    if (sig.aborted) controller.abort(sig.reason ?? 'external-signal');
+    else sig.addEventListener(
+      "abort",
+      () => controller.abort(sig.reason ?? 'external-signal'),
+      { once: true }
+    );
   }
 
   try {
