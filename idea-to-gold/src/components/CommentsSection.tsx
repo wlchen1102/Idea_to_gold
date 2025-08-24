@@ -58,6 +58,150 @@ interface CommentNode extends CommentDTO {
   liked?: boolean;
 }
 
+// 新增：将节点视图组件提升为顶层，避免因父组件重渲染导致的子树重挂载，从而避免回复框反复 autoFocus 抢占焦点
+function NodeView({
+  node,
+  depth = 0,
+  likesMap,
+  replyOpen,
+  replyValue,
+  toggleLike,
+  setReplyOpen,
+  setReplyValue,
+  submitComment,
+  formatTime,
+}: {
+  node: CommentNode;
+  depth?: number;
+  likesMap: Record<string, { liked: boolean; likes: number }>;
+  replyOpen: Record<string, boolean>;
+  replyValue: Record<string, string>;
+  toggleLike: (id: string) => void;
+  setReplyOpen: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  setReplyValue: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  submitComment: (content: string, parentId: string | null) => Promise<void>;
+  formatTime: (iso: string) => string;
+}) {
+  const name = node.profiles?.nickname ?? "匿名用户";
+  const avatar = node.profiles?.avatar_url ?? undefined;
+  const liked = likesMap[node.id]?.liked ?? false;
+  const likes = likesMap[node.id]?.likes ?? 0;
+
+  // 仅在回复框由关->开时，定向聚焦到当前这条的 textarea，避免 autoFocus 全局抢焦点
+  const open = replyOpen[node.id] ?? false;
+  useEffect(() => {
+    if (!open) return;
+    // 下一帧再聚焦，确保节点已渲染
+    const id = `reply-${node.id}`;
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(id) as HTMLTextAreaElement | null;
+      if (el) {
+        el.focus();
+        // 将光标放到文本末尾，便于继续输入
+        try {
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
+        } catch {}
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open, node.id]);
+
+  return (
+    <li key={node.id} className="flex gap-3">
+      <Avatar name={name} src={avatar} />
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[14px] font-medium text-[#2c3e50]">{name}</span>
+          <span className="text-[12px] text-[#95a5a6]">{formatTime(node.created_at)}</span>
+        </div>
+        <p className="mt-1 text-[14px] leading-6 text-gray-700">{node.content}</p>
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            onClick={() => toggleLike(node.id)}
+            className={`inline-flex items-center gap-1 text-[13px] ${
+              liked ? "text-[#e74c3c]" : "text-gray-600 hover:text-[#e74c3c]"
+            }`}
+            aria-label="点赞评论"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill={liked ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-4 w-4"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            <span>{likes}</span>
+          </button>
+          <button
+            onClick={() => setReplyOpen((p) => ({ ...p, [node.id]: !p[node.id] }))}
+            className="text-[13px] text-[#3498db] hover:underline"
+          >
+            回复
+          </button>
+        </div>
+
+        {replyOpen[node.id] && (
+          <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+            <Textarea
+              id={`reply-${node.id}`}
+              value={replyValue[node.id] ?? ""}
+              onChange={(e) => setReplyValue((p) => ({ ...p, [node.id]: e.target.value }))}
+              placeholder={`回复 ${name} ...`}
+              rows={1}
+              autoResize
+              className="border-0 focus:border-transparent focus:ring-0 bg-white"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setReplyOpen((p) => ({ ...p, [node.id]: false }))}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  const text = (replyValue[node.id] ?? "").trim();
+                  if (!text) return;
+                  await submitComment(text, node.id);
+                  setReplyValue((p) => ({ ...p, [node.id]: "" }));
+                  setReplyOpen((p) => ({ ...p, [node.id]: false }));
+                }}
+                className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
+              >
+                发表回复
+              </button>
+            </div>
+          </div>
+        )}
+
+        {node.replies.length > 0 && (
+          <ul className="mt-4 space-y-4 pl-0 border-l border-gray-200">
+            {node.replies.map((child) => (
+              <NodeView
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                likesMap={likesMap}
+                replyOpen={replyOpen}
+                replyValue={replyValue}
+                toggleLike={toggleLike}
+                setReplyOpen={setReplyOpen}
+                setReplyValue={setReplyValue}
+                submitComment={submitComment}
+                formatTime={formatTime}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export default function CommentsSection({
   ideaId,
 }: {
@@ -230,95 +374,8 @@ export default function CommentsSection({
     }
   }
 
-  // 嵌套节点渲染
-  function NodeView({ node, depth = 0 }: { node: CommentNode; depth?: number }) {
-    const name = node.profiles?.nickname ?? "匿名用户";
-    const avatar = node.profiles?.avatar_url ?? undefined;
-    const liked = likesMap[node.id]?.liked ?? false;
-    const likes = likesMap[node.id]?.likes ?? 0;
-
-    return (
-      <li key={node.id} className="flex gap-3">
-        <Avatar name={name} src={avatar} />
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[14px] font-medium text-[#2c3e50]">{name}</span>
-            <span className="text-[12px] text-[#95a5a6]">{formatTime(node.created_at)}</span>
-          </div>
-          <p className="mt-1 text-[14px] leading-6 text-gray-700">{node.content}</p>
-          <div className="mt-2 flex items-center gap-4">
-            <button
-              onClick={() => toggleLike(node.id)}
-              className={`inline-flex items-center gap-1 text-[13px] ${
-                liked ? "text-[#e74c3c]" : "text-gray-600 hover:text-[#e74c3c]"
-              }`}
-              aria-label="点赞评论"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill={liked ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth="2"
-                className="h-4 w-4"
-              >
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-              <span>{likes}</span>
-            </button>
-            <button
-              onClick={() => setReplyOpen((p) => ({ ...p, [node.id]: !p[node.id] }))}
-              className="text-[13px] text-[#3498db] hover:underline"
-            >
-              回复
-            </button>
-          </div>
-
-          {replyOpen[node.id] && (
-            <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
-              <Textarea
-                value={replyValue[node.id] ?? ""}
-                onChange={(e) => setReplyValue((p) => ({ ...p, [node.id]: e.target.value }))}
-                placeholder={`回复 ${name} ...`}
-                rows={1}
-                autoResize
-                autoFocus
-                className="border-0 focus:border-transparent focus:ring-0 bg-white"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setReplyOpen((p) => ({ ...p, [node.id]: false }))}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={async () => {
-                    const text = (replyValue[node.id] ?? "").trim();
-                    if (!text) return;
-                    await submitComment(text, node.id);
-                    setReplyValue((p) => ({ ...p, [node.id]: "" }));
-                    setReplyOpen((p) => ({ ...p, [node.id]: false }));
-                  }}
-                  className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
-                >
-                  发表回复
-                </button>
-              </div>
-            </div>
-          )}
-
-          {node.replies.length > 0 && (
-            <ul className="mt-4 space-y-4 pl-0 border-l border-gray-200">
-              {node.replies.map((child) => (
-                <NodeView key={child.id} node={child} depth={depth + 1} />
-              ))}
-            </ul>
-          )}
-        </div>
-      </li>
-    );
-  }
+  // 嵌套节点渲染（已提升为顶层组件）
+  // NodeView 已移到文件顶层
 
   const totalCount = items.length;
 
@@ -363,7 +420,18 @@ export default function CommentsSection({
       ) : (
         <ul className="mt-5 space-y-4">
           {tree.map((node) => (
-            <NodeView key={node.id} node={node} />
+            <NodeView
+              key={node.id}
+              node={node}
+              likesMap={likesMap}
+              replyOpen={replyOpen}
+              replyValue={replyValue}
+              toggleLike={toggleLike}
+              setReplyOpen={setReplyOpen}
+              setReplyValue={setReplyValue}
+              submitComment={submitComment}
+              formatTime={formatTime}
+            />
           ))}
         </ul>
       )}
