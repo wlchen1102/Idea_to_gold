@@ -52,6 +52,8 @@ export default function RightInfo({
   // 新增：跟踪“当前是否已支持”的期望状态 & 当前在途请求控制器
   const desiredRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
+  // 新增：标记用户是否已经与按钮交互过，一旦交互过，就不再让首屏 GET 结果覆盖当前 UI
+  const interactedRef = useRef<boolean>(false);
 
   // 新增：首屏初始化真实的点赞数量与当前用户支持状态
   useEffect(() => {
@@ -71,6 +73,8 @@ export default function RightInfo({
           if (localStorage.getItem(cacheKey) === "1") {
             setSupported(true);
             desiredRef.current = true;
+            // 临时兜底：若首屏人数为0但用户已支持，先显示至少1人，待GET返回再对齐
+            setCount((prev) => (prev <= 0 ? 1 : prev));
           }
         }
 
@@ -89,8 +93,10 @@ export default function RightInfo({
           return;
         }
         if (cancelled) return;
+        // 若用户在首屏请求期间已经点击过按钮，则认为首屏结果已过期，避免覆盖当前 UI
+        if (interactedRef.current) return;
 
-        const initCount = typeof json?.upvote_count === "number" ? json?.upvote_count! : supporters;
+        const initCount = json?.upvote_count ?? supporters;
         const initSupported = Boolean(json?.supported);
         setCount(Number(initCount) || 0);
         setSupported(initSupported);
@@ -117,7 +123,8 @@ export default function RightInfo({
   async function handleSupport() {
     if (!ideaId) return;
 
-    const nextSupported = !supported; // 本次点击后的期望状态
+    // 修正：以“期望状态”为基准翻转，避免多次快速点击时使用到过期的 supported 值
+    const nextSupported = !desiredRef.current; // 本次点击后的期望状态
 
     try {
       const supabase = requireSupabaseClient();
@@ -131,14 +138,17 @@ export default function RightInfo({
         return;
       }
 
-      // 1) 立刻乐观更新（UI 秒变）；并记录期望状态
+      // 标记：用户已交互，后续不允许首屏 GET 覆盖 UI
+      interactedRef.current = true;
+
+      // 1) 立刻 optimistic 更新（UI 秒变）；并记录期望状态
       setSupported(nextSupported);
       setCount((c) => (nextSupported ? c + 1 : Math.max(0, c - 1)));
       desiredRef.current = nextSupported;
 
       // 2) 中止上一次在途请求
       if (controllerRef.current) {
-        try { controllerRef.current.abort(); } catch { /* ignore */ }
+        try { controllerRef.current.abort('superseded'); } catch { /* ignore */ }
       }
       const controller = new AbortController();
       controllerRef.current = controller;
@@ -167,10 +177,15 @@ export default function RightInfo({
         return;
       }
 
-      const json = (await resp.json().catch(() => null)) as { upvote_count?: number } | null;
+      const json = (await resp.json().catch(() => null)) as { upvote_count?: number; changed?: boolean } | null;
       if (controllerRef.current !== controller) return; // 已有新请求发出，忽略旧结果
 
-      if (json?.upvote_count != null) setCount(json.upvote_count);
+      // 关键修复：若服务端返回 changed=false（无实际变更），忽略返回的 upvote_count，保留乐观值
+      if (json && json.changed === false) {
+        console.warn("Upvote API returned changed=false, keep optimistic count.", json);
+      } else if (json?.upvote_count != null) {
+        setCount(json.upvote_count);
+      }
 
       // 本地缓存：仅当仍为最新请求时才写
       if (userId) {
@@ -180,7 +195,7 @@ export default function RightInfo({
       }
     } catch (e) {
       // 中止错误直接忽略（因为用户触发了新的点击）
-      const isAbort = typeof e === "object" && e !== null && (e as any).name === "AbortError";
+      const isAbort = e instanceof DOMException && e.name === "AbortError";
       if (isAbort) return;
 
       // 其它错误：若仍是最新期望，则回滚
@@ -240,16 +255,12 @@ export default function RightInfo({
             <span>悬赏金额：￥{_bounty}</span>
           </li>
           */}
-          <li className="flex items-center gap-2">
-            <span>期望终端：</span>
-            <div className="flex flex-wrap gap-2">
-              {platforms.map((t) => (
-                <span key={t} className="rounded-full bg-gray-100 px-3 py-1 text-[12px] text-gray-700">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </li>
+          {platforms?.length ? (
+            <li>
+              <span className="font-medium">期望终端：</span>
+              <span className="text-gray-600">{platforms.join("、")}</span>
+            </li>
+          ) : null}
         </ul>
       </div>
     </div>

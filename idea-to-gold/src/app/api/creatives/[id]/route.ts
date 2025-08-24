@@ -81,8 +81,31 @@ export async function GET(
 
     const creative = data as unknown as Creative
 
+    // 新增：计算 upvote_count（优先关联表 COUNT，失败或表缺失则回退到列值）
+    let total = 0;
+    let upvoteTableMissing = false;
+    const { count, error: countError } = await supabase
+      .from('creative_upvotes')
+      .select('*', { count: 'exact', head: true })
+      .eq('creative_id', id);
+
+    if (countError) {
+      const code = (countError as { code?: string } | null)?.code || '';
+      const msg = (countError as { message?: string } | null)?.message?.toLowerCase?.() || '';
+      upvoteTableMissing = code === '42P01' || (msg.includes('relation') && msg.includes('does not exist'));
+      console.warn('[CREATIVE_DETAIL_GET_COUNT_ERROR]', { code, msg });
+    }
+    if (typeof count === 'number' && count >= 0) total = count;
+
+    if ((countError && !upvoteTableMissing) || total === 0) {
+      const fallback = (creative as unknown as { upvote_count?: unknown })?.upvote_count;
+      if (typeof fallback === 'number') total = Number(fallback || 0);
+    }
+
+    const creativeWithCount: Creative = { ...creative, upvote_count: Number(total || 0) };
+
     return NextResponse.json(
-      { message: '获取创意成功', creative } satisfies CreativeResponse,
+      { message: '获取创意成功', creative: creativeWithCount } satisfies CreativeResponse,
       { status: 200 }
     )
   } catch (e) {
@@ -167,10 +190,18 @@ export async function PATCH(
 
     // 读取并校验请求体
     const body = await request.json().catch(() => null) as { title?: string; description?: string; terminals?: string[] } | null;
-    const title = typeof body?.title === 'string' ? body!.title.trim() : '';
-    const description = typeof body?.description === 'string' ? body!.description.trim() : '';
-    const terminals = Array.isArray(body?.terminals)
-      ? body!.terminals.filter((t) => typeof t === 'string')
+
+    // 更安全的写法：避免对 body 使用非空断言，先取出局部变量再进行类型判断
+    const rawTitle = body?.title;
+    const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+
+    const rawDescription = body?.description;
+    const description = typeof rawDescription === 'string' ? rawDescription.trim() : '';
+
+    // 安全处理可选的 terminals 字段，避免非空断言
+    const terminalsCandidate = body?.terminals;
+    const terminals = Array.isArray(terminalsCandidate)
+      ? terminalsCandidate.filter((t): t is string => typeof t === 'string')
       : undefined;
 
     if (!title || !description) {
