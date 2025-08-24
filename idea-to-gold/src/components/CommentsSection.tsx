@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
+import Modal from "@/components/Modal";
 
 // 头像组件：优先显示图片，其次显示姓名首字母
 function Avatar({ name, src }: { name: string; src?: string | null }) {
@@ -61,7 +62,7 @@ interface CommentNode extends CommentDTO {
 // 新增：将节点视图组件提升为顶层，避免因父组件重渲染导致的子树重挂载，从而避免回复框反复 autoFocus 抢占焦点
 function NodeView({
   node,
-  depth = 0,
+  depth: _depth = 0,
   likesMap,
   replyOpen,
   replyValue,
@@ -70,6 +71,8 @@ function NodeView({
   setReplyValue,
   submitComment,
   formatTime,
+  currentUserId,
+  onRequestDelete,
 }: {
   node: CommentNode;
   depth?: number;
@@ -81,6 +84,8 @@ function NodeView({
   setReplyValue: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   submitComment: (content: string, parentId: string | null) => Promise<void>;
   formatTime: (iso: string) => string;
+  currentUserId: string | null;
+  onRequestDelete: (id: string) => void;
 }) {
   const name = node.profiles?.nickname ?? "匿名用户";
   const avatar = node.profiles?.avatar_url ?? undefined;
@@ -142,6 +147,14 @@ function NodeView({
           >
             回复
           </button>
+          {currentUserId && currentUserId === node.author_id ? (
+            <button
+              onClick={() => onRequestDelete(node.id)}
+              className="text-[13px] text-gray-500 hover:underline"
+            >
+              删除
+            </button>
+          ) : null}
         </div>
 
         {replyOpen[node.id] && (
@@ -184,7 +197,7 @@ function NodeView({
               <NodeView
                 key={child.id}
                 node={child}
-                depth={depth + 1}
+                depth={_depth + 1}
                 likesMap={likesMap}
                 replyOpen={replyOpen}
                 replyValue={replyValue}
@@ -193,6 +206,8 @@ function NodeView({
                 setReplyValue={setReplyValue}
                 submitComment={submitComment}
                 formatTime={formatTime}
+                currentUserId={currentUserId}
+                onRequestDelete={onRequestDelete}
               />
             ))}
           </ul>
@@ -209,16 +224,32 @@ export default function CommentsSection({
 }) {
   // 顶部发布框内容
   const [value, setValue] = useState("");
+  // 点赞本地状态（演示用）
+  const [likesMap, setLikesMap] = useState<Record<string, { liked: boolean; likes: number }>>({});
+  // 回复框开关 & 内容
+  const [replyOpen, setReplyOpen] = useState<Record<string, boolean>>({});
+  const [replyValue, setReplyValue] = useState<Record<string, string>>({});
+  // 新增：当前登录用户ID（用于在自己评论旁显示“删除”按钮）
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // 新增：删除确认弹窗状态
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    // 获取当前登录用户ID
+    const supabase = requireSupabaseClient();
+    supabase.auth
+      .getSession()
+      .then((res) => {
+        setCurrentUserId(res.data?.session?.user?.id ?? null);
+      })
+      .catch(() => setCurrentUserId(null));
+  }, []);
+
   // 原始平铺列表（来自后端）
   const [items, setItems] = useState<CommentDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // 本地点赞 Map（演示用）
-  const [likesMap, setLikesMap] = useState<Record<string, { liked: boolean; likes: number }>>({});
-  // 回复框开关与内容
-  const [replyOpen, setReplyOpen] = useState<Record<string, boolean>>({});
-  const [replyValue, setReplyValue] = useState<Record<string, string>>({});
 
   // 拉取评论列表（按时间升序）
   useEffect(() => {
@@ -238,7 +269,7 @@ export default function CommentsSection({
         setItems(list);
         // 初始化 likesMap（仅添加缺失项）
         setLikesMap((prev) => {
-          const next = { ...prev };
+          const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
           for (const it of list) {
             if (!next[it.id]) next[it.id] = { liked: false, likes: 0 };
           }
@@ -282,36 +313,36 @@ export default function CommentsSection({
     };
   }, [ideaId]);
 
-  // 平铺转树（父子均按时间升序）
-  const tree: CommentNode[] = useMemo(() => {
-    const map = new Map<string, CommentNode>();
-    const roots: CommentNode[] = [];
-    for (const it of items) {
-      map.set(it.id, {
-        ...it,
-        replies: [],
-        liked: likesMap[it.id]?.liked ?? false,
-        likes: likesMap[it.id]?.likes ?? 0,
-      });
-    }
-    for (const node of map.values()) {
-      if (node.parent_comment_id) {
-        const parent = map.get(node.parent_comment_id);
-        if (parent) parent.replies.push(node);
-        else roots.push(node); // 容错：父节点缺失
-      } else {
-        roots.push(node);
-      }
-    }
-    const byAsc = (a: CommentNode, b: CommentNode) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    function sortRec(list: CommentNode[]) {
-      list.sort(byAsc);
-      for (const n of list) sortRec(n.replies);
-    }
-    sortRec(roots);
-    return roots;
-  }, [items, likesMap]);
+  // 计算树结构 + 同步点赞状态
+  const tree = useMemo(() => {
+    const byId = new Map<string, CommentNode>();
+     const roots: CommentNode[] = [];
+     for (const it of items) byId.set(it.id, { ...(it as CommentDTO), replies: [] });
+     for (const node of byId.values()) {
+       // 从 likesMap 注入 UI 状态
+       const l = likesMap[node.id];
+       if (l) {
+         node.likes = l.likes;
+         node.liked = l.liked;
+       }
+       const parentId = node.parent_comment_id;
+       if (parentId) {
+         const parent = byId.get(parentId);
+         if (parent) parent.replies.push(node);
+         else roots.push(node); // 容错：父节点缺失
+       } else {
+         roots.push(node);
+       }
+     }
+     const byAsc = (a: CommentNode, b: CommentNode) =>
+       new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+     function sortRec(list: CommentNode[]) {
+       list.sort(byAsc);
+       for (const n of list) sortRec(n.replies);
+     }
+     sortRec(roots);
+     return roots;
+   }, [items, likesMap]);
 
   function formatTime(iso: string) {
     try {
@@ -374,6 +405,68 @@ export default function CommentsSection({
     }
   }
 
+  // 删除评论（仅作者可删）
+  async function deleteCommentById(id: string): Promise<boolean> {
+    try {
+      const supabase = requireSupabaseClient();
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data?.session?.access_token ?? "";
+      if (!token) {
+        alert("请先登录");
+        return false;
+      }
+      const res = await fetch(`/api/comments?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+      if (res.status === 401) {
+        alert("登录已过期，请重新登录");
+        return false;
+      }
+      if (!res.ok) {
+        throw new Error(j?.error || j?.message || `请求失败（${res.status}）`);
+      }
+      // 乐观移除被删节点，避免界面延迟
+      setItems((prev) => prev.filter((c) => c.id !== id));
+      // 清理相关本地状态
+      setLikesMap((prev) => {
+        const { [id]: _removed, ...rest } = prev;
+        return rest;
+      });
+      setReplyOpen((prev) => {
+        const { [id]: _r, ...rest } = prev;
+        return rest;
+      });
+      setReplyValue((prev) => {
+        const { [id]: _v, ...rest } = prev;
+        return rest;
+      });
+      // 关键：重新拉取一次列表，确保若开启了级联删除，子回复也被一并移除
+      if (ideaId) {
+        try {
+          const resp = await fetch(`/api/comments?creative_id=${encodeURIComponent(ideaId)}`);
+          if (resp.ok) {
+            const json = (await resp.json().catch(() => null)) as { comments?: CommentDTO[] } | null;
+            const list = json?.comments ?? [];
+            setItems(list);
+            // 同步补全 likesMap 缺失项
+            setLikesMap((prev) => {
+              const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
+              for (const it of list) if (!next[it.id]) next[it.id] = { liked: false, likes: 0 };
+              return next;
+            });
+          }
+        } catch {}
+      }
+      return true;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "删除失败";
+      alert(msg);
+      return false;
+    }
+  }
+
   // 嵌套节点渲染（已提升为顶层组件）
   // NodeView 已移到文件顶层
 
@@ -431,10 +524,52 @@ export default function CommentsSection({
               setReplyValue={setReplyValue}
               submitComment={submitComment}
               formatTime={formatTime}
+              currentUserId={currentUserId}
+              onRequestDelete={setConfirmDeleteId}
             />
           ))}
         </ul>
       )}
+
+      {/* 删除确认弹窗 */}
+      <Modal
+        isOpen={!!confirmDeleteId}
+        onClose={() => {
+          if (!deleting) setConfirmDeleteId(null);
+        }}
+      >
+        <p className="text-[16px] sm:text-[18px] leading-7 text-gray-800">确定删除此评论？</p>
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteId(null)}
+            disabled={deleting}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-[#2c3e50] hover:bg-gray-50"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!confirmDeleteId) return;
+              const id = confirmDeleteId;
+              // 立即关闭弹窗，不阻塞用户
+              setConfirmDeleteId(null);
+              setDeleting(true);
+              const ok = await deleteCommentById(id);
+              setDeleting(false);
+              if (ok && typeof window !== "undefined") {
+                localStorage.setItem("pendingToast", "删除成功");
+                window.dispatchEvent(new Event("localToast"));
+              }
+            }}
+            className="rounded-md bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            disabled={deleting}
+          >
+            确认
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

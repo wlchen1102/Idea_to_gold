@@ -162,3 +162,72 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
   }
 }
+
+// DELETE /api/comments?id=xxx - 删除单条评论（仅作者可删）
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  try {
+    const id = request.nextUrl.searchParams.get('id')?.trim() || ''
+    if (!id) {
+      return NextResponse.json({ message: '缺少必填参数：id' }, { status: 400 })
+    }
+
+    // 读取服务端环境变量
+    const { env } = getRequestContext()
+    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
+    }
+
+    // 鉴权：需要 Bearer Token
+    const authHeader = request.headers.get('Authorization') || ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+    if (!token) {
+      return NextResponse.json({ message: '未授权：缺少认证令牌' }, { status: 401 })
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey)
+
+    // 验证 token，获取 userId
+    const { data: authData, error: authErr } = await supabase.auth.getUser(token)
+    const userId = authData?.user?.id || ''
+    if (authErr || !userId) {
+      return NextResponse.json({ message: '访问令牌无效或已过期' }, { status: 401 })
+    }
+
+    // 确认评论存在并且属于当前用户
+    const { data: row, error: qErr } = await supabase
+      .from('comments')
+      .select('id, author_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (qErr) {
+      return NextResponse.json({ message: '查询评论失败', error: qErr.message }, { status: 500 })
+    }
+
+    if (!row) {
+      return NextResponse.json({ message: '评论不存在或已被删除' }, { status: 404 })
+    }
+
+    if ((row as { author_id: string }).author_id !== userId) {
+      return NextResponse.json({ message: '无权限删除他人评论' }, { status: 403 })
+    }
+
+    // 允许删除，即使存在子回复（交由数据库外键策略决定级联或拒绝）
+    const { error: delErr } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', id)
+
+    if (delErr) {
+      const msg = (delErr as unknown as { message?: string }).message || ''
+      return NextResponse.json({ message: '删除失败', error: msg || 'unknown' }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: '删除成功' }, { status: 200 })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'unknown error'
+    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
+  }
+}
