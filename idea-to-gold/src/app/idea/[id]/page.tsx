@@ -140,11 +140,6 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     { id: "p2", dev: { name: "Iris" }, status: "开发中" },
   ];
 
-  const initialComments = [
-    { id: "c1", author: "李产品", content: "想法很有意思，可以考虑引入行业新闻的权重因子。", time: "1小时前" },
-    { id: "c2", author: "Zoe", content: "感谢建议！权重会在下个版本支持自定义配置。", time: "58分钟前", isAuthor: true },
-    { id: "c3", author: "阿明", content: "是否支持 A 股和美股同时追踪？", time: "30分钟前" },
-  ];
 
   return (
     <>
@@ -186,7 +181,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
           <RightInfo supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} ideaId={String(idea.id)} />
         </aside>
         <section className="md:col-span-2">
-          <CommentsSection initialComments={initialComments} />
+          <CommentsSection ideaId={String(creative.id)} />
         </section>
       </div>
 
