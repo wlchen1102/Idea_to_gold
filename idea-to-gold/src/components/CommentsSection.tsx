@@ -15,9 +15,9 @@ function Avatar({ name, src }: { name: string; src?: string | null }) {
       <Image
         src={src}
         alt={name}
-        width={40}
-        height={40}
-        className="h-10 w-10 rounded-full object-cover"
+        width={28}
+        height={28}
+        className="h-7 w-7 rounded-full object-cover"
         unoptimized
       />
     );
@@ -30,7 +30,7 @@ function Avatar({ name, src }: { name: string; src?: string | null }) {
     .join("")
     .toUpperCase();
   return (
-    <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ecf0f1] text-[#2c3e50] text-sm font-semibold">
+    <div className="grid h-7 w-7 place-items-center rounded-full bg-[#ecf0f1] text-[#2c3e50] text-[12px] font-semibold">
       {initials}
     </div>
   );
@@ -49,6 +49,9 @@ interface CommentDTO {
     nickname: string | null;
     avatar_url: string | null;
   } | null;
+  // 新增：点赞统计（由后端聚合返回）
+  likes_count?: number;
+  current_user_liked?: boolean;
 }
 
 // 前端树节点（带子回复）
@@ -267,11 +270,13 @@ export default function CommentsSection({
         if (aborted) return;
         const list = json.comments ?? [];
         setItems(list);
-        // 初始化 likesMap（仅添加缺失项）
+        // 根据后端聚合结果初始化 likesMap
         setLikesMap((prev) => {
           const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
           for (const it of list) {
-            if (!next[it.id]) next[it.id] = { liked: false, likes: 0 };
+            const liked = Boolean(it.current_user_liked);
+            const likes = Number((it as { likes_count?: number }).likes_count ?? 0);
+            next[it.id] = { liked, likes: Math.max(0, likes) };
           }
           return next;
         });
@@ -334,10 +339,10 @@ export default function CommentsSection({
          roots.push(node);
        }
      }
-     const byAsc = (a: CommentNode, b: CommentNode) =>
-       new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+     const byDesc = (a: CommentNode, b: CommentNode) =>
+       new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
      function sortRec(list: CommentNode[]) {
-       list.sort(byAsc);
+       list.sort(byDesc);
        for (const n of list) sortRec(n.replies);
      }
      sortRec(roots);
@@ -354,12 +359,37 @@ export default function CommentsSection({
   }
 
   function toggleLike(id: string) {
-    setLikesMap((prev) => {
-      const cur = prev[id] ?? { liked: false, likes: 0 };
-      const liked = !cur.liked;
-      const likes = cur.likes + (liked ? 1 : -1);
-      return { ...prev, [id]: { liked, likes: Math.max(0, likes) } };
-    });
+    const old = likesMap[id] ?? { liked: false, likes: 0 };
+    const optimisticLiked = !old.liked;
+    const optimisticLikes = Math.max(0, old.likes + (optimisticLiked ? 1 : -1));
+    // 先做乐观更新
+    setLikesMap((prev) => ({ ...prev, [id]: { liked: optimisticLiked, likes: optimisticLikes } }));
+
+    (async () => {
+      try {
+        const supabase = requireSupabaseClient();
+        const sessionRes = await supabase.auth.getSession();
+        const token = sessionRes.data?.session?.access_token ?? "";
+        if (!token) {
+          throw new Error("请先登录");
+        }
+        const res = await fetch(`/api/comments/${encodeURIComponent(id)}/like`, {
+          method: optimisticLiked ? "POST" : "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const j = (await res.json().catch(() => null)) as { likes_count?: number; message?: string; error?: string } | null;
+        if (!res.ok) {
+          throw new Error(j?.error || j?.message || `请求失败（${res.status}）`);
+        }
+        const serverCount = typeof j?.likes_count === "number" ? Number(j?.likes_count) : optimisticLikes;
+        setLikesMap((prev) => ({ ...prev, [id]: { liked: optimisticLiked, likes: Math.max(0, serverCount) } }));
+      } catch (err) {
+        // 失败回滚
+        setLikesMap((prev) => ({ ...prev, [id]: { liked: old.liked, likes: old.likes } }));
+        const msg = err instanceof Error ? err.message : "操作失败";
+        alert(msg);
+      }
+    })();
   }
 
   async function submitComment(content: string, parentId: string | null = null) {
@@ -450,10 +480,14 @@ export default function CommentsSection({
             const json = (await resp.json().catch(() => null)) as { comments?: CommentDTO[] } | null;
             const list = json?.comments ?? [];
             setItems(list);
-            // 同步补全 likesMap 缺失项
+            // 同步 likesMap（从后端聚合结果重建）
             setLikesMap((prev) => {
               const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
-              for (const it of list) if (!next[it.id]) next[it.id] = { liked: false, likes: 0 };
+              for (const it of list) {
+                const liked = Boolean(it.current_user_liked);
+                const likes = Number((it as { likes_count?: number }).likes_count ?? 0);
+                next[it.id] = { liked, likes: Math.max(0, likes) };
+              }
               return next;
             });
           }

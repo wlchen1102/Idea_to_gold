@@ -19,6 +19,9 @@ interface CommentItem {
     nickname: string | null
     avatar_url: string | null
   } | null
+  // 新增：点赞聚合结果（可选）
+  likes_count?: number
+  current_user_liked?: boolean
 }
 
 interface CommentsListResponse {
@@ -55,6 +58,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
+    // 可选鉴权：用于标记当前用户是否点赞
+    const authHeader = request.headers.get('Authorization') || ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+    let userId: string | null = null
+    if (token) {
+      const { data: authData } = await supabase.auth.getUser(token)
+      userId = authData?.user?.id ?? null
+    }
+
     // 进行关联查询：联表 profiles 以获取 nickname、avatar_url
     const { data, error } = await supabase
       .from('comments')
@@ -63,7 +75,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
          profiles(nickname, avatar_url)`
       )
       .eq('creative_id', creativeId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
 
     if (error) {
       return NextResponse.json(
@@ -72,9 +84,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const comments = (data || []) as unknown as CommentItem[]
+    const base = (data || []) as unknown as CommentItem[]
+
+    // 点赞聚合：一次性取出相关 comment_id 的点赞记录并在内存聚合
+    let enriched: CommentItem[] = base
+    if (base.length > 0) {
+      const ids = base.map((c) => c.id)
+      const { data: likeRows, error: likeErr } = await supabase
+        .from('comment_likes')
+        .select('comment_id, user_id')
+        .in('comment_id', ids)
+
+      if (!likeErr && likeRows) {
+        const countMap = new Map<string, number>()
+        const likedSet = new Set<string>()
+        for (const row of likeRows as Array<{ comment_id: string; user_id: string }>) {
+          countMap.set(row.comment_id, (countMap.get(row.comment_id) || 0) + 1)
+          if (userId && row.user_id === userId) likedSet.add(row.comment_id)
+        }
+        enriched = base.map((c) => ({
+          ...c,
+          likes_count: countMap.get(c.id) || 0,
+          current_user_liked: userId ? likedSet.has(c.id) : false,
+        }))
+      }
+    }
+
     return NextResponse.json(
-      { message: '获取评论成功', comments } satisfies CommentsListResponse,
+      { message: '获取评论成功', comments: enriched } satisfies CommentsListResponse,
       { status: 200 }
     )
   } catch (e) {
