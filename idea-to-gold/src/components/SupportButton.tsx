@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -36,15 +36,16 @@ export default function SupportButton({ creativeId, initialCount, initiallySuppo
   const router = useRouter();
   const [supported, setSupported] = useState<boolean>(initiallySupported);
   const [count, setCount] = useState<number>(initialCount);
-  const [pending, setPending] = useState<boolean>(false);
+  // 使用“最后一次点击生效”模型：记录期望状态与在途请求
+  const desiredRef = useRef<boolean>(initiallySupported);
+  const controllerRef = useRef<AbortController | null>(null);
 
   const handleClick = async () => {
-    if (pending) return;
-
     try {
       const supabase = requireSupabaseClient();
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token || "";
+      const userId = sessionData?.session?.user?.id || "";
 
       if (!token) {
         toast("请先登录");
@@ -52,78 +53,71 @@ export default function SupportButton({ creativeId, initialCount, initiallySuppo
         return;
       }
 
-      setPending(true);
+      // 以“期望状态”为基准翻转
+      const nextSupported = !desiredRef.current;
 
-      if (!supported) {
-        // 情况B - 乐观更新：点赞
-        setSupported(true);
-        setCount((c) => c + 1);
+      // 乐观更新 + 记录期望
+      setSupported(nextSupported);
+      setCount((c) => (nextSupported ? c + 1 : Math.max(0, c - 1)));
+      desiredRef.current = nextSupported;
 
-        const resp = await fetchWithTimeout(`/api/creatives/${creativeId}/upvote`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-          timeoutMs: 10000,
-        });
+      // 中止上一次在途请求
+      if (controllerRef.current) {
+        try { controllerRef.current.abort('superseded'); } catch { /* ignore */ }
+      }
+      const controller = new AbortController();
+      controllerRef.current = controller;
 
-        if (!resp.ok) {
+      // 发起与期望一致的请求
+      const method = nextSupported ? 'POST' : 'DELETE';
+      const resp = await fetchWithTimeout(`/api/creatives/${creativeId}/upvote`, {
+        method,
+        headers: { Authorization: `Bearer ${token}` },
+        timeoutMs: 10000,
+        signal: controller.signal,
+      });
+
+      // 仅当仍为“最新请求”时处理结果
+      if (controllerRef.current !== controller) return;
+
+      if (!resp.ok) {
+        if (desiredRef.current === nextSupported) {
           // 回滚
-          setSupported(false);
-          setCount((c) => Math.max(0, c - 1));
-          const txt = (await resp.text().catch(() => "")) || "操作失败，请稍后重试";
-          toast("操作失败，请稍后重试");
-          console.warn("Upvote failed:", txt);
-          return;
+          setSupported(!nextSupported);
+          setCount((c) => (!nextSupported ? c + 1 : Math.max(0, c - 1)));
+          const txt = await resp.text().catch(() => "");
+          console.warn("Upvote toggle failed:", txt);
+          toast(nextSupported ? "点赞失败，请重试" : "取消失败，请重试");
         }
+        return;
+      }
 
-        // 成功：什么也不用做（UI 已经更新）
-        const _json = (await resp.json().catch(() => null)) as ApiResponse | null;
-        if (_json?.upvote_count != null) {
-          // 同步一次真实计数（可选）
-          setCount(_json.upvote_count);
-        }
-      } else {
-        // 已点赞 -> 取消点赞（同样采用乐观更新）
-        setSupported(false);
-        setCount((c) => Math.max(0, c - 1));
+      const json = (await resp.json().catch(() => null)) as ApiResponse | null;
+      if (controllerRef.current !== controller) return;
 
-        const resp = await fetchWithTimeout(`/api/creatives/${creativeId}/upvote`, {
-          method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-          timeoutMs: 10000,
-        });
+      // 关键修复：若服务端返回 changed=false（无实际变更），忽略返回的 upvote_count，保留当前乐观值
+      if (json && json.changed === false) {
+        console.warn("Upvote API returned changed=false, keep optimistic count.", json);
+      } else if (json?.upvote_count != null) {
+        setCount(json.upvote_count);
+      }
 
-        if (!resp.ok) {
-          // 回滚
-          setSupported(true);
-          setCount((c) => c + 1);
-          const txt = (await resp.text().catch(() => "")) || "操作失败，请稍后重试";
-          toast("操作失败，请稍后重试");
-          console.warn("Remove upvote failed:", txt);
-          return;
-        }
-
-        const _json = (await resp.json().catch(() => null)) as ApiResponse | null;
-        if (_json?.upvote_count != null) {
-          setCount(_json.upvote_count);
-        }
+      // 写本地缓存（用于详情页“秒显”）
+      if (userId) {
+        const cacheKey = `supported:${userId}:${creativeId}`;
+        if (nextSupported) localStorage.setItem(cacheKey, "1");
+        else localStorage.removeItem(cacheKey);
       }
     } catch (e) {
-      // 极端错误回滚
-      if (!supported) {
-        setSupported(false);
-        setCount((c) => Math.max(0, c - 1));
-      } else {
-        setSupported(true);
-        setCount((c) => c + 1);
-      }
+      const isAbort = e instanceof DOMException && e.name === 'AbortError';
+      if (isAbort) return; // 被新点击取代
+
+      // 其它错误：按当前“期望状态”回滚到相反值
+      const wanted = desiredRef.current;
+      setSupported(!wanted);
+      setCount((c) => (wanted ? Math.max(0, c - 1) : c + 1));
       console.error(e);
       toast("操作失败，请稍后重试");
-    } finally {
-      setPending(false);
     }
   };
 
@@ -137,8 +131,7 @@ export default function SupportButton({ creativeId, initialCount, initiallySuppo
       <button
         type="button"
         onClick={handleClick}
-        disabled={pending}
-        className={`px-4 py-2 rounded-md text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${btnClass}`}
+        className={`px-4 py-2 rounded-md text-white transition-colors ${btnClass}`}
         aria-pressed={supported}
         aria-label="支持这个创意"
         title={btnText}

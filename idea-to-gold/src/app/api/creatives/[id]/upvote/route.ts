@@ -55,7 +55,7 @@ export async function GET(
     if (countError) {
       const code = (countError as { code?: string; message?: string } | null)?.code || ''
       const msg = (countError as { message?: string } | null)?.message?.toLowerCase?.() || ''
-      upvoteTableMissing = code === '42P01' || msg.includes('relation') && msg.includes('does not exist')
+      upvoteTableMissing = code === '42P01' || (msg.includes('relation') && msg.includes('does not exist'))
       console.warn('[UPVOTE_GET_COUNT_ERROR]', { code, msg })
     }
     if (typeof count === 'number' && count >= 0) total = count
@@ -101,7 +101,6 @@ export async function POST(
     const { env } = getRequestContext()
     const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
     const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    const anonKey = (env as { SUPABASE_ANON_KEY?: string; VITE_SUPABASE_ANON_KEY?: string }).SUPABASE_ANON_KEY || (env as { SUPABASE_ANON_KEY?: string; VITE_SUPABASE_ANON_KEY?: string }).VITE_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
@@ -124,14 +123,10 @@ export async function POST(
       return NextResponse.json({ message: '认证令牌无效，请重新登录' }, { status: 401 })
     }
 
-    // 以“用户身份”执行 RPC：优先用 ANON KEY，确保 auth.uid() 能拿到用户；若缺失则回退 service_role
-    const rpcKey = anonKey || serviceRoleKey
-    const supabaseAsUser = createClient(supabaseUrl, rpcKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    })
-
-    const { data, error } = await (supabaseAsUser.rpc('add_upvote', {
+    // 直接以 service_role 执行 RPC，并显式传入 p_user_id，避免依赖 auth.uid()
+    const { data, error } = await (supabaseAdmin.rpc('add_upvote', {
       p_creative_id: creativeId,
+      p_user_id: userId,
     }) as unknown as Promise<{ data: AddUpvoteResult | null; error: { message: string; code?: string; details?: string; hint?: string } | null }>)
 
     if (error) {
@@ -149,7 +144,7 @@ export async function POST(
       const maybeMissingFn = code === '42883' || msg.includes('function add_upvote') || msg.includes('add_upvote')
       if (maybeMissingFn) {
         return NextResponse.json(
-          { message: '数据库缺少 RPC: add_upvote，请先在 Supabase SQL 中创建该函数', code, error: error.message },
+          { message: '数据库缺少或签名不匹配的 RPC: add_upvote(uuid, uuid)，请确认已创建双参数版本', code, error: error.message },
           { status: 500 }
         )
       }
@@ -178,7 +173,6 @@ export async function DELETE(
     const { env } = getRequestContext()
     const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
     const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    const anonKey = (env as { SUPABASE_ANON_KEY?: string; VITE_SUPABASE_ANON_KEY?: string }).SUPABASE_ANON_KEY || (env as { SUPABASE_ANON_KEY?: string; VITE_SUPABASE_ANON_KEY?: string }).VITE_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
@@ -201,14 +195,10 @@ export async function DELETE(
       return NextResponse.json({ message: '认证令牌无效，请重新登录' }, { status: 401 })
     }
 
-    // 以“用户身份”执行 RPC：优先用 ANON KEY
-    const rpcKey = anonKey || serviceRoleKey
-    const supabaseAsUser = createClient(supabaseUrl, rpcKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    })
-
-    const { data, error } = await (supabaseAsUser.rpc('remove_upvote', {
+    // 直接以 service_role 执行 RPC，并显式传入 p_user_id
+    const { data, error } = await (supabaseAdmin.rpc('remove_upvote', {
       p_creative_id: creativeId,
+      p_user_id: userId,
     }) as unknown as Promise<{ data: RemoveUpvoteResult | null; error: { message: string; code?: string; details?: string; hint?: string } | null }>)
 
     if (error) {
@@ -225,7 +215,7 @@ export async function DELETE(
       const maybeMissingFn = code === '42883' || msg.includes('function remove_upvote') || msg.includes('remove_upvote')
       if (maybeMissingFn) {
         return NextResponse.json(
-          { message: '数据库缺少 RPC: remove_upvote，请先在 Supabase SQL 中创建该函数', code, error: error.message },
+          { message: '数据库缺少或签名不匹配的 RPC: remove_upvote(uuid, uuid)，请确认已创建双参数版本', code, error: error.message },
           { status: 500 }
         )
       }

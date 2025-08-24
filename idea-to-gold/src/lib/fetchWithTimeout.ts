@@ -5,12 +5,12 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const { timeoutMs = 10000, signal: userSignal, ...rest } = init || {};
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort('timeout'), timeoutMs);
 
   // 若用户自己传入了 signal，则同时响应两者的中断
   if (userSignal) {
-    if (userSignal.aborted) controller.abort();
-    else userSignal.addEventListener("abort", () => controller.abort(), { once: true });
+    if ((userSignal as AbortSignal).aborted) controller.abort((userSignal as any).reason ?? 'external-signal');
+    else (userSignal as AbortSignal).addEventListener("abort", () => controller.abort((userSignal as any).reason ?? 'external-signal'), { once: true });
   }
 
   try {
