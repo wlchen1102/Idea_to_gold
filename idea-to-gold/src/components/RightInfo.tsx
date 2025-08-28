@@ -41,11 +41,13 @@ export default function RightInfo({
   platforms,
   bounty: _bounty,
   ideaId,
+  initialUpvoteData,
 }: {
   supporters: number;
   platforms: string[];
   bounty: number;
   ideaId?: string;
+  initialUpvoteData?: { upvote_count: number; supported: boolean } | null;
 }) {
   const pathname = usePathname();
   const [supported, setSupported] = useState(false);
@@ -60,6 +62,29 @@ export default function RightInfo({
   // 新增：首屏初始化真实的点赞数量与当前用户支持状态
   useEffect(() => {
     if (!ideaId) return;
+    
+    // 如果有服务端传入的初始数据，直接使用，避免重复请求
+    if (initialUpvoteData) {
+      setCount(initialUpvoteData.upvote_count);
+      setSupported(initialUpvoteData.supported);
+      desiredRef.current = initialUpvoteData.supported;
+      
+      // 与本地缓存对齐（便于后续页面秒显）
+      const supabase = requireSupabaseClient();
+      supabase.auth.getSession().then(({ data: sessionData }) => {
+        const userId = sessionData?.session?.user?.id;
+        if (userId) {
+          const cacheKey = `supported:${userId}:${ideaId}`;
+          if (initialUpvoteData.supported) {
+            localStorage.setItem(cacheKey, "1");
+          } else {
+            localStorage.removeItem(cacheKey);
+          }
+        }
+      }).catch(() => {});
+      return;
+    }
+    
     let cancelled = false;
 
     async function load() {
@@ -69,7 +94,7 @@ export default function RightInfo({
         const token = sessionData?.session?.access_token || "";
         const userId = sessionData?.session?.user?.id || "";
 
-        // 1) 先用本地缓存加速“已想要”的首屏显示（减少等待）
+        // 1) 先用本地缓存加速"已想要"的首屏显示（减少等待）
         if (userId) {
           const cacheKey = `supported:${userId}:${ideaId}`;
           if (localStorage.getItem(cacheKey) === "1") {
@@ -80,7 +105,7 @@ export default function RightInfo({
           }
         }
 
-        // 2) 再请求服务端以“真实结果”对齐（若与本地缓存不一致，会以服务端为准）
+        // 2) 再请求服务端以"真实结果"对齐（若与本地缓存不一致，会以服务端为准）
         const resp = await fetch(`/api/creatives/${ideaId}/upvote`, {
           method: "GET",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -119,7 +144,7 @@ export default function RightInfo({
     return () => {
       cancelled = true;
     };
-  }, [ideaId, supporters, pathname]);
+  }, [ideaId, supporters, pathname, initialUpvoteData]);
 
   // 点赞/取消点赞：改为“最后一次点击生效”，会中止上一次在途请求
   async function handleSupport() {

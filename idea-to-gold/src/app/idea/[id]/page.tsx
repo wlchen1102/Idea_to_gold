@@ -60,6 +60,8 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     upvote_count?: number // 新增：点赞数量
   }
 
+
+
   let creative: Creative | null = null;
   let error: string | null = null;
   
@@ -70,14 +72,19 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     const protocol = h.get("x-forwarded-proto") || (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
     const baseUrl = `${protocol}://${host}`;
 
-    const res = await fetch(`${baseUrl}/api/creatives/${encodeURIComponent(id)}`, { cache: "no-store" });
-    const json = await res.json();
+    // 只获取创意数据，评论数据让客户端组件自己处理
+    const creativeRes = await fetch(`${baseUrl}/api/creatives/${encodeURIComponent(id)}`, { cache: "no-store" });
     
-    if (res.ok) {
-      creative = json?.creative ?? null;
+    // 处理创意数据
+    if (creativeRes.ok) {
+      const creativeJson = await creativeRes.json();
+      creative = creativeJson?.creative ?? null;
     } else {
-      error = json?.message || "获取创意详情失败";
+      const creativeJson = await creativeRes.json();
+      error = creativeJson?.message || "获取创意详情失败";
     }
+
+    // 移除服务端upvote和comments数据获取，让客户端组件自己处理
   } catch (e) {
     error = "网络连接错误，请稍后重试";
   }
@@ -180,10 +187,19 @@ export default async function IdeaDetailPage({ params }: PageProps) {
         </section>
 
         <aside className="md:col-span-1">
-          <RightInfo supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} ideaId={String(idea.id)} />
+          <RightInfo 
+            supporters={idea.supporters} 
+            platforms={idea.platforms} 
+            bounty={idea.bounty} 
+            ideaId={String(idea.id)}
+            initialUpvoteData={null}
+          />
         </aside>
         <section className="md:col-span-2">
-          <CommentsSection ideaId={String(creative.id)} />
+          <CommentsSection 
+            ideaId={String(creative.id)} 
+            initialComments={null}
+          />
         </section>
       </div>
 

@@ -223,8 +223,10 @@ function NodeView({
 
 export default function CommentsSection({
   ideaId,
+  initialComments,
 }: {
   ideaId?: string;
+  initialComments?: CommentDTO[];
 }) {
   const pathname = usePathname();
   // 顶部发布框内容
@@ -258,6 +260,21 @@ export default function CommentsSection({
 
   // 拉取评论列表（按时间升序）
   useEffect(() => {
+    // 如果有初始数据，直接使用，避免重复请求
+    if (initialComments && initialComments.length >= 0) {
+      setItems(initialComments);
+      // 初始化点赞状态
+      const initialLikesMap: Record<string, { liked: boolean; likes: number }> = {};
+      initialComments.forEach(comment => {
+        initialLikesMap[comment.id] = {
+          liked: Boolean(comment.current_user_liked),
+          likes: comment.likes_count ?? 0
+        };
+      });
+      setLikesMap(initialLikesMap);
+      return;
+    }
+
     let aborted = false;
     async function fetchComments(cid: string) {
       try {
@@ -306,7 +323,7 @@ export default function CommentsSection({
     return () => {
       aborted = true;
     };
-  }, [ideaId, pathname]);
+  }, [ideaId, pathname, initialComments]);
 
   // 从 localStorage 注入跨页内容：仅预填到输入框，不自动发表
   useEffect(() => {
