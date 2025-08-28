@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 interface SupportButtonProps {
@@ -34,11 +34,70 @@ function toast(msg: string) {
 
 export default function SupportButton({ creativeId, initialCount, initiallySupported = false }: SupportButtonProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [supported, setSupported] = useState<boolean>(initiallySupported);
   const [count, setCount] = useState<number>(initialCount);
-  // 使用“最后一次点击生效”模型：记录期望状态与在途请求
+  // 使用"最后一次点击生效"模型：记录期望状态与在途请求
   const desiredRef = useRef<boolean>(initiallySupported);
   const controllerRef = useRef<AbortController | null>(null);
+
+  // 监听路由变化，重新初始化用户状态
+  useEffect(() => {
+    if (!creativeId) return;
+    let cancelled = false;
+
+    async function loadUserState() {
+      try {
+        const supabase = requireSupabaseClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token || "";
+        const userId = sessionData?.session?.user?.id || "";
+
+        if (!userId) return;
+
+        // 1) 先用本地缓存快速显示
+        const cacheKey = `supported:${userId}:${creativeId}`;
+        const cachedSupported = localStorage.getItem(cacheKey) === "1";
+        if (cachedSupported) {
+          setSupported(true);
+          desiredRef.current = true;
+        }
+
+        // 2) 从服务端获取真实状态
+        const resp = await fetch(`/api/creatives/${creativeId}/upvote`, {
+          method: "GET",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        if (!resp.ok || cancelled) return;
+
+        const json: { upvote_count?: number; supported?: boolean } | null = await resp
+          .json()
+          .catch(() => null);
+
+        if (cancelled) return;
+
+        const realCount = json?.upvote_count ?? initialCount;
+        const realSupported = Boolean(json?.supported);
+
+        setCount(Number(realCount) || 0);
+        setSupported(realSupported);
+        desiredRef.current = realSupported;
+
+        // 更新本地缓存
+        if (realSupported) localStorage.setItem(cacheKey, "1");
+        else localStorage.removeItem(cacheKey);
+
+      } catch (e) {
+        console.warn("SupportButton init error:", e);
+      }
+    }
+
+    loadUserState();
+    return () => {
+      cancelled = true;
+    };
+  }, [creativeId, initialCount, pathname]);
 
   const handleClick = async () => {
     try {

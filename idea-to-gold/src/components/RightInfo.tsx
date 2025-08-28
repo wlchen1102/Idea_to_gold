@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
@@ -46,6 +47,7 @@ export default function RightInfo({
   bounty: number;
   ideaId?: string;
 }) {
+  const pathname = usePathname();
   const [supported, setSupported] = useState(false);
   const [count, setCount] = useState(supporters);
 
@@ -117,7 +119,7 @@ export default function RightInfo({
     return () => {
       cancelled = true;
     };
-  }, [ideaId, supporters]);
+  }, [ideaId, supporters, pathname]);
 
   // 点赞/取消点赞：改为“最后一次点击生效”，会中止上一次在途请求
   async function handleSupport() {

@@ -1,6 +1,8 @@
 // 创意详情页面
-// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+// 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
+// 强制禁用页面缓存，确保每次访问都重新渲染（解决用户状态丢失问题）
+export const dynamic = 'force-dynamic';
 import type { Metadata } from "next";
 import Link from "next/link";
 // 删除未使用的 ideas 导入

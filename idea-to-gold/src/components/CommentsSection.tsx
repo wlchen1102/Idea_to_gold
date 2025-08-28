@@ -4,6 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
 import Modal from "@/components/Modal";
@@ -225,6 +226,7 @@ export default function CommentsSection({
 }: {
   ideaId?: string;
 }) {
+  const pathname = usePathname();
   // 顶部发布框内容
   const [value, setValue] = useState("");
   // 点赞本地状态（演示用）
@@ -247,7 +249,7 @@ export default function CommentsSection({
         setCurrentUserId(res.data?.session?.user?.id ?? null);
       })
       .catch(() => setCurrentUserId(null));
-  }, []);
+  }, [pathname]);
 
   // 原始平铺列表（来自后端）
   const [items, setItems] = useState<CommentDTO[]>([]);
@@ -261,7 +263,20 @@ export default function CommentsSection({
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/comments?creative_id=${encodeURIComponent(cid)}`);
+        
+        // 获取用户token用于识别当前用户的点赞状态
+        const supabase = requireSupabaseClient();
+        const sessionRes = await supabase.auth.getSession();
+        const token = sessionRes.data?.session?.access_token ?? "";
+        
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        
+        const res = await fetch(`/api/comments?creative_id=${encodeURIComponent(cid)}`, {
+          headers
+        });
         if (!res.ok) {
           const text = await res.text();
           throw new Error(text || `加载失败（${res.status}）`);
@@ -291,7 +306,7 @@ export default function CommentsSection({
     return () => {
       aborted = true;
     };
-  }, [ideaId]);
+  }, [ideaId, pathname]);
 
   // 从 localStorage 注入跨页内容：仅预填到输入框，不自动发表
   useEffect(() => {
