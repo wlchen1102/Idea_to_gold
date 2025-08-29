@@ -285,7 +285,11 @@ export default function CommentsSection({
       const currentOffset = isLoadMore ? pagination.offset + pagination.limit : 0;
       const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}`;
       
-      const res = await fetch(url, { headers });
+      const res = await fetch(url, { 
+        headers,
+        // 利用浏览器缓存，与后端Cache-Control头配合
+        cache: 'default'
+      });
       const fetchEndTime = Date.now(); // 性能监控：API调用结束时间
       const fetchDuration = fetchEndTime - fetchStartTime;
       

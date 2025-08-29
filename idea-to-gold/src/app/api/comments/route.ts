@@ -6,6 +6,10 @@ import { getRequestContext } from '@cloudflare/next-on-pages'
 // 统一采用 Edge Runtime（与项目一致）
 export const runtime = 'edge'
 
+// 使用Next.js内置缓存替代内存缓存
+// 在Edge Runtime环境下，内存缓存无法在Worker实例间共享
+// 改用基于响应头的缓存策略
+
 // 评论记录类型定义（最小必要字段）
 interface CommentItem {
   id: string
@@ -82,19 +86,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 可选鉴权：用于标记当前用户是否点赞
+    // 优化认证：快速token解析，避免完整的用户查询
     const authStartTime = Date.now() // 性能监控：认证开始时间
     const authHeader = request.headers.get('Authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
     let userId: string | null = null
+    
     if (token) {
-      const { data: authData } = await supabase.auth.getUser(token)
-      userId = authData?.user?.id ?? null
+      try {
+        // 使用轻量级的JWT解析，避免数据库查询
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        userId = payload.sub || null
+        
+        // 简单的token有效性检查（检查过期时间）
+        const now = Math.floor(Date.now() / 1000)
+        if (payload.exp && payload.exp < now) {
+          userId = null // token已过期
+        }
+      } catch (error) {
+        // token格式错误，忽略认证
+        userId = null
+      }
     }
+    
     const authEndTime = Date.now() // 性能监控：认证结束时间
     const authDuration = authEndTime - authStartTime
 
-    // 优化：使用单个复杂查询获取评论和点赞数据，减少数据库往返
+    // 直接查询数据库（使用Next.js内置缓存机制）
     const queryStartTime = Date.now() // 性能监控：查询开始时间
     
     let enriched: CommentItem[] = []
@@ -205,6 +223,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const queryEndTime = Date.now() // 性能监控：查询结束时间
     const queryDuration = queryEndTime - queryStartTime
 
+    // 移除内存缓存逻辑，依赖Next.js内置缓存
+
     // 优化：通过返回数据量判断是否还有更多数据，避免昂贵的count查询
     const hasMore = enriched.length === limit
     
@@ -214,7 +234,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // 性能日志记录
     console.log(`[评论API性能] 总耗时: ${totalDuration}ms, 认证: ${authDuration}ms, 主查询: ${queryDuration}ms, 点赞查询: ${likesQueryDuration}ms, 评论数: ${enriched.length}`)
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         message: '获取评论成功', 
         comments: enriched,
@@ -229,12 +249,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             totalDuration,
             authDuration,
             queryDuration,
-            likesQueryDuration
+            likesQueryDuration,
+            cached: false
           }
         })
       } satisfies CommentsListResponse,
       { status: 200 }
     )
+    
+    // 添加缓存控制头，让浏览器和CDN缓存30秒
+    response.headers.set('Cache-Control', 'public, max-age=30, s-maxage=30')
+    
+    return response
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown error'
     return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
