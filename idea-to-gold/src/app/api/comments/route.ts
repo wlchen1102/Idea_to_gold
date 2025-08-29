@@ -27,6 +27,12 @@ interface CommentItem {
 interface CommentsListResponse {
   message: string
   comments?: CommentItem[]
+  pagination?: {
+    limit: number
+    offset: number
+    total?: number
+    hasMore?: boolean
+  }
   error?: string
 }
 
@@ -47,10 +53,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    // 从 Cloudflare Pages 运行时上下文中读取服务端环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    // 分页参数
+    const limitParam = request.nextUrl.searchParams.get('limit')
+    const offsetParam = request.nextUrl.searchParams.get('offset')
+    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : 20 // 默认20条，最多100条
+    const offset = offsetParam ? Math.max(parseInt(offsetParam, 10), 0) : 0
+
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
@@ -67,7 +89,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       userId = authData?.user?.id ?? null
     }
 
-    // 进行关联查询：联表 profiles 以获取 nickname、avatar_url
+    // 进行关联查询：联表 profiles 以获取 nickname、avatar_url，添加分页
     const { data, error } = await supabase
       .from('comments')
       .select(
@@ -76,6 +98,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       )
       .eq('creative_id', creativeId)
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       return NextResponse.json(
@@ -86,9 +109,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const base = (data || []) as unknown as CommentItem[]
 
-    // 点赞聚合：一次性取出相关 comment_id 的点赞记录并在内存聚合
+    // 优化：只有在用户登录时才查询点赞数据，减少不必要的数据库查询
     let enriched: CommentItem[] = base
-    if (base.length > 0) {
+    if (base.length > 0 && userId) {
       const ids = base.map((c) => c.id)
       const { data: likeRows, error: likeErr } = await supabase
         .from('comment_likes')
@@ -100,18 +123,36 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const likedSet = new Set<string>()
         for (const row of likeRows as Array<{ comment_id: string; user_id: string }>) {
           countMap.set(row.comment_id, (countMap.get(row.comment_id) || 0) + 1)
-          if (userId && row.user_id === userId) likedSet.add(row.comment_id)
+          if (row.user_id === userId) likedSet.add(row.comment_id)
         }
         enriched = base.map((c) => ({
           ...c,
           likes_count: countMap.get(c.id) || 0,
-          current_user_liked: userId ? likedSet.has(c.id) : false,
+          current_user_liked: likedSet.has(c.id),
         }))
       }
+    } else {
+      // 未登录用户，设置默认点赞状态
+      enriched = base.map((c) => ({
+        ...c,
+        likes_count: 0,
+        current_user_liked: false,
+      }))
     }
 
+    // 优化：通过返回数据量判断是否还有更多数据，避免昂贵的count查询
+    const hasMore = enriched.length === limit
+
     return NextResponse.json(
-      { message: '获取评论成功', comments: enriched } satisfies CommentsListResponse,
+      { 
+        message: '获取评论成功', 
+        comments: enriched,
+        pagination: {
+          limit,
+          offset,
+          hasMore
+        }
+      } satisfies CommentsListResponse,
       { status: 200 }
     )
   } catch (e) {
@@ -124,10 +165,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 // 请求体：{ content: string, creative_id: string, parent_comment_id?: string }
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 读取并校验服务端环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
+    
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
     }
@@ -208,10 +260,21 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: '缺少必填参数：id' }, { status: 400 })
     }
 
-    // 读取服务端环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
+    
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
     }

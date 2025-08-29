@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { requireSupabaseClient } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 // 轻量 toast（无外部依赖）
@@ -50,10 +50,11 @@ export default function RightInfo({
   initialUpvoteData?: { upvote_count: number; supported: boolean } | null;
 }) {
   const pathname = usePathname();
+  const { token, userId } = useAuth();
   const [supported, setSupported] = useState(false);
   const [count, setCount] = useState(supporters);
 
-  // 新增：跟踪“当前是否已支持”的期望状态 & 当前在途请求控制器
+  // 新增：跟踪"当前是否已支持"的期望状态 & 当前在途请求控制器
   const desiredRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
   // 新增：标记用户是否已经与按钮交互过，一旦交互过，就不再让首屏 GET 结果覆盖当前 UI
@@ -70,18 +71,14 @@ export default function RightInfo({
       desiredRef.current = initialUpvoteData.supported;
       
       // 与本地缓存对齐（便于后续页面秒显）
-      const supabase = requireSupabaseClient();
-      supabase.auth.getSession().then(({ data: sessionData }) => {
-        const userId = sessionData?.session?.user?.id;
-        if (userId) {
-          const cacheKey = `supported:${userId}:${ideaId}`;
-          if (initialUpvoteData.supported) {
-            localStorage.setItem(cacheKey, "1");
-          } else {
-            localStorage.removeItem(cacheKey);
-          }
+      if (userId) {
+        const cacheKey = `supported:${userId}:${ideaId}`;
+        if (initialUpvoteData.supported) {
+          localStorage.setItem(cacheKey, "1");
+        } else {
+          localStorage.removeItem(cacheKey);
         }
-      }).catch(() => {});
+      }
       return;
     }
     
@@ -89,11 +86,6 @@ export default function RightInfo({
 
     async function load() {
       try {
-        const supabase = requireSupabaseClient();
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token || "";
-        const userId = sessionData?.session?.user?.id || "";
-
         // 1) 先用本地缓存加速"已想要"的首屏显示（减少等待）
         if (userId) {
           const cacheKey = `supported:${userId}:${ideaId}`;
@@ -144,21 +136,16 @@ export default function RightInfo({
     return () => {
       cancelled = true;
     };
-  }, [ideaId, supporters, pathname, initialUpvoteData]);
+  }, [ideaId, supporters, pathname, initialUpvoteData, token, userId]);
 
   // 点赞/取消点赞：改为“最后一次点击生效”，会中止上一次在途请求
   async function handleSupport() {
     if (!ideaId) return;
 
-    // 修正：以“期望状态”为基准翻转，避免多次快速点击时使用到过期的 supported 值
+    // 修正：以"期望状态"为基准翻转，避免多次快速点击时使用到过期的 supported 值
     const nextSupported = !desiredRef.current; // 本次点击后的期望状态
 
     try {
-      const supabase = requireSupabaseClient();
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token || "";
-      const userId = sessionData?.session?.user?.id || "";
-
       if (!token) {
         toast("请先登录");
         window.location.assign("/login");

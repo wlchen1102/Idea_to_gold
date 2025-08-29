@@ -56,10 +56,20 @@ function makeSlugUnique(base: string): string {
 // GET /api/creatives - 获取创意列表
 export async function GET(): Promise<NextResponse> {
   try {
-    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
@@ -101,10 +111,20 @@ export async function GET(): Promise<NextResponse> {
 // POST /api/creatives - 创建新创意
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(

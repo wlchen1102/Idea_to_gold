@@ -100,6 +100,33 @@
 2.  **【必须】通用工具函数和SDK客户端存放在 `src/lib/`**。
     *   所有与UI无关的、可在前后端复用的工具函数（如日期格式化、slug生成器）或SDK客户端实例（如 `supabase.ts`），都必须放在这里。
 
+###  前后端交互规范
+1. Authorization头传递规则
+- 【必须】 所有需要获取用户个性化数据的API调用，都必须在请求头中包含 Authorization: Bearer <token>
+- 【必须】 前端通过 supabase.auth.getSession() 获取用户token，并在fetch请求中传递
+- 【禁止】 在服务端渲染时尝试获取用户认证信息，因为无法访问客户端的认证状态
+
+2. 个性化数据处理策略
+- 用户认证状态 : 通过客户端 Supabase 获取（推荐方式）
+- 个性化业务数据 : 必须通过带Authorization头的API请求获取
+- 公共数据 : 可以在服务端获取，无需认证
+
+3. 实施要点
+// 正确的个性化数据获取方式
+const { data: { session } } = await supabase.auth.getSession();
+if (session?.access_token) {
+  const response = await fetch('/api/comments', {
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`
+    }
+  });
+}
+
+4. 架构决策
+- 客户端认证 + 服务端验证 : 前端负责获取认证状态，后端负责验证token并返回个性化数据
+- 数据一致性 : 确保前后端使用相同的认证机制，避免状态不同步
+- 性能权衡 : 优先保证功能正确性，在此基础上考虑性能优化
+
 ---
 
 ### **后端代码生成规则**
