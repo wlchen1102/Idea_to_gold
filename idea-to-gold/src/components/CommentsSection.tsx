@@ -262,6 +262,8 @@ export default function CommentsSection({
 
   // 拉取评论列表（支持分页）
   const fetchComments = async (cid: string, isLoadMore = false) => {
+    const fetchStartTime = Date.now(); // 性能监控：API调用开始时间
+    
     try {
       if (isLoadMore) {
         setLoadingMore(true);
@@ -284,6 +286,9 @@ export default function CommentsSection({
       const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}`;
       
       const res = await fetch(url, { headers });
+      const fetchEndTime = Date.now(); // 性能监控：API调用结束时间
+      const fetchDuration = fetchEndTime - fetchStartTime;
+      
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `加载失败（${res.status}）`);
@@ -292,7 +297,10 @@ export default function CommentsSection({
       const json = (await res.json()) as { 
         comments?: CommentDTO[]; 
         pagination?: { limit: number; offset: number; total: number; hasMore: boolean };
+        performance?: any;
       };
+      
+      const processStartTime = Date.now(); // 性能监控：数据处理开始时间
       
       const list = json.comments ?? [];
       const paginationInfo = json.pagination ?? { limit: 20, offset: 0, total: 0, hasMore: false };
@@ -315,9 +323,22 @@ export default function CommentsSection({
         }
         return next;
       });
+      
+      const processEndTime = Date.now(); // 性能监控：数据处理结束时间
+      const processDuration = processEndTime - processStartTime;
+      const totalDuration = processEndTime - fetchStartTime;
+      
+      // 性能日志记录
+      console.log(`[评论前端性能] 总耗时: ${totalDuration}ms, API调用: ${fetchDuration}ms, 数据处理: ${processDuration}ms, 评论数: ${list.length}`);
+      if (json.performance) {
+        console.log(`[评论后端性能]`, json.performance);
+      }
     } catch (e) {
+      const fetchEndTime = Date.now();
+      const fetchDuration = fetchEndTime - fetchStartTime;
       const msg = e instanceof Error ? e.message : "加载异常";
       setError(msg);
+      console.error(`获取评论异常 (耗时${fetchDuration}ms):`, e);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -381,36 +402,78 @@ export default function CommentsSection({
     };
   }, [ideaId]);
 
-  // 计算树结构 + 同步点赞状态
+  // 优化的评论树构建算法：O(n)复杂度
   const tree = useMemo(() => {
+    const treeStartTime = Date.now(); // 性能监控：树结构计算开始时间
+    
+    if (items.length === 0) {
+      return [];
+    }
+    
     const byId = new Map<string, CommentNode>();
-     const roots: CommentNode[] = [];
-     for (const it of items) byId.set(it.id, { ...(it as CommentDTO), replies: [] });
-     for (const node of byId.values()) {
-       // 从 likesMap 注入 UI 状态
-       const l = likesMap[node.id];
-       if (l) {
-         node.likes = l.likes;
-         node.liked = l.liked;
-       }
-       const parentId = node.parent_comment_id;
-       if (parentId) {
-         const parent = byId.get(parentId);
-         if (parent) parent.replies.push(node);
-         else roots.push(node); // 容错：父节点缺失
-       } else {
-         roots.push(node);
-       }
-     }
-     const byDesc = (a: CommentNode, b: CommentNode) =>
-       new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-     function sortRec(list: CommentNode[]) {
-       list.sort(byDesc);
-       for (const n of list) sortRec(n.replies);
-     }
-     sortRec(roots);
-     return roots;
-   }, [items, likesMap]);
+    const roots: CommentNode[] = [];
+    const orphans: CommentNode[] = []; // 暂时找不到父节点的评论
+    
+    // 单次遍历：创建节点并尝试构建树结构
+    for (const item of items) {
+      const node: CommentNode = { ...(item as CommentDTO), replies: [] };
+      
+      // 从 likesMap 注入 UI 状态
+      const l = likesMap[node.id];
+      if (l) {
+        node.likes = l.likes;
+        node.liked = l.liked;
+      }
+      
+      byId.set(node.id, node);
+      
+      if (node.parent_comment_id) {
+        const parent = byId.get(node.parent_comment_id);
+        if (parent) {
+          // 父节点已存在，直接添加到父节点的replies中
+          parent.replies.push(node);
+        } else {
+          // 父节点还未处理，暂存为孤儿节点
+          orphans.push(node);
+        }
+      } else {
+        // 顶级评论，直接添加到树根
+        roots.push(node);
+      }
+    }
+    
+    // 处理孤儿节点：尝试找到它们的父节点
+    for (const orphan of orphans) {
+      if (orphan.parent_comment_id) {
+        const parent = byId.get(orphan.parent_comment_id);
+        if (parent) {
+          parent.replies.push(orphan);
+        } else {
+          // 父评论不在当前页面，作为顶级评论处理
+          roots.push(orphan);
+        }
+      }
+    }
+    
+    // 递归排序：按时间倒序
+    const byDesc = (a: CommentNode, b: CommentNode) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    function sortRec(list: CommentNode[]) {
+      list.sort(byDesc);
+      for (const n of list) sortRec(n.replies);
+    }
+    sortRec(roots);
+    
+    const treeEndTime = Date.now(); // 性能监控：树结构计算结束时间
+    const treeDuration = treeEndTime - treeStartTime;
+    
+    // 性能日志记录
+    if (treeDuration > 10) { // 只记录超过10ms的计算
+      console.log(`[评论树结构计算] 优化后耗时: ${treeDuration}ms, 评论数: ${items.length}, 根节点数: ${roots.length}, 孤儿节点: ${orphans.length}`);
+    }
+    
+    return roots;
+  }, [items, likesMap]);
 
   function formatTime(iso: string) {
     try {

@@ -68,6 +68,60 @@
     *   `author_id` (uuid, 外键 -> `public.profiles.id`): 发表这条评论的用户ID。
     *   `created_at` (timestamptz): 发布时间。
 
+**supabase的执行SQL如下**:
+-- ========= CREATE THE comments TABLE =========
+-- This table stores all comments and replies for different content types.
+
+CREATE TABLE public.comments (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  content text NOT NULL,
+  author_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  
+  -- The "targets" of the comment. At least one should be non-null.
+  creative_id uuid REFERENCES public.creatives(id) ON DELETE CASCADE,
+  project_log_id uuid REFERENCES public.project_logs(id) ON DELETE CASCADE, -- Assuming project_logs table will exist
+
+  -- For nested replies
+  parent_comment_id uuid REFERENCES public.comments(id) ON DELETE CASCADE,
+
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+
+  -- Ensure a comment is linked to at least one thing.
+  CONSTRAINT check_comment_target CHECK (creative_id IS NOT NULL OR project_log_id IS NOT NULL) 
+);
+
+-- Add comments for clarity
+COMMENT ON TABLE public.comments IS 'Stores comments and replies for creatives and project logs.';
+COMMENT ON COLUMN public.comments.parent_comment_id IS 'If not NULL, this comment is a reply to another comment.';
+
+
+-- ========= SET UP ROW LEVEL SECURITY (RLS) FOR comments =========
+-- Security rules for the comments system.
+
+-- 1. Enable RLS
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+
+-- 2. Policy for SELECT: Everyone can read all comments.
+CREATE POLICY "Comments are publically viewable."
+  ON public.comments FOR SELECT
+  USING ( true );
+
+-- 3. Policy for INSERT: Logged-in users can post comments.
+CREATE POLICY "Users can insert their own comments."
+  ON public.comments FOR INSERT
+  TO authenticated
+  WITH CHECK ( (select auth.uid()) = author_id );
+
+-- 4. Policy for UPDATE: Users can only edit their own comments.
+CREATE POLICY "Users can update their own comments."
+  ON public.comments FOR UPDATE
+  USING ( (select auth.uid()) = author_id );
+
+-- 5. Policy for DELETE: Users can only delete their own comments.
+CREATE POLICY "Users can delete their own comments."
+  ON public.comments FOR DELETE
+  USING ( (select auth.uid()) = author_id );
+
 #### **6. 【连接表】`public.creative_upvotes` - 创意点赞记录表**
 
 *   **它的作用**:
@@ -77,5 +131,71 @@
     *   `creative_id` (uuid, 外键 -> `public.creatives.id`): 被点赞的创意的ID。
     *   `created_at` (timestamptz): 点赞时间。
     *   **联合主键**: `PRIMARY KEY (user_id, creative_id)`
+
+**supabase的执行SQL如下**:
+-- 01_create_comment_likes.sql
+
+-- 1) 创建表
+create table if not exists public.comment_likes (
+  id uuid primary key default gen_random_uuid(),
+  comment_id uuid not null,
+  user_id uuid not null,
+  created_at timestamptz not null default now()
+);
+
+-- 2) 外键（删除评论时，点赞自动级联删除）
+alter table public.comment_likes
+  add constraint fk_comment_likes_comment
+  foreign key (comment_id)
+  references public.comments(id)
+  on delete cascade;
+
+-- 3) 外键（删除用户时，点赞自动级联清理，或可选择 restrict）
+alter table public.comment_likes
+  add constraint fk_comment_likes_user
+  foreign key (user_id)
+  references public.profiles(id)
+  on delete cascade;
+
+-- 4) 唯一约束：同一用户对同一评论只能点赞一次
+create unique index if not exists idx_comment_likes_unique
+on public.comment_likes (comment_id, user_id);
+
+-- 5) 基于 comment_id 的查询索引（统计聚合和列表附带统计用）
+create index if not exists idx_comment_likes_comment_id
+on public.comment_likes (comment_id);
+
+-- 可选：基于 user_id 的索引（用户“我点过赞的评论”列表用）
+create index if not exists idx_comment_likes_user_id
+on public.comment_likes (user_id);
+
+-- 1) 开启行级安全
+alter table public.comment_likes enable row level security;
+
+-- 2) 撤销 anon / authenticated 在该表上的所有权限（双保险，配合 RLS 更安全）
+revoke all on table public.comment_likes from anon, authenticated;
+
+-- 3) （可选）如果之前给这张表创建过序列/视图等，也一并撤销（通常不需要）
+-- 例如：revoke all on sequence public.comment_likes_id_seq from anon, authenticated;
+
+-- 4) 不为 anon/authenticated 创建任何策略，默认即拒绝所有直接访问。
+--    后端使用 service_role 调用时将绕过 RLS，所以接口不受影响。
+
+
+-- 1) 评论表：按创意过滤 + 按时间倒序的复合索引（覆盖常用查询）
+CREATE INDEX IF NOT EXISTS idx_comments_creative_created_desc
+  ON public.comments (creative_id, created_at DESC);
+
+-- 2) 评论点赞表：按评论ID过滤（同时包含user_id，便于“当前用户是否点赞”的 exists 查询）
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_user
+  ON public.comment_likes (comment_id, user_id);
+
+-- 3) 创意点赞表：判断“当前用户是否点赞”与写入用
+CREATE INDEX IF NOT EXISTS idx_creative_upvotes_creative_user
+  ON public.creative_upvotes (creative_id, user_id);
+
+-- 4) 创意表：确保主键/唯一键在 id 上（通常已有）
+-- 如果 creatives.id 不是主键，请确保它已是 PRIMARY KEY 或 UNIQUE 并默认有索引：
+-- ALTER TABLE public.creatives ADD PRIMARY KEY (id);
 
 ---

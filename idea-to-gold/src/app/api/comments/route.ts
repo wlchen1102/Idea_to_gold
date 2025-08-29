@@ -44,6 +44,8 @@ interface CreateCommentResponse {
 
 // GET /api/comments?creative_id=xxx - 获取某个创意下的全部评论（含作者公开资料），按时间升序
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now() // 性能监控：开始时间
+  
   try {
     const creativeId = request.nextUrl.searchParams.get('creative_id')?.trim() || ''
     if (!creativeId) {
@@ -81,6 +83,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
     // 可选鉴权：用于标记当前用户是否点赞
+    const authStartTime = Date.now() // 性能监控：认证开始时间
     const authHeader = request.headers.get('Authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
     let userId: string | null = null
@@ -88,60 +91,128 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const { data: authData } = await supabase.auth.getUser(token)
       userId = authData?.user?.id ?? null
     }
+    const authEndTime = Date.now() // 性能监控：认证结束时间
+    const authDuration = authEndTime - authStartTime
 
-    // 进行关联查询：联表 profiles 以获取 nickname、avatar_url，添加分页
-    const { data, error } = await supabase
-      .from('comments')
-      .select(
-        `id, content, author_id, creative_id, project_log_id, parent_comment_id, created_at,
-         profiles(nickname, avatar_url)`
-      )
-      .eq('creative_id', creativeId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      return NextResponse.json(
-        { message: '查询评论失败', error: error.message } satisfies Partial<CommentsListResponse>,
-        { status: 500 }
-      )
-    }
-
-    const base = (data || []) as unknown as CommentItem[]
-
-    // 优化：只有在用户登录时才查询点赞数据，减少不必要的数据库查询
-    let enriched: CommentItem[] = base
-    if (base.length > 0 && userId) {
-      const ids = base.map((c) => c.id)
-      const { data: likeRows, error: likeErr } = await supabase
-        .from('comment_likes')
-        .select('comment_id, user_id')
-        .in('comment_id', ids)
-
-      if (!likeErr && likeRows) {
-        const countMap = new Map<string, number>()
-        const likedSet = new Set<string>()
-        for (const row of likeRows as Array<{ comment_id: string; user_id: string }>) {
-          countMap.set(row.comment_id, (countMap.get(row.comment_id) || 0) + 1)
-          if (row.user_id === userId) likedSet.add(row.comment_id)
+    // 优化：使用单个复杂查询获取评论和点赞数据，减少数据库往返
+    const queryStartTime = Date.now() // 性能监控：查询开始时间
+    
+    let enriched: CommentItem[] = []
+    let likesQueryDuration = 0
+    
+    if (userId) {
+      // 用户已登录：使用复杂查询一次性获取评论、作者信息和点赞统计
+      const { data: rawData, error } = await supabase.rpc('get_comments_with_likes', {
+        p_creative_id: creativeId,
+        p_user_id: userId,
+        p_limit: limit,
+        p_offset: offset
+      })
+      
+      if (error) {
+        // 如果存储过程不存在，回退到原有查询方式
+        console.warn('存储过程不存在，使用原有查询方式:', error.message)
+        
+        // 原有的分离查询逻辑
+        const { data, error: commentsError } = await supabase
+          .from('comments')
+          .select(
+            `id, content, author_id, creative_id, project_log_id, parent_comment_id, created_at,
+             profiles(nickname, avatar_url)`
+          )
+          .eq('creative_id', creativeId)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1)
+          
+        if (commentsError) {
+          return NextResponse.json(
+            { message: '查询评论失败', error: commentsError.message } satisfies Partial<CommentsListResponse>,
+            { status: 500 }
+          )
         }
-        enriched = base.map((c) => ({
-          ...c,
-          likes_count: countMap.get(c.id) || 0,
-          current_user_liked: likedSet.has(c.id),
+        
+        const base = (data || []) as unknown as CommentItem[]
+        
+        if (base.length > 0) {
+          const likesQueryStartTime = Date.now()
+          const ids = base.map((c) => c.id)
+          const { data: likeRows, error: likeErr } = await supabase
+            .from('comment_likes')
+            .select('comment_id, user_id')
+            .in('comment_id', ids)
+          likesQueryDuration = Date.now() - likesQueryStartTime
+          
+          if (!likeErr && likeRows) {
+            const countMap = new Map<string, number>()
+            const likedSet = new Set<string>()
+            for (const row of likeRows as Array<{ comment_id: string; user_id: string }>) {
+              countMap.set(row.comment_id, (countMap.get(row.comment_id) || 0) + 1)
+              if (row.user_id === userId) likedSet.add(row.comment_id)
+            }
+            enriched = base.map((c) => ({
+              ...c,
+              likes_count: countMap.get(c.id) || 0,
+              current_user_liked: likedSet.has(c.id),
+            }))
+          } else {
+            enriched = base.map((c) => ({ ...c, likes_count: 0, current_user_liked: false }))
+          }
+        }
+      } else {
+        // 存储过程调用成功，直接使用返回的数据
+        enriched = (rawData || []).map((row: any) => ({
+          id: row.id,
+          content: row.content,
+          author_id: row.author_id,
+          creative_id: row.creative_id,
+          project_log_id: row.project_log_id,
+          parent_comment_id: row.parent_comment_id,
+          created_at: row.created_at,
+          profiles: row.nickname || row.avatar_url ? {
+            nickname: row.nickname,
+            avatar_url: row.avatar_url
+          } : null,
+          likes_count: row.likes_count || 0,
+          current_user_liked: row.current_user_liked || false,
         }))
       }
     } else {
-      // 未登录用户，设置默认点赞状态
-      enriched = base.map((c) => ({
+      // 用户未登录：只查询评论和作者信息，不查询点赞数据
+      const { data, error } = await supabase
+        .from('comments')
+        .select(
+          `id, content, author_id, creative_id, project_log_id, parent_comment_id, created_at,
+           profiles(nickname, avatar_url)`
+        )
+        .eq('creative_id', creativeId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+        
+      if (error) {
+        return NextResponse.json(
+          { message: '查询评论失败', error: error.message } satisfies Partial<CommentsListResponse>,
+          { status: 500 }
+        )
+      }
+      
+      enriched = (data || []).map((c: any) => ({
         ...c,
         likes_count: 0,
         current_user_liked: false,
       }))
     }
+    
+    const queryEndTime = Date.now() // 性能监控：查询结束时间
+    const queryDuration = queryEndTime - queryStartTime
 
     // 优化：通过返回数据量判断是否还有更多数据，避免昂贵的count查询
     const hasMore = enriched.length === limit
+    
+    const endTime = Date.now() // 性能监控：总结束时间
+    const totalDuration = endTime - startTime
+    
+    // 性能日志记录
+    console.log(`[评论API性能] 总耗时: ${totalDuration}ms, 认证: ${authDuration}ms, 主查询: ${queryDuration}ms, 点赞查询: ${likesQueryDuration}ms, 评论数: ${enriched.length}`)
 
     return NextResponse.json(
       { 
@@ -151,7 +222,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           limit,
           offset,
           hasMore
-        }
+        },
+        // 开发环境下返回性能数据
+        ...(process.env.NODE_ENV === 'development' && {
+          performance: {
+            totalDuration,
+            authDuration,
+            queryDuration,
+            likesQueryDuration
+          }
+        })
       } satisfies CommentsListResponse,
       { status: 200 }
     )
