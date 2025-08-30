@@ -6,6 +6,8 @@ import CreativityCard from "@/components/CreativityCard";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { requireSupabaseClient } from "@/lib/supabase";
+import { CreativeLink } from "@/components/EnhancedLink";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 // 定义创意数据类型
 interface Creative {
@@ -206,8 +208,11 @@ export default function Home() {
       </div>
       {/* 加载状态 */}
       {loading && (
-        <div className="mt-8 text-center text-gray-500">
-          正在加载创意列表...
+        <div className="mt-8 flex flex-col items-center space-y-4">
+          <LoadingSpinner size="md" />
+          <div className="text-center text-gray-500">
+            正在加载创意列表...
+          </div>
         </div>
       )}
 
@@ -231,18 +236,16 @@ export default function Home() {
                 const cardData = convertToCardData(creative);
                 const idStr = String(creative.id);
                 return (
-                  <Link
+                  <CreativeLink
                     key={idStr}
-                    href={`/idea/${idStr}`}
+                    creativeId={idStr}
                     className="block"
-                    onMouseEnter={() => prefetchSupport(idStr)}
-                    onFocus={() => prefetchSupport(idStr)}
                   >
                     <CreativityCard
                       {...cardData}
                       onCardClick={undefined}
                     />
-                  </Link>
+                  </CreativeLink>
                 );
               })}
             </div>
