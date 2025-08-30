@@ -20,6 +20,22 @@ interface UserProfile {
   bio?: string;
 }
 
+// 创意数据接口
+interface Creative {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  created_at: string;
+  author_id: string;
+  upvote_count: number;
+  comment_count: number;
+  profiles: {
+    nickname: string;
+    avatar_url?: string;
+  };
+}
+
 export default function ProfilePage() {
   const params = useParams();
   const userId = params.userId as string;
@@ -28,6 +44,9 @@ export default function ProfilePage() {
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userCreatives, setUserCreatives] = useState<Creative[]>([]);
+  const [creativesLoading, setCreativesLoading] = useState(false);
+  const [creativesError, setCreativesError] = useState<string | null>(null);
 
   // 获取用户资料
   useEffect(() => {
@@ -74,6 +93,49 @@ export default function ProfilePage() {
       fetchUserProfile();
     }
   }, [userId, currentUser]);
+
+  // 获取用户创意列表
+  useEffect(() => {
+    const fetchUserCreatives = async () => {
+      if (!profileUser || !currentUser) return;
+      
+      try {
+        setCreativesLoading(true);
+        setCreativesError(null);
+        
+        // 获取当前用户的token
+        const supabase = requireSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          setCreativesError('用户未登录');
+          return;
+        }
+        
+        const response = await fetch(`/api/users/${userId}/creatives`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        setUserCreatives(data.creatives || []);
+      } catch (err) {
+        console.error('获取用户创意失败:', err);
+        setCreativesError(err instanceof Error ? err.message : '获取创意列表失败');
+      } finally {
+        setCreativesLoading(false);
+      }
+    };
+    
+    if (profileUser && activeTab === 'createdIdeas') {
+      fetchUserCreatives();
+    }
+  }, [profileUser, currentUser, userId, activeTab]);
 
   // 加载状态
   if (loading) {
@@ -155,11 +217,11 @@ export default function ProfilePage() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">15</div>
-                  <div className="text-sm text-gray-500">提出的创意</div>
+                  <div className="text-sm text-gray-500">我的创意</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">3</div>
-                  <div className="text-sm text-gray-500">开发的项目</div>
+                  <div className="text-sm text-gray-500">我的项目</div>
                 </div>
               </div>
             </div>
@@ -180,7 +242,7 @@ export default function ProfilePage() {
                 }`}
                 aria-current={activeTab === "createdIdeas" ? "page" : undefined}
               >
-                提出的创意
+                我的创意
               </button>
               <button
                 onClick={() => setActiveTab("supportedIdeas")}
@@ -202,7 +264,7 @@ export default function ProfilePage() {
                 }`}
                 aria-current={activeTab === "developedProjects" ? "page" : undefined}
               >
-                开发的项目
+                我的项目
               </button>
             </nav>
           </div>
@@ -211,35 +273,74 @@ export default function ProfilePage() {
           <div className="p-6">
             {activeTab === "createdIdeas" && (
               <div>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <CreativityCard
-                    authorName="Zoe"
-                    publishedAtText="3 小时前"
-                    title="用AI为创作者生成个性化封面"
-                    description="根据创作者的风格库与当期话题，自动生成平台原生风格的封面，提高点击率。"
-                    tags={["网页", "AI"]}
-                    upvoteCount={328}
-                    commentCount={24}
-                  />
-                  <CreativityCard
-                    authorName="Zoe"
-                    publishedAtText="昨天"
-                    title="轻量级会议纪要助手"
-                    description="浏览器插件，录制在线会议并自动生成纪要与行动项，支持导出到 Notion。"
-                    tags={["Chrome 插件", "效率"]}
-                    upvoteCount={512}
-                    commentCount={47}
-                  />
-                  <CreativityCard
-                    authorName="Zoe"
-                    publishedAtText="2 天前"
-                    title="小团队知识库同步工具"
-                    description="自动从多平台同步文档到一个统一知识库，并做摘要和标签归类。"
-                    tags={["SaaS", "知识管理"]}
-                    upvoteCount={189}
-                    commentCount={13}
-                  />
-                </div>
+                {creativesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-600">加载创意列表中...</p>
+                    </div>
+                  </div>
+                ) : creativesError ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">加载失败</h3>
+                    <p className="text-gray-600">{creativesError}</p>
+                  </div>
+                ) : userCreatives.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">还没有发布创意</h3>
+                    <p className="text-gray-600 mb-4">快去发布你的第一个创意吧！</p>
+                    <Link href="/creatives/new" className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                      发布创意
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {userCreatives.map((creative) => {
+                      // 格式化发布时间
+                      const publishedAt = new Date(creative.created_at);
+                      const now = new Date();
+                      const diffInHours = Math.floor((now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60));
+                      
+                      let publishedAtText: string;
+                      if (diffInHours < 1) {
+                        publishedAtText = '刚刚';
+                      } else if (diffInHours < 24) {
+                        publishedAtText = `${diffInHours} 小时前`;
+                      } else if (diffInHours < 48) {
+                        publishedAtText = '昨天';
+                      } else if (diffInHours < 72) {
+                        publishedAtText = '2 天前';
+                      } else if (diffInHours < 168) {
+                        publishedAtText = `${Math.floor(diffInHours / 24)} 天前`;
+                      } else {
+                        publishedAtText = '上周';
+                      }
+                      
+                      return (
+                        <CreativityCard
+                          key={creative.id}
+                          authorName={creative.profiles.nickname}
+                          publishedAtText={publishedAtText}
+                          title={creative.title}
+                          description={creative.description}
+                          tags={creative.tags}
+                          upvoteCount={creative.upvote_count}
+                          commentCount={creative.comment_count}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
