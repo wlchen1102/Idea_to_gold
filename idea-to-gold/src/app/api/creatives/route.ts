@@ -54,7 +54,7 @@ function makeSlugUnique(base: string): string {
 }
 
 // GET /api/creatives - 获取创意列表
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // 获取环境变量
      const { supabaseUrl, serviceRoleKey } = getEnvVars()
@@ -68,11 +68,43 @@ export async function GET(): Promise<NextResponse> {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-    // 简单列表，可根据需要添加分页、排序
+    // 获取查询参数
+    const url = new URL(request.url)
+    const sortBy = url.searchParams.get('sort') || 'latest' // latest 或 popular
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100)
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0)
+
+    // 根据排序方式选择不同的RPC函数
+    const rpcFunction = sortBy === 'popular' ? 'get_popular_creatives_with_counts' : 'get_all_creatives_with_counts'
+    
+    // 尝试使用优化的RPC函数一次性获取创意及其统计数据
+    const { data: creativesWithStats, error: rpcError } = await supabaseAdmin.rpc(rpcFunction, {
+      limit_count: limit,
+      offset_count: offset
+    })
+
+    if (!rpcError && creativesWithStats) {
+      const response = NextResponse.json({
+        message: '获取创意列表成功',
+        creatives: creativesWithStats,
+        total: creativesWithStats.length
+      } satisfies CreativesResponse)
+      
+      // 添加缓存头优化性能
+      response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300')
+      response.headers.set('Content-Type', 'application/json; charset=utf-8')
+      
+      return response
+    }
+
+    // 如果RPC函数不存在，使用传统查询方式作为降级方案
+    console.log('RPC函数不可用，使用传统查询方式:', rpcError?.message)
+    
     const { data, error } = await supabaseAdmin
       .from('creatives')
       .select('*') // 包含 upvote_count 预计算字段
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       return NextResponse.json(

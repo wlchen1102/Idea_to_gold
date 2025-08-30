@@ -58,27 +58,55 @@ export async function GET(
     // 使用service_role密钥创建客户端
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     
-    // 获取用户发布的创意列表
-    const { data: creatives, error } = await supabase
-      .from('creatives')
-      .select(`
-        id,
-        title,
-        description,
-        terminals,
-        created_at,
-        author_id,
-        slug,
-        upvote_count,
-        comment_count,
-        bounty_amount,
-        profiles!creatives_author_id_fkey (
-          nickname,
-          avatar_url
-        )
-      `)
-      .eq('author_id', userId)
-      .order('created_at', { ascending: false });
+    // 尝试使用RPC函数一次性获取创意及其统计数据
+    const { data: creativesWithStats, error: rpcError } = await supabase.rpc('get_user_creatives_with_counts', {
+      user_uuid: userId
+    });
+
+    if (!rpcError && creativesWithStats) {
+      const response = NextResponse.json({
+        creatives: creativesWithStats,
+        total: creativesWithStats.length
+      });
+      
+      // 添加缓存头优化性能
+      response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300');
+      response.headers.set('Content-Type', 'application/json; charset=utf-8');
+      
+      return response;
+    }
+
+    // 如果RPC函数不存在，使用优化的批量查询方式
+    console.log('RPC函数不可用，使用优化批量查询方式:', rpcError?.message);
+    
+    // 使用Promise.all并行执行查询以提升性能
+    const [creativesResult, profileResult] = await Promise.all([
+      // 获取用户发布的创意列表（不包含JOIN以提升性能）
+      supabase
+        .from('creatives')
+        .select(`
+          id,
+          title,
+          description,
+          terminals,
+          created_at,
+          author_id,
+          slug,
+          bounty_amount
+        `)
+        .eq('author_id', userId)
+        .order('created_at', { ascending: false }),
+      
+      // 并行获取用户资料
+      supabase
+        .from('profiles')
+        .select('nickname, avatar_url')
+        .eq('id', userId)
+        .single()
+    ]);
+
+    const { data: creatives, error } = creativesResult;
+    const { data: profile, error: profileError } = profileResult;
 
     if (error) {
       console.error('获取创意列表失败:', error);
@@ -88,33 +116,80 @@ export async function GET(
       );
     }
 
-    // 获取每个创意的点赞数和评论数
-    const creativesWithStats = await Promise.all(
-      (creatives || []).map(async (creative) => {
-        // 获取点赞数
-        const { count: upvoteCount } = await supabase
-          .from('creative_upvotes')
-          .select('*', { count: 'exact', head: true })
-          .eq('creative_id', creative.id);
+    if (profileError) {
+      console.error('获取用户资料失败:', profileError);
+    }
 
-        // 获取评论数
-        const { count: commentCount } = await supabase
-          .from('comments')
-          .select('*', { count: 'exact', head: true })
-          .eq('creative_id', creative.id);
+    if (!creatives || creatives.length === 0) {
+      return NextResponse.json({
+        creatives: [],
+        total: 0
+      });
+    }
 
-        return {
-          ...creative,
-          upvote_count: upvoteCount || 0,
-          comment_count: commentCount || 0
-        };
-      })
-    );
+    // 获取所有创意ID
+    const creativeIds = creatives.map(c => c.id);
 
-    return NextResponse.json({
-      creatives: creativesWithStats,
-      total: creativesWithStats.length
+    // 并行获取统计数据
+    const [upvoteResult, commentResult] = await Promise.all([
+      supabase
+        .from('creative_upvotes')
+        .select('creative_id')
+        .in('creative_id', creativeIds),
+      
+      supabase
+        .from('comments')
+        .select('creative_id')
+        .in('creative_id', creativeIds)
+        .not('creative_id', 'is', null)
+    ]);
+
+    const { data: upvoteData, error: upvoteError } = upvoteResult;
+    const { data: commentData, error: commentError } = commentResult;
+
+    if (upvoteError || commentError) {
+      console.error('获取统计数据失败:', { upvoteError, commentError });
+    }
+
+    // 使用对象而非Map提升性能
+    const upvoteCounts = {};
+    const commentCounts = {};
+
+    // 统计点赞数
+    if (upvoteData) {
+      upvoteData.forEach(upvote => {
+        upvoteCounts[upvote.creative_id] = (upvoteCounts[upvote.creative_id] || 0) + 1;
+      });
+    }
+
+    // 统计评论数
+    if (commentData) {
+      commentData.forEach(comment => {
+        commentCounts[comment.creative_id] = (commentCounts[comment.creative_id] || 0) + 1;
+      });
+    }
+
+    // 合并所有数据
+    const creativesWithOptimizedStats = creatives.map(creative => ({
+      ...creative,
+      upvote_count: upvoteCounts[creative.id] || 0,
+      comment_count: commentCounts[creative.id] || 0,
+      profiles: {
+        nickname: profile?.nickname || null,
+        avatar_url: profile?.avatar_url || null
+      }
+    }));
+
+    const response = NextResponse.json({
+      creatives: creativesWithOptimizedStats,
+      total: creativesWithOptimizedStats.length
     });
+    
+    // 添加缓存头优化性能
+    response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300');
+    response.headers.set('Content-Type', 'application/json; charset=utf-8');
+    
+    return response;
 
   } catch (error) {
     console.error('获取用户创意列表异常:', error);

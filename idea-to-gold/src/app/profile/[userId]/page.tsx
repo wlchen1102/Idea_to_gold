@@ -2,7 +2,7 @@
 "use client";
 // 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -48,6 +48,9 @@ export default function ProfilePage() {
   const [creativesLoading, setCreativesLoading] = useState(false);
   const [creativesError, setCreativesError] = useState<string | null>(null);
 
+  // 使用ref来跟踪是否已经获取过用户资料
+  const hasInitializedProfile = useRef(false);
+  
   // 获取用户资料
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -64,6 +67,7 @@ export default function ProfilePage() {
             bio: currentUser.bio
           });
           setLoading(false);
+          hasInitializedProfile.current = true;
           return;
         }
         
@@ -80,6 +84,7 @@ export default function ProfilePage() {
           setError('用户不存在或获取资料失败');
         } else {
           setProfileUser(data);
+          hasInitializedProfile.current = true;
         }
       } catch (err) {
         console.error('获取用户资料异常:', err);
@@ -89,15 +94,18 @@ export default function ProfilePage() {
       }
     };
     
-    if (userId) {
+    if (userId && !hasInitializedProfile.current) {
       fetchUserProfile();
     }
   }, [userId, currentUser]);
 
+  // 跟踪创意是否已加载
+  const hasLoadedCreatives = useRef(false);
+  
   // 获取用户创意列表
   useEffect(() => {
     const fetchUserCreatives = async () => {
-      if (!profileUser || !currentUser) return;
+      if (!userId || hasLoadedCreatives.current) return;
       
       try {
         setCreativesLoading(true);
@@ -115,7 +123,11 @@ export default function ProfilePage() {
         const response = await fetch(`/api/users/${userId}/creatives`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
-          }
+          },
+          // 启用浏览器缓存
+          cache: 'default',
+          // 添加请求超时
+          signal: AbortSignal.timeout(10000)
         });
         
         if (!response.ok) {
@@ -124,6 +136,7 @@ export default function ProfilePage() {
         
         const data = await response.json();
         setUserCreatives(data.creatives || []);
+        hasLoadedCreatives.current = true;
       } catch (err) {
         console.error('获取用户创意失败:', err);
         setCreativesError(err instanceof Error ? err.message : '获取创意列表失败');
@@ -132,18 +145,49 @@ export default function ProfilePage() {
       }
     };
     
-    if (profileUser && activeTab === 'createdIdeas') {
+    if (userId && activeTab === 'createdIdeas') {
       fetchUserCreatives();
     }
-  }, [profileUser, currentUser, userId, activeTab]);
+  }, [userId, activeTab]);
 
-  // 加载状态
+  // 加载状态 - 优化的骨架屏
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">加载用户资料中...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          {/* 用户资料骨架屏 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-start gap-6">
+              <div className="w-32 h-32 rounded-full bg-gray-200 animate-pulse"></div>
+              <div className="flex-grow">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-3 w-48"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-64"></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 标签页骨架屏 */}
+          <div className="bg-white rounded-lg shadow-md">
+            <div className="border-b border-gray-200 px-6">
+              <div className="flex space-x-8">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-12 w-24 bg-gray-200 rounded animate-pulse my-4"></div>
+                ))}
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="bg-gray-50 rounded-lg p-4">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

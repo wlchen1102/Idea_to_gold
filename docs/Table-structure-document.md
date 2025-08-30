@@ -12,6 +12,23 @@
     *   `reputation` (int4): 用户的声望分，默认为0。
     *   `updated_at` (timestamptz): 记录最后更新时间。
 
+    表结构如下：
+    create table public.profiles (
+  id uuid not null,
+  nickname text null,
+  avatar_url text null,
+  bio text null,
+  reputation integer not null default 0,
+  updated_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint profiles_pkey primary key (id),
+  constraint profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE,
+  constraint profiles_nickname_length check ((char_length(nickname) >= 3))
+) TABLESPACE pg_default;
+
+create index IF not exists idx_profiles_nickname on public.profiles using btree (nickname) TABLESPACE pg_default
+where
+  (nickname is not null);
+
 #### **2. 【核心表】`public.creatives` - 用户创意表**
 
 *   **它的作用**:
@@ -26,6 +43,23 @@
     *   `created_at` (timestamptz): 创意的发布时间。
     *   `slug` (text, 唯一): 用于生成URL的、对SEO友好的**唯一**字符串。
     *   `upvote_count` (int4, 未来增加): 用于缓存点赞总数，默认为0。
+
+    表结构如下：
+    create table public.creatives (
+  title text not null,
+  description text not null,
+  terminals text[] null,
+  bounty_amount integer not null default 0,
+  author_id uuid not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  id uuid not null default extensions.uuid_generate_v4 (),
+  slug text null,
+  upvote_count integer not null default 0,
+  comment_count integer not null default 0,
+  constraint user_creatives_pkey primary key (id),
+  constraint user_creatives_slug_key unique (slug),
+  constraint creatives_author_id_fkey foreign KEY (author_id) references profiles (id) on delete CASCADE
+) TABLESPACE pg_default;
 
 ---
 
