@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [switchingMessage, setSwitchingMessage] = useState(''); // 切换提示信息
   const [nicknameError, setNicknameError] = useState(''); // 昵称校验错误信息
   const [termsAccepted, setTermsAccepted] = useState(false); // 用户协议勾选状态
   const [mode, setMode] = useState<'login' | 'signup'>('login'); // 登录/注册模式切换
@@ -93,7 +94,7 @@ export default function LoginPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isEmailValid = EMAIL_REGEX.test(email.trim());
 
-  // 统一：调度"手机号失焦2秒后自动校验是否存在"
+  // 统一：调度"手机号失焦0.5秒后自动校验是否存在"
   const schedulePhoneExistenceCheck = (currentMode: 'login' | 'signup') => {
     if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current);
     // 只有输入了有效手机号时才调度
@@ -114,14 +115,46 @@ export default function LoginPage() {
           if (exists) {
             // 已注册
             if (currentMode === 'signup') {
+              // 先显示错误提示
               setPhoneError('手机号已注册，请直接登录');
+              // 1秒后显示切换提示并切换到登录页
+              setTimeout(() => {
+                setSwitchingMessage('正在为您跳转登录页...');
+                setTimeout(() => {
+                  setMode('login');
+                  setPhoneError('');
+                  setSubmitError('');
+                  setSuccessMessage('');
+                  setSwitchingMessage('');
+                  // 清空注册相关字段
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setNickname('');
+                  setNicknameError('');
+                  setTermsAccepted(false);
+                }, 1200); // 切换提示显示1.2秒后执行切换
+              }, 1000); // 错误提示显示1秒后开始切换流程
             } else {
               setPhoneError('');
             }
           } else {
             // 未注册
             if (currentMode === 'login') {
+              // 先显示错误提示
               setPhoneError('手机号未注册，请先注册');
+              // 1秒后显示切换提示并切换到注册页
+              setTimeout(() => {
+                setSwitchingMessage('正在为您跳转注册页...');
+                setTimeout(() => {
+                  setMode('signup');
+                  setPhoneError('');
+                  setSubmitError('');
+                  setSuccessMessage('');
+                  setSwitchingMessage('');
+                  // 清空登录相关字段
+                  setPassword('');
+                }, 1200); // 切换提示显示1.2秒后执行切换
+              }, 1000); // 错误提示显示1秒后开始切换流程
             } else {
               setPhoneError('');
             }
@@ -130,7 +163,7 @@ export default function LoginPage() {
       } catch {
         // 静默失败：不影响用户继续
       }
-    }, 1000);
+    }, 500);
   };
 
   // 登录提交
@@ -315,6 +348,13 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {/* 切换提示 Toast */}
+              {switchingMessage && (
+                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-700 px-4 py-3 text-sm">
+                  {switchingMessage}
+                </div>
+              )}
+
               {/* 错误提示 */}
               {submitError && (
                 <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
@@ -352,6 +392,7 @@ export default function LoginPage() {
                           onFocus={() => { if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current); }}
                           onBlur={() => { if (validatePhone(phone)) schedulePhoneExistenceCheck('login'); }}
                           disabled={isSubmitting}
+                          maxLength={11}
                         />
                       </div>
                       {phoneError && <p className="text-sm text-red-600">{phoneError}</p>}
@@ -386,9 +427,9 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={handleLogin}
-                        disabled={!isPhoneValid || !password || isSubmitting}
+                        disabled={!isPhoneValid || !password || password.length < 6 || isSubmitting}
                         aria-busy={isSubmitting}
-                        className={`w-full h-11 rounded-lg font-medium text-white transition ${(!isPhoneValid || !password || isSubmitting) ? 'bg-gray-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
+                        className={`w-full h-11 rounded-lg font-medium text-white transition ${(!isPhoneValid || !password || password.length < 6 || isSubmitting) ? 'bg-gray-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200'}`}
                       >
                         {isSubmitting ? '登录中…' : '登录'}
                       </button>
@@ -421,6 +462,7 @@ export default function LoginPage() {
                           onFocus={() => { if (phoneBlurTimer.current) clearTimeout(phoneBlurTimer.current); }}
                           onBlur={() => { if (validatePhone(phone)) schedulePhoneExistenceCheck('signup'); }}
                           disabled={isSubmitting}
+                          maxLength={11}
                         />
                       </div>
                       {phoneError && <p className="text-sm text-red-600">{phoneError}</p>}
