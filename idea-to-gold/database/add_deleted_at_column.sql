@@ -1,6 +1,20 @@
--- 创建优化的RPC函数，一次性获取所有创意及其统计数据
--- 这个函数使用JOIN和聚合查询来避免N+1查询问题，适用于创意广场
+-- 为creatives表添加deleted_at字段以支持软删除功能
+-- 执行此SQL以修复删除创意功能
 
+-- 添加deleted_at字段
+ALTER TABLE public.creatives 
+ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+-- 添加注释说明字段用途
+COMMENT ON COLUMN public.creatives.deleted_at IS '软删除时间戳，NULL表示未删除，有值表示已删除';
+
+-- 创建索引以优化查询性能（查询未删除的创意）
+CREATE INDEX IF NOT EXISTS idx_creatives_deleted_at 
+ON public.creatives (deleted_at) 
+WHERE deleted_at IS NULL;
+
+-- 更新现有的查询函数，过滤已删除的创意
+-- 修改get_all_creatives_with_counts函数
 CREATE OR REPLACE FUNCTION get_all_creatives_with_counts(
   limit_count INTEGER DEFAULT 50,
   offset_count INTEGER DEFAULT 0
@@ -63,7 +77,7 @@ BEGIN
       creative_id
   ) comments ON c.id = comments.creative_id
   WHERE 
-    c.deleted_at IS NULL  -- 只获取未删除的创意
+    c.deleted_at IS NULL  -- 只返回未删除的创意
   ORDER BY 
     c.created_at DESC
   LIMIT limit_count
@@ -71,25 +85,8 @@ BEGIN
 END;
 $$;
 
--- 为函数添加注释
-COMMENT ON FUNCTION get_all_creatives_with_counts(INTEGER, INTEGER) IS '获取所有创意及其点赞数和评论数，支持分页，使用单个查询优化性能';
-
--- 确保相关索引存在以优化查询性能
-CREATE INDEX IF NOT EXISTS idx_creatives_created_desc 
-  ON public.creatives (created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_creative_upvotes_creative_id 
-  ON public.creative_upvotes (creative_id);
-
-CREATE INDEX IF NOT EXISTS idx_comments_creative_id 
-  ON public.comments (creative_id) 
-  WHERE creative_id IS NOT NULL;
-
--- 为了支持热门排序，创建一个按点赞数排序的函数
-CREATE OR REPLACE FUNCTION get_popular_creatives_with_counts(
-  limit_count INTEGER DEFAULT 50,
-  offset_count INTEGER DEFAULT 0
-)
+-- 修改get_user_creatives_with_counts函数
+CREATE OR REPLACE FUNCTION get_user_creatives_with_counts(user_id UUID)
 RETURNS TABLE (
   id UUID,
   title TEXT,
@@ -148,14 +145,20 @@ BEGIN
       creative_id
   ) comments ON c.id = comments.creative_id
   WHERE 
-    c.deleted_at IS NULL  -- 只获取未删除的创意
+    c.author_id = user_id
+    AND c.deleted_at IS NULL  -- 只返回未删除的创意
   ORDER BY 
-    COALESCE(upvotes.upvote_count, 0) DESC,
-    c.created_at DESC
-  LIMIT limit_count
-  OFFSET offset_count;
+    c.created_at DESC;
 END;
 $$;
 
--- 为热门排序函数添加注释
-COMMENT ON FUNCTION get_popular_creatives_with_counts(INTEGER, INTEGER) IS '获取按点赞数排序的热门创意及其统计数据，支持分页，使用单个查询优化性能';
+-- 添加函数注释
+COMMENT ON FUNCTION get_all_creatives_with_counts(INTEGER, INTEGER) IS '获取所有未删除的创意及其点赞数和评论数，支持分页';
+COMMENT ON FUNCTION get_user_creatives_with_counts(UUID) IS '获取指定用户的未删除创意列表，包含点赞数、评论数和作者信息';
+
+-- 验证字段是否添加成功
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_name = 'creatives' 
+AND table_schema = 'public' 
+AND column_name = 'deleted_at';

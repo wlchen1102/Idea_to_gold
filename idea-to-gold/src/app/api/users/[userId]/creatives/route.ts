@@ -2,7 +2,6 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSupabaseClient } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthEnvVars, getAdminEnvVars } from '@/lib/env';
 
@@ -95,6 +94,7 @@ export async function GET(
           bounty_amount
         `)
         .eq('author_id', userId)
+        .is('deleted_at', null)  // 只获取未删除的创意
         .order('created_at', { ascending: false }),
       
       // 并行获取用户资料

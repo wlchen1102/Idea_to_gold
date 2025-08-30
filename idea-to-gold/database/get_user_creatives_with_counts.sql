@@ -1,6 +1,9 @@
 -- 创建优化的RPC函数，一次性获取用户创意及其统计数据
 -- 这个函数使用JOIN和聚合查询来避免N+1查询问题
 
+-- 先删除现有函数以避免返回类型冲突
+DROP FUNCTION IF EXISTS get_user_creatives_with_counts(UUID);
+
 CREATE OR REPLACE FUNCTION get_user_creatives_with_counts(user_id UUID)
 RETURNS TABLE (
   id UUID,
@@ -61,6 +64,7 @@ BEGIN
   ) comments ON c.id = comments.creative_id
   WHERE 
     c.author_id = user_id
+    AND c.deleted_at IS NULL  -- 只获取未删除的创意
   ORDER BY 
     c.created_at DESC;
 END;

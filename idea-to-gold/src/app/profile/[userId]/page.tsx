@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import CreativityCard from "@/components/CreativityCard";
+import Modal from "@/components/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { requireSupabaseClient } from "@/lib/supabase";
 
@@ -47,6 +48,12 @@ export default function ProfilePage() {
   const [userCreatives, setUserCreatives] = useState<Creative[]>([]);
   const [creativesLoading, setCreativesLoading] = useState(false);
   const [creativesError, setCreativesError] = useState<string | null>(null);
+  
+  // 删除相关状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingCreativeId, setDeletingCreativeId] = useState<string | null>(null);
+  const [deletingCreativeTitle, setDeletingCreativeTitle] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 使用ref来跟踪是否已经获取过用户资料
   const hasInitializedProfile = useRef(false);
@@ -171,6 +178,68 @@ export default function ProfilePage() {
     };
   }, [userId]);
 
+  // 处理删除创意
+  const handleDeleteCreative = (creativeId: string, creativeTitle: string) => {
+    setDeletingCreativeId(creativeId);
+    setDeletingCreativeTitle(creativeTitle);
+    setDeleteDialogOpen(true);
+  };
+
+  // 确认删除创意
+  const confirmDeleteCreative = async () => {
+    if (!deletingCreativeId) return;
+    
+    try {
+      setIsDeleting(true);
+      
+      // 获取当前用户的token
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('登录已过期，请重新登录');
+        return;
+      }
+      
+      const response = await fetch(`/api/creatives/${deletingCreativeId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      // 从本地状态中移除已删除的创意
+      setUserCreatives(prev => prev.filter(creative => creative.id !== deletingCreativeId));
+      
+      // 显示成功提示
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pendingToast", "删除成功");
+        window.dispatchEvent(new Event("localToast"));
+      }
+      
+    } catch (err) {
+      console.error('删除创意失败:', err);
+      alert(err instanceof Error ? err.message : '删除创意失败');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setDeletingCreativeId(null);
+      setDeletingCreativeTitle('');
+    }
+  };
+
+  // 取消删除
+  const cancelDeleteCreative = () => {
+    setDeleteDialogOpen(false);
+    setDeletingCreativeId(null);
+    setDeletingCreativeTitle('');
+  };
+
   // 加载状态 - 优化的骨架屏
   if (loading) {
     return (
@@ -235,6 +304,7 @@ export default function ProfilePage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
       {/* 页面主体 */}
       <div className="mx-auto max-w-4xl px-4 py-8">
@@ -391,9 +461,13 @@ export default function ProfilePage() {
                         publishedAtText = '上周';
                       }
                       
+                      // 判断是否为当前用户的创意（可以删除）
+                      const isCurrentUserCreative = currentUser && currentUser.id === creative.author_id;
+                      
                       return (
                         <CreativityCard
                           key={creative.id}
+                          creativeId={creative.id}
                           authorName={creative.profiles.nickname}
                           publishedAtText={publishedAtText}
                           title={creative.title}
@@ -401,6 +475,8 @@ export default function ProfilePage() {
                           tags={creative.tags}
                           upvoteCount={creative.upvote_count}
                           commentCount={creative.comment_count}
+                          showDeleteButton={isCurrentUserCreative}
+                          onDelete={() => handleDeleteCreative(creative.id, creative.title)}
                         />
                       );
                     })}
@@ -517,5 +593,34 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+    
+    {/* 删除确认弹窗 */}
+    <Modal
+      isOpen={deleteDialogOpen}
+      onClose={() => {
+        if (!isDeleting) cancelDeleteCreative();
+      }}
+    >
+      <p className="text-[16px] sm:text-[18px] leading-7 text-gray-800">确定删除这条创意吗？</p>
+      <div className="mt-6 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={cancelDeleteCreative}
+          disabled={isDeleting}
+          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-[#2c3e50] hover:bg-gray-50 disabled:opacity-50"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          onClick={confirmDeleteCreative}
+          className="rounded-md bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          disabled={isDeleting}
+        >
+          {isDeleting ? '删除中...' : '确认删除'}
+        </button>
+      </div>
+    </Modal>
+    </>
   );
 }

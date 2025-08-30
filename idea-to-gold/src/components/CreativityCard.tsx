@@ -1,6 +1,8 @@
 import React from "react";
 
 export interface CreativityCardProps {
+  /** 创意ID（用于删除等操作） */
+  creativeId: string;
   /** 作者昵称 */
   authorName: string;
   /** 作者头像地址（可选） */
@@ -21,6 +23,10 @@ export interface CreativityCardProps {
   onUpvote?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   /** 点击卡片整体（跳转等用途，可选） */
   onCardClick?: () => void;
+  /** 是否显示删除按钮（仅在个人中心显示） */
+  showDeleteButton?: boolean;
+  /** 删除回调（可选） */
+  onDelete?: (creativeId: string) => void;
   /** 自定义类名（可选） */
   className?: string;
 }
@@ -42,6 +48,7 @@ function formatCount(count: number | string): string {
 
 export default function CreativityCard(props: CreativityCardProps) {
   const {
+    creativeId,
     authorName,
     authorAvatarUrl,
     publishedAtText,
@@ -52,6 +59,8 @@ export default function CreativityCard(props: CreativityCardProps) {
     commentCount,
     onUpvote,
     onCardClick,
+    showDeleteButton = false,
+    onDelete,
     className = "",
   } = props;
 
@@ -104,7 +113,7 @@ export default function CreativityCard(props: CreativityCardProps) {
         )}
       </div>
 
-      {/* 底部：我也要按钮 与 评论 */}
+      {/* 底部：操作按钮区域 */}
       <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         {/* 左侧：评论信息（小屏置顶） */}
         <div className="inline-flex items-center gap-2 text-[15px] text-[#2c3e50]">
@@ -121,28 +130,58 @@ export default function CreativityCard(props: CreativityCardProps) {
           <span>{formatCount(commentCount)}</span>
         </div>
 
-        {/* 右侧：我也要按钮（小屏占满一行） */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onUpvote?.(e);
-          }}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2ECC71] px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-[#27AE60] w-full md:w-auto"
-          aria-label="我也要"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="h-5 w-5"
+        {/* 右侧：操作按钮组 */}
+        <div className="flex flex-col gap-2 md:flex-row md:gap-3">
+          {/* 删除按钮（仅在个人中心显示） */}
+          {showDeleteButton && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(creativeId);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-red-600 transition-colors w-full md:w-auto"
+              aria-label="删除创意"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-4 w-4"
+              >
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              </svg>
+              <span>删除</span>
+            </button>
+          )}
+          
+          {/* 我也要按钮 */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpvote?.(e);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2ECC71] px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-[#27AE60] transition-colors w-full md:w-auto"
+            aria-label="我也要"
           >
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-          <span>我也要 ({formatCount(upvoteCount)})</span>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-5 w-5"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            <span>我也要 ({formatCount(upvoteCount)})</span>
+          </button>
+        </div>
       </div>
     </div>
   );

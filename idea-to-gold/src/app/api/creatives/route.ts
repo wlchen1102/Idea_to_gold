@@ -2,7 +2,7 @@
 // 迁移自 functions/api/creatives/index.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getEnvVars } from '@/lib/env'
+import { getAdminEnvVars } from '@/lib/env'
 
 // 使用 Edge Runtime
 export const runtime = 'edge'
@@ -57,7 +57,7 @@ function makeSlugUnique(base: string): string {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // 获取环境变量
-     const { supabaseUrl, serviceRoleKey } = getEnvVars()
+     const { supabaseUrl, serviceRoleKey } = getAdminEnvVars()
 
      if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
@@ -103,6 +103,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { data, error } = await supabaseAdmin
       .from('creatives')
       .select('*') // 包含 upvote_count 预计算字段
+      .is('deleted_at', null)  // 只获取未删除的创意
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // 获取环境变量
-     const { supabaseUrl, serviceRoleKey } = getEnvVars()
+     const { supabaseUrl, serviceRoleKey } = getAdminEnvVars()
 
      if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
