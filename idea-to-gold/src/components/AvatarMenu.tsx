@@ -4,6 +4,50 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { requireSupabaseClient } from "@/lib/supabase";
+
+// 预加载缓存，避免重复请求
+const prefetchCache = new Set<string>();
+
+// 预加载支持的创意数据
+const prefetchSupportedCreatives = async (userId: string) => {
+  const cacheKey = `supported-creatives:${userId}`;
+  
+  // 如果已经预加载过，跳过
+  if (prefetchCache.has(cacheKey)) {
+    return;
+  }
+  
+  try {
+    prefetchCache.add(cacheKey);
+    
+    // 获取用户token
+    const supabase = requireSupabaseClient();
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data?.session?.access_token ?? "";
+    
+    if (!token) {
+      prefetchCache.delete(cacheKey);
+      return;
+    }
+    
+    // 预加载支持的创意数据（只加载第一页）
+    const url = `/api/users/${userId}/supported-creatives?page=1&limit=10`;
+    
+    fetch(url, { 
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      cache: 'default' // 利用浏览器缓存
+    }).catch(() => {
+      // 预加载失败不影响用户体验，静默处理
+      prefetchCache.delete(cacheKey);
+    });
+  } catch {
+    // 预加载失败，从缓存中移除以便下次重试
+    prefetchCache.delete(cacheKey);
+  }
+};
 
 function AvatarMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -70,6 +114,12 @@ function AvatarMenu() {
           <Link
             href={`/profile/${user?.id}`}
             onClick={handleMenuItemClick}
+            onMouseEnter={() => {
+              // 悬停时预加载支持的创意数据
+              if (user?.id) {
+                prefetchSupportedCreatives(user.id);
+              }
+            }}
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             个人中心

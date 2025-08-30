@@ -7,9 +7,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import CreativityCard from "@/components/CreativityCard";
+import CreativityCardSkeleton from "@/components/CreativityCardSkeleton";
 import Modal from "@/components/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { requireSupabaseClient } from "@/lib/supabase";
+import { cache, getCacheKey, CACHE_DURATION } from "@/lib/cache";
 
 type TabType = "createdIdeas" | "supportedIdeas" | "developedProjects";
 
@@ -51,6 +53,10 @@ export default function ProfilePage() {
   const [supportedLoading, setSupportedLoading] = useState(false);
   const [creativesError, setCreativesError] = useState<string | null>(null);
   const [supportedError, setSupportedError] = useState<string | null>(null);
+  const [supportedPage, setSupportedPage] = useState(1);
+  const [supportedTotal, setSupportedTotal] = useState(0);
+  const [supportedHasMore, setSupportedHasMore] = useState(true);
+  const [supportedLoadingMore, setSupportedLoadingMore] = useState(false);
   
   // 删除相关状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -192,6 +198,19 @@ export default function ProfilePage() {
       }
       
       try {
+        // 检查缓存（仅第一页）
+        const cacheKey = getCacheKey.supportedCreatives(userId, 1);
+        const cachedData = cache.get<{creatives: Creative[], total: number}>(cacheKey);
+        
+        if (cachedData) {
+          // 使用缓存数据，立即显示
+          setSupportedCreatives(cachedData.creatives);
+          setSupportedTotal(cachedData.total);
+          setSupportedHasMore(cachedData.creatives.length < cachedData.total);
+          setSupportedLoading(false);
+          return;
+        }
+        
         setSupportedLoading(true);
         setSupportedError(null);
         
@@ -205,7 +224,7 @@ export default function ProfilePage() {
           return;
         }
         
-        const response = await fetch(`/api/users/${userId}/supported-creatives`, {
+        const response = await fetch(`/api/users/${userId}/supported-creatives?page=1&limit=10`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           },
@@ -220,7 +239,14 @@ export default function ProfilePage() {
         const data = await response.json();
         
         if (!cancelled) {
-          setSupportedCreatives(data.creatives || []);
+          const creatives = data.creatives || [];
+          const total = data.total || 0;
+          setSupportedCreatives(creatives);
+          setSupportedTotal(total);
+          setSupportedPage(1);
+          setSupportedHasMore(creatives.length < total);
+          // 缓存数据，5分钟过期
+          cache.set(cacheKey, { creatives, total }, CACHE_DURATION.MEDIUM);
         }
       } catch (err) {
         console.error('获取支持的创意失败:', err);
@@ -240,6 +266,51 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [userId, activeTab]);
+
+  // 加载更多支持的创意
+  const loadMoreSupportedCreatives = async () => {
+    if (!userId || supportedLoadingMore || !supportedHasMore) {
+      return;
+    }
+
+    try {
+      setSupportedLoadingMore(true);
+      
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setSupportedError('登录已过期，请重新登录');
+        return;
+      }
+
+      const nextPage = supportedPage + 1;
+      const response = await fetch(`/api/users/${userId}/supported-creatives?page=${nextPage}&limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        cache: 'default',
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const newCreatives = data.creatives || [];
+      
+      setSupportedCreatives(prev => [...prev, ...newCreatives]);
+      setSupportedPage(nextPage);
+      setSupportedHasMore(newCreatives.length === 10); // 如果返回的数量少于10，说明没有更多了
+      
+    } catch (err) {
+      console.error('加载更多支持的创意失败:', err);
+      setSupportedError(err instanceof Error ? err.message : '加载更多失败');
+    } finally {
+      setSupportedLoadingMore(false);
+    }
+  };
 
   // 处理删除创意
   const handleDeleteCreative = (creativeId: string, creativeTitle: string) => {
@@ -545,17 +616,34 @@ export default function ProfilePage() {
                     })}
                   </div>
                 )}
+                
+                {/* 加载更多按钮 */}
+                {supportedCreatives.length > 0 && supportedHasMore && (
+                  <div className="mt-8 text-center">
+                    <button
+                      onClick={loadMoreSupportedCreatives}
+                      disabled={supportedLoadingMore}
+                      className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {supportedLoadingMore ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          加载中...
+                        </>
+                      ) : (
+                        '加载更多'
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "supportedIdeas" && (
               <div>
                 {supportedLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-gray-600">加载支持的创意中...</p>
-                    </div>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <CreativityCardSkeleton count={6} />
                   </div>
                 ) : supportedError ? (
                   <div className="text-center py-12">
