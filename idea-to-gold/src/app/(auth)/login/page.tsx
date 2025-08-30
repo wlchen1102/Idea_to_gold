@@ -89,17 +89,9 @@ export default function LoginPage() {
     return ok;
   };
 
-  const validateEmail = (value: string) => {
-    const v = value.trim();
-    const ok = EMAIL_REGEX.test(v);
-    return ok;
-  };
-
   const isPhoneValid = CN_PHONE_REGEX.test(phone.trim());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isEmailValid = EMAIL_REGEX.test(email.trim());
-  
-  const getCurrentInput = () => inputType === 'phone' ? phone : email;
-  const isCurrentInputValid = () => inputType === 'phone' ? isPhoneValid : isEmailValid;
 
   // 统一：调度"手机号失焦2秒后自动校验是否存在"
   const schedulePhoneExistenceCheck = (currentMode: 'login' | 'signup') => {

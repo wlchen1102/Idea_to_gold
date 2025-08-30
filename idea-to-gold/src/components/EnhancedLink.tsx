@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ReactNode, MouseEvent, FocusEvent } from "react";
+import { ReactNode } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
 
 // 预加载缓存，避免重复请求
@@ -41,7 +41,7 @@ const prefetchComments = async (creativeId: string) => {
       // 预加载失败不影响用户体验，静默处理
       prefetchCache.delete(cacheKey);
     });
-  } catch (error) {
+  } catch {
     // 预加载失败，从缓存中移除以便下次重试
     prefetchCache.delete(cacheKey);
   }
@@ -51,11 +51,10 @@ interface EnhancedLinkProps {
   href: string;
   children: ReactNode;
   className?: string;
-  loadingText?: string;
   prefetch?: boolean;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
-  onMouseEnter?: (e: MouseEvent<HTMLAnchorElement>) => void;
-  onFocus?: (e: FocusEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLAnchorElement>) => void;
 }
 
 /**
@@ -65,7 +64,6 @@ export function EnhancedLink({
   href,
   children,
   className,
-  loadingText,
   prefetch = true,
   onClick,
   onMouseEnter,
@@ -74,7 +72,7 @@ export function EnhancedLink({
 }: EnhancedLinkProps) {
   const router = useRouter();
 
-  const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     // 如果有自定义onClick，先执行
     if (onClick) {
       onClick(e);
@@ -92,7 +90,7 @@ export function EnhancedLink({
     }, 100); // 100ms 动画时间后立即跳转
   };
 
-  const handleMouseEnter = (e: MouseEvent<HTMLAnchorElement>) => {
+  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
     // 预加载页面
     router.prefetch(href);
     
@@ -110,7 +108,7 @@ export function EnhancedLink({
     }
   };
 
-  const handleFocus = (e: FocusEvent<HTMLAnchorElement>) => {
+  const handleFocus = (e: React.FocusEvent<HTMLAnchorElement>) => {
     // 预加载页面
     router.prefetch(href);
     
@@ -142,7 +140,6 @@ export function CreativeLink({
   creativeId,
   children,
   className,
-  ...props
 }: {
   creativeId: string;
   children: ReactNode;
@@ -167,8 +164,10 @@ export function CreativeLink({
   
   return (
     <div 
-      className={className}
-      onMouseEnter={(e) => {
+      className={`${className} cursor-pointer`}
+      onClick={handleCardClick}
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onMouseEnter={(_e) => {
         // 预加载创意详情页面
         router.prefetch(href);
         
@@ -176,9 +175,7 @@ export function CreativeLink({
         prefetchComments(creativeId);
       }}
     >
-      {React.cloneElement(children as React.ReactElement, {
-        onCardClick: handleCardClick
-      })}
+      {children}
     </div>
   );
 }

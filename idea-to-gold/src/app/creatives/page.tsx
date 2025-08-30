@@ -34,8 +34,9 @@ export default function Home() {
 
   // 组件卸载时清理定时器
   useEffect(() => {
+    const timeoutRef = prefetchTimeoutRef;
     return () => {
-      Object.values(prefetchTimeoutRef.current).forEach(timeout => {
+      Object.values(timeoutRef.current).forEach(timeout => {
         clearTimeout(timeout);
       });
     };
@@ -46,12 +47,9 @@ export default function Home() {
   // 防抖定时器
   const prefetchTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // 悬停/预点击时，预取"是否已想要"支持态并写入本地缓存（带防抖）
-  const prefetchSupport = (creativeId: string | number) => {
-    const id = String(creativeId);
-    if (!id || prefetchedRef.current.has(id)) return;
-
-    // 清除之前的定时器
+  // 清除之前的定时器
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const clearPrefetchTimeout = (id: string) => {
     if (prefetchTimeoutRef.current[id]) {
       clearTimeout(prefetchTimeoutRef.current[id]);
     }
@@ -93,7 +91,7 @@ export default function Home() {
       else localStorage.removeItem(cacheKey);
 
       prefetchedRef.current.add(id);
-    } catch (_e) {
+    } catch {
       // 忽略预取失败，不影响后续正常逻辑
     }
   };
@@ -122,8 +120,8 @@ export default function Home() {
     fetchCreatives();
   }, []);
 
-  // 点击“发布创意”按钮的处理：未登录 -> 提示并跳登录；已登录 -> 跳转到发布页
-  const handleCreateClick = async (_e: React.MouseEvent<HTMLButtonElement>) => {
+  // 点击"发布创意"按钮的处理：未登录 -> 提示并跳登录；已登录 -> 跳转到发布页
+  const handleCreateClick = async () => {
     try {
       const supabase = requireSupabaseClient();
       const { data, error: sessionError } = await supabase.auth.getSession();
@@ -137,7 +135,7 @@ export default function Home() {
       }
 
       router.push('/creatives/new');
-    } catch (_err) {
+    } catch {
       // 兜底：若出现异常，仍然引导到登录页
       localStorage.setItem('pendingToast', '请先登录后再发布创意');
       window.dispatchEvent(new Event('localToast'));
@@ -243,7 +241,6 @@ export default function Home() {
                   >
                     <CreativityCard
                       {...cardData}
-                      onCardClick={undefined}
                     />
                   </CreativeLink>
                 );

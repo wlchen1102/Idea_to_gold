@@ -70,7 +70,7 @@ export default function IdeaDetailPage() {
           const errorData = await response.json();
           setError(errorData?.message || "获取创意详情失败");
         }
-      } catch (e) {
+      } catch {
         setError("网络连接错误，请稍后重试");
       } finally {
         setLoading(false);
@@ -153,10 +153,7 @@ export default function IdeaDetailPage() {
     supporters: Number(creative.upvote_count ?? 0), // 以真实 upvote_count 初始化
   };
 
-  const projects = [
-    { id: "p1", dev: { name: "Ken" }, status: "开发中" },
-    { id: "p2", dev: { name: "Iris" }, status: "开发中" },
-  ];
+
 
 
   return (
@@ -207,7 +204,7 @@ export default function IdeaDetailPage() {
         <section className="md:col-span-2">
           <CommentsSection 
             ideaId={String(creative.id)} 
-            initialComments={null}
+            initialComments={undefined}
           />
         </section>
       </div>

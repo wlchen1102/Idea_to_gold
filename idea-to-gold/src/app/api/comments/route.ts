@@ -103,7 +103,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         if (payload.exp && payload.exp < now) {
           userId = null // token已过期
         }
-      } catch (error) {
+      } catch {
         // token格式错误，忽略认证
         userId = null
       }
@@ -178,20 +178,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
       } else {
         // 存储过程调用成功，直接使用返回的数据
-        enriched = (rawData || []).map((row: any) => ({
-          id: row.id,
-          content: row.content,
-          author_id: row.author_id,
-          creative_id: row.creative_id,
-          project_log_id: row.project_log_id,
-          parent_comment_id: row.parent_comment_id,
-          created_at: row.created_at,
+        enriched = (rawData || []).map((row: Record<string, unknown>) => ({
+          id: row.id as string,
+          content: row.content as string,
+          author_id: row.author_id as string,
+          creative_id: row.creative_id as string | null,
+          project_log_id: row.project_log_id as string | null,
+          parent_comment_id: row.parent_comment_id as string | null,
+          created_at: row.created_at as string,
           profiles: row.nickname || row.avatar_url ? {
-            nickname: row.nickname,
-            avatar_url: row.avatar_url
+            nickname: row.nickname as string | null,
+            avatar_url: row.avatar_url as string | null
           } : null,
-          likes_count: row.likes_count || 0,
-          current_user_liked: row.current_user_liked || false,
+          likes_count: (row.likes_count as number) || 0,
+          current_user_liked: (row.current_user_liked as boolean) || false,
         }))
       }
     } else {
@@ -213,8 +213,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         )
       }
       
-      enriched = (data || []).map((c: any) => ({
-        ...c,
+      enriched = (data || []).map((c: Record<string, unknown>) => ({
+        id: c.id as string,
+        content: c.content as string,
+        author_id: c.author_id as string,
+        creative_id: c.creative_id as string | null,
+        project_log_id: c.project_log_id as string | null,
+        parent_comment_id: c.parent_comment_id as string | null,
+        created_at: c.created_at as string,
+        profiles: c.profiles as { nickname: string | null; avatar_url: string | null } | null,
         likes_count: 0,
         current_user_liked: false,
       }))

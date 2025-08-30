@@ -39,6 +39,7 @@ function toast(message: string) {
 export default function RightInfo({
   supporters,
   platforms,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   bounty: _bounty,
   ideaId,
   initialUpvoteData,

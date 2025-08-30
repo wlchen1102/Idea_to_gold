@@ -2,9 +2,8 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
 import Modal from "@/components/Modal";
@@ -228,7 +227,6 @@ export default function CommentsSection({
   ideaId?: string;
   initialComments?: CommentDTO[];
 }) {
-  const pathname = usePathname();
   // 顶部发布框内容
   const [value, setValue] = useState("");
   // 点赞本地状态（演示用）
@@ -261,7 +259,7 @@ export default function CommentsSection({
   const [pagination, setPagination] = useState({ limit: 20, offset: 0, total: 0, hasMore: false });
 
   // 拉取评论列表（支持分页）
-  const fetchComments = async (cid: string, isLoadMore = false) => {
+  const fetchComments = useCallback(async (cid: string, isLoadMore = false) => {
     const fetchStartTime = Date.now(); // 性能监控：API调用开始时间
     
     try {
@@ -301,7 +299,7 @@ export default function CommentsSection({
       const json = (await res.json()) as { 
         comments?: CommentDTO[]; 
         pagination?: { limit: number; offset: number; total: number; hasMore: boolean };
-        performance?: any;
+        performance?: Record<string, unknown>;
       };
       
       const processStartTime = Date.now(); // 性能监控：数据处理开始时间
@@ -347,7 +345,7 @@ export default function CommentsSection({
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [pagination.limit, pagination.offset]);
 
   // 使用 ref 防止重复调用（React 严格模式会导致 useEffect 执行两次）
   const fetchedRef = React.useRef(false);
@@ -372,7 +370,7 @@ export default function CommentsSection({
       fetchedRef.current = true;
       fetchComments(ideaId);
     }
-  }, [ideaId]); // 移除 initialComments 依赖，避免重复调用
+  }, [ideaId, fetchComments, initialComments]);
 
   // 加载更多评论
   const loadMoreComments = () => {
@@ -591,15 +589,18 @@ export default function CommentsSection({
       setItems((prev) => prev.filter((c) => c.id !== id));
       // 清理相关本地状态
       setLikesMap((prev) => {
-        const { [id]: _removed, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: _, ...rest } = prev;
         return rest;
       });
       setReplyOpen((prev) => {
-        const { [id]: _r, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: __, ...rest } = prev;
         return rest;
       });
       setReplyValue((prev) => {
-        const { [id]: _v, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: ___, ...rest } = prev;
         return rest;
       });
       // 优化：直接从本地状态移除被删除的评论，避免重复API调用

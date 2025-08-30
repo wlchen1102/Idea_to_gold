@@ -11,6 +11,7 @@ type TabType = "createdIdeas" | "supportedIdeas" | "developedProjects";
 
 export default function ProfilePage() {
   const params = useParams();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const userId = params.userId as string;
   const [activeTab, setActiveTab] = useState<TabType>("createdIdeas");
 

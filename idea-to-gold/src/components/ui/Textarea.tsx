@@ -7,7 +7,6 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   description?: string;
   error?: string;
   autoResize?: boolean; // 是否启用自适应高度
-  maxLines?: number; // 自适应高度时的最大行数（保留但不强制使用）
 }
 
 export default function Textarea(props: TextareaProps) {
@@ -18,7 +17,6 @@ export default function Textarea(props: TextareaProps) {
     className = "",
     id,
     autoResize = true, // 默认开启自适应
-    maxLines = 16, // 兼容旧用法，不再强制限制高度
     ...rest
   } = props;
 
@@ -68,7 +66,7 @@ export default function Textarea(props: TextareaProps) {
       el.removeEventListener("input", onInput);
       obs.disconnect();
     };
-  }, [autoResize, currentValue, maxLines]);
+  }, [autoResize, currentValue]);
 
   // 没传 rows 时默认 2 行
   const rows = (rest as { rows?: number }).rows ?? 2;

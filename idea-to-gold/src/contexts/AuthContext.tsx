@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { requireSupabaseClient } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // 更新认证状态的辅助函数
-  const updateAuthState = async (session: Session | null) => {
+  const updateAuthState = useCallback(async (session: Session | null) => {
     let userProfile: UserProfile | null = null;
     
     if (session?.user) {
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: session?.access_token || null,
       userId: session?.user?.id || null,
     });
-  };
+  }, []);
 
   // 刷新认证状态
   const refreshAuth = async () => {
@@ -190,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-  }, []);
+  }, [updateAuthState]);
 
   const contextValue: AuthContextType = {
     ...authState,

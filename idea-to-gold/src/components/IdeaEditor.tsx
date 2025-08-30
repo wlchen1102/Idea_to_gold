@@ -72,7 +72,7 @@ export default function IdeaEditor({ id, initialTitle, initialDescription, autho
         unsub = () => {
           try { listener.subscription.unsubscribe(); } catch {}
         };
-      } catch (_e) {
+      } catch {
         // 忽略错误，仅隐藏编辑按钮
         setIsAuthor(false);
         setToken(null);
@@ -138,6 +138,7 @@ export default function IdeaEditor({ id, initialTitle, initialDescription, autho
       setIsOpen(false);
       // 刷新页面数据
       router.refresh();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_e) {
       setError("网络错误，请稍后重试");
     } finally {
@@ -176,7 +177,6 @@ export default function IdeaEditor({ id, initialTitle, initialDescription, autho
             onChange={(e) => setDescription(e.currentTarget.value)}
             rows={6}
             autoResize
-            maxLines={18}
             required
           />
           {/* 新增：期望终端 */}

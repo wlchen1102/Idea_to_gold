@@ -71,7 +71,7 @@ export default function IdeaDetailClient({ id }: IdeaDetailClientProps) {
           const errorData = await response.json();
           setError(errorData?.message || '获取创意详情失败');
         }
-      } catch (err) {
+      } catch {
         setError('网络连接错误，请稍后重试');
       } finally {
         setLoading(false);
@@ -195,7 +195,7 @@ export default function IdeaDetailClient({ id }: IdeaDetailClientProps) {
         <section className="md:col-span-2">
           <CommentsSection 
             ideaId={String(creative.id)} 
-            initialComments={null}
+            initialComments={undefined}
           />
         </section>
       </div>

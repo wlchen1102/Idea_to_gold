@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useAuth, useAuthState } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 function AvatarMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -41,9 +41,11 @@ function AvatarMenu() {
         className="flex items-center gap-3 rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-200 hover:shadow-md transition-shadow"
       >
             {user.avatar_url ? (
-              <img 
+              <Image 
                 src={user.avatar_url} 
                 alt="用户头像" 
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
