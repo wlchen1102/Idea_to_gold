@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "dev:next": "next dev --turbopack",
     "build": "next build",
+    "build:cf": "node scripts/build-cf.mjs",
     "start": "next start",
     "lint": "next lint",
     "dev:cf": "node scripts/dev-cf.mjs"
