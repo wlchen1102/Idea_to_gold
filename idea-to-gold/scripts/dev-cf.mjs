@@ -73,7 +73,7 @@ async function main() {
   })
 
   // 3) 启动 wrangler 代理该端口
-  const wranglerCmd = `wrangler pages dev --proxy ${port}`
+  const wranglerCmd = `wrangler pages dev --proxy ${port} --local --compatibility-date=2024-08-30 --compatibility-flags=nodejs_compat`
   console.log('[dev-cf] Next 就绪，启动 wrangler 代理:', wranglerCmd)
   const wranglerChild = spawn(wranglerCmd, { stdio: 'inherit', shell: true })
 
