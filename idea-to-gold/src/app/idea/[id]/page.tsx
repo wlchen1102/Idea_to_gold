@@ -1,16 +1,18 @@
 // 创意详情页面
-// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+"use client";
+
 export const runtime = 'edge';
-import type { Metadata } from "next";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-// 删除未使用的 ideas 导入
 import CommentsSection from "@/components/CommentsSection";
 import RightInfo from "@/components/RightInfo";
 import ClientEffects from "@/components/ClientEffects";
 import Breadcrumb from "@/components/Breadcrumb";
-import { headers } from "next/headers";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import Image from "next/image";
 import IdeaEditor from "@/components/IdeaEditor";
+import { useParams } from "next/navigation";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -33,79 +35,97 @@ function Avatar({ name, src }: { name: string; src?: string }) {
   );
 }
 
-// 将动态路由参数改为 id
-type PageParams = { id: string };
-type PageProps = { params: Promise<PageParams> };
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `创意详情 - #${id}`, description: "查看创意详情" };
+// 定义创意数据类型
+type Creative = {
+  id: string | number
+  title: string
+  description?: string
+  created_at: string
+  terminals: string[] | string
+  bounty_amount?: number
+  profiles?: { nickname?: string; avatar_url?: string }
+  author_id?: string
+  upvote_count?: number
 }
 
-export default async function IdeaDetailPage({ params }: PageProps) {
-  const { id } = await params;
+export default function IdeaDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   
-  // 使用后端类型定义的 Creative 结构
-  type Creative = {
-    id: string | number
-    title: string
-    description?: string
-    created_at: string
-    terminals: string[] | string
-    bounty_amount?: number
-    profiles?: { nickname?: string; avatar_url?: string }
-    author_id?: string
-    upvote_count?: number // 新增：点赞数量
-  }
-
-  let creative: Creative | null = null;
-  let error: string | null = null;
+  const [creative, setCreative] = useState<Creative | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  try {
-    // 服务端渲染下构造绝对 URL
-    const h = await headers();
-    const host = h.get("x-forwarded-host") || h.get("host") || "127.0.0.1:8788";
-    const protocol = h.get("x-forwarded-proto") || (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
-    const baseUrl = `${protocol}://${host}`;
-
-    const res = await fetch(`${baseUrl}/api/creatives/${encodeURIComponent(id)}`, { cache: "no-store" });
-    const json = await res.json();
+  // 客户端数据获取
+  useEffect(() => {
+    const fetchCreative = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch(`/api/creatives/${encodeURIComponent(id)}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCreative(data?.creative ?? null);
+        } else {
+          const errorData = await response.json();
+          setError(errorData?.message || "获取创意详情失败");
+        }
+      } catch {
+        setError("网络连接错误，请稍后重试");
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    if (res.ok) {
-      creative = json?.creative ?? null;
-    } else {
-      error = json?.message || "获取创意详情失败";
+    if (id) {
+      fetchCreative();
     }
-  } catch (e) {
-    error = "网络连接错误，请稍后重试";
-  }
+  }, [id]);
+  
+  // 设置页面标题
+  useEffect(() => {
+    if (creative) {
+      document.title = `创意详情 - #${id}`;
+    }
+  }, [creative, id]);
 
-  // 如果没有找到创意，显示友好的错误页面
-  if (!creative) {
+  // 加载状态
+  if (loading) {
     return (
-      <>
-        <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
-        <div className="text-center py-16">
-          <h1 className="text-2xl font-bold text-[#2c3e50] mb-4">未找到创意</h1>
-          <p className="text-gray-600 mb-6">
-            {error || "抱歉，我们无法找到您请求的创意。可能它已被删除或URL不正确。"}
-          </p>
-          <div className="space-x-4">
-            <Link 
-              href="/creatives" 
-              className="inline-block px-6 py-2 bg-[#2ECC71] text-white rounded-lg hover:bg-[#27AE60] transition-colors"
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <LoadingSpinner />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // 如果没有找到创意，显示友好的错误页面
+  if (error || !creative) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🤔</div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">
+              {error || "创意不存在"}
+            </h1>
+            <p className="text-gray-600 mb-6">
+              {error ? "请稍后重试" : "这个创意可能已被删除或不存在"}
+            </p>
+            <Link
+              href="/creatives"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               返回创意广场
             </Link>
-            <Link 
-              href="/creatives/new" 
-              className="inline-block px-6 py-2 border border-[#2ECC71] text-[#2ECC71] rounded-lg hover:bg-[#2ECC71] hover:text-white transition-colors"
-            >
-              发布新创意
-            </Link>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -135,10 +155,7 @@ export default async function IdeaDetailPage({ params }: PageProps) {
     supporters: Number(creative.upvote_count ?? 0), // 以真实 upvote_count 初始化
   };
 
-  const projects = [
-    { id: "p1", dev: { name: "Ken" }, status: "开发中" },
-    { id: "p2", dev: { name: "Iris" }, status: "开发中" },
-  ];
+
 
 
   return (
@@ -178,10 +195,19 @@ export default async function IdeaDetailPage({ params }: PageProps) {
         </section>
 
         <aside className="md:col-span-1">
-          <RightInfo supporters={idea.supporters} platforms={idea.platforms} bounty={idea.bounty} ideaId={String(idea.id)} />
+          <RightInfo 
+            supporters={idea.supporters} 
+            platforms={idea.platforms} 
+            bounty={idea.bounty} 
+            ideaId={String(idea.id)}
+            initialUpvoteData={null}
+          />
         </aside>
         <section className="md:col-span-2">
-          <CommentsSection ideaId={String(creative.id)} />
+          <CommentsSection 
+            ideaId={String(creative.id)} 
+            initialComments={undefined}
+          />
         </section>
       </div>
 

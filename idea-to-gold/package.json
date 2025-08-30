@@ -6,17 +6,19 @@
     "dev": "next dev --turbopack",
     "dev:next": "next dev --turbopack",
     "build": "next build",
+    "build:cf": "node scripts/build-cf.mjs",
     "start": "next start",
     "lint": "next lint",
     "dev:cf": "node scripts/dev-cf.mjs"
   },
   "dependencies": {
+    "@cloudflare/next-on-pages": "^1.0.0",
+    "@playwright/test": "^1.55.0",
     "@supabase/supabase-js": "^2.55.0",
     "next": "15.4.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "slugify": "^1.6.6",
-    "@cloudflare/next-on-pages": "^1.0.0"
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

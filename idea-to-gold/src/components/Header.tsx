@@ -3,44 +3,12 @@
 
 import Link from "next/link";
 import AvatarMenu from "@/components/AvatarMenu";
-import { useEffect, useState } from "react";
-import { requireSupabaseClient } from "@/lib/supabase";
 import { usePathname } from "next/navigation";
+import { useIsAuthenticated } from "@/contexts/AuthContext";
 
 function Header() {
-  // 登录态来源：Supabase 会话
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-
-    const init = async () => {
-      try {
-        // 确保只在浏览器环境中执行
-        if (typeof window === 'undefined') return;
-        
-        const supabase = requireSupabaseClient();
-        
-        // 获取当前用户
-        const { data } = await supabase.auth.getUser();
-        setIsLoggedIn(!!data.user);
-
-        // 监听会话变化
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-          setIsLoggedIn(!!session?.user);
-        });
-
-        unsub = () => {
-          try { listener.subscription.unsubscribe(); } catch {}
-        };
-      } catch (e) {
-        console.warn("获取用户失败:", e);
-      }
-    };
-
-    init();
-    return () => { if (unsub) unsub(); };
-  }, []);
+  // 使用全局认证状态
+  const isLoggedIn = useIsAuthenticated();
 
   // 当前路由，用于导航高亮
   const pathname = usePathname();

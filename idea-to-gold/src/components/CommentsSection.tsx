@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
@@ -222,8 +222,10 @@ function NodeView({
 
 export default function CommentsSection({
   ideaId,
+  initialComments,
 }: {
   ideaId?: string;
+  initialComments?: CommentDTO[];
 }) {
   // 顶部发布框内容
   const [value, setValue] = useState("");
@@ -247,51 +249,135 @@ export default function CommentsSection({
         setCurrentUserId(res.data?.session?.user?.id ?? null);
       })
       .catch(() => setCurrentUserId(null));
-  }, []);
+  }, []); // 移除pathname依赖，只在组件挂载时执行一次
 
   // 原始平铺列表（来自后端）
   const [items, setItems] = useState<CommentDTO[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({ limit: 20, offset: 0, total: 0, hasMore: false });
 
-  // 拉取评论列表（按时间升序）
-  useEffect(() => {
-    let aborted = false;
-    async function fetchComments(cid: string) {
-      try {
+  // 拉取评论列表（支持分页）
+  const fetchComments = useCallback(async (cid: string, isLoadMore = false) => {
+    const fetchStartTime = Date.now(); // 性能监控：API调用开始时间
+    
+    try {
+      if (isLoadMore) {
+        setLoadingMore(true);
+      } else {
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/comments?creative_id=${encodeURIComponent(cid)}`);
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `加载失败（${res.status}）`);
-        }
-        const json = (await res.json()) as { comments?: CommentDTO[] };
-        if (aborted) return;
-        const list = json.comments ?? [];
-        setItems(list);
-        // 根据后端聚合结果初始化 likesMap
-        setLikesMap((prev) => {
-          const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
-          for (const it of list) {
-            const liked = Boolean(it.current_user_liked);
-            const likes = Number((it as { likes_count?: number }).likes_count ?? 0);
-            next[it.id] = { liked, likes: Math.max(0, likes) };
-          }
-          return next;
-        });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "加载异常";
-        setError(msg);
-      } finally {
-        if (!aborted) setLoading(false);
       }
+      
+      // 获取用户token用于识别当前用户的点赞状态
+      const supabase = requireSupabaseClient();
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data?.session?.access_token ?? "";
+      
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const currentOffset = isLoadMore ? pagination.offset + pagination.limit : 0;
+      const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}`;
+      
+      const res = await fetch(url, { 
+        headers,
+        // 利用浏览器缓存，与后端Cache-Control头配合
+        cache: 'default'
+      });
+      const fetchEndTime = Date.now(); // 性能监控：API调用结束时间
+      const fetchDuration = fetchEndTime - fetchStartTime;
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `加载失败（${res.status}）`);
+      }
+      
+      const json = (await res.json()) as { 
+        comments?: CommentDTO[]; 
+        pagination?: { limit: number; offset: number; total: number; hasMore: boolean };
+        performance?: Record<string, unknown>;
+      };
+      
+      const processStartTime = Date.now(); // 性能监控：数据处理开始时间
+      
+      const list = json.comments ?? [];
+      const paginationInfo = json.pagination ?? { limit: 20, offset: 0, total: 0, hasMore: false };
+      
+      if (isLoadMore) {
+        setItems(prev => [...prev, ...list]);
+      } else {
+        setItems(list);
+      }
+      
+      setPagination(paginationInfo);
+      
+      // 根据后端聚合结果初始化 likesMap
+      setLikesMap((prev) => {
+        const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
+        for (const it of list) {
+          const liked = Boolean(it.current_user_liked);
+          const likes = Number((it as { likes_count?: number }).likes_count ?? 0);
+          next[it.id] = { liked, likes: Math.max(0, likes) };
+        }
+        return next;
+      });
+      
+      const processEndTime = Date.now(); // 性能监控：数据处理结束时间
+      const processDuration = processEndTime - processStartTime;
+      const totalDuration = processEndTime - fetchStartTime;
+      
+      // 性能日志记录
+      console.log(`[评论前端性能] 总耗时: ${totalDuration}ms, API调用: ${fetchDuration}ms, 数据处理: ${processDuration}ms, 评论数: ${list.length}`);
+      if (json.performance) {
+        console.log(`[评论后端性能]`, json.performance);
+      }
+    } catch (e) {
+      const fetchEndTime = Date.now();
+      const fetchDuration = fetchEndTime - fetchStartTime;
+      const msg = e instanceof Error ? e.message : "加载异常";
+      setError(msg);
+      console.error(`获取评论异常 (耗时${fetchDuration}ms):`, e);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
-    if (ideaId) fetchComments(ideaId);
-    return () => {
-      aborted = true;
-    };
-  }, [ideaId]);
+  }, [pagination.limit, pagination.offset]);
+
+  // 使用 ref 防止重复调用（React 严格模式会导致 useEffect 执行两次）
+  const fetchedRef = React.useRef(false);
+  
+  useEffect(() => {
+    // 如果有初始数据，直接使用，避免重复请求
+    if (initialComments && Array.isArray(initialComments)) {
+      setItems(initialComments);
+      // 初始化点赞状态
+      const initialLikesMap: Record<string, { liked: boolean; likes: number }> = {};
+      initialComments.forEach(comment => {
+        initialLikesMap[comment.id] = {
+          liked: Boolean(comment.current_user_liked),
+          likes: comment.likes_count ?? 0
+        };
+      });
+      setLikesMap(initialLikesMap);
+      return;
+    }
+
+    if (ideaId && !fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchComments(ideaId);
+    }
+  }, [ideaId, fetchComments, initialComments]);
+
+  // 加载更多评论
+  const loadMoreComments = () => {
+    if (ideaId && pagination.hasMore && !loadingMore) {
+      fetchComments(ideaId, true);
+    }
+  };
 
   // 从 localStorage 注入跨页内容：仅预填到输入框，不自动发表
   useEffect(() => {
@@ -318,36 +404,78 @@ export default function CommentsSection({
     };
   }, [ideaId]);
 
-  // 计算树结构 + 同步点赞状态
+  // 优化的评论树构建算法：O(n)复杂度
   const tree = useMemo(() => {
+    const treeStartTime = Date.now(); // 性能监控：树结构计算开始时间
+    
+    if (items.length === 0) {
+      return [];
+    }
+    
     const byId = new Map<string, CommentNode>();
-     const roots: CommentNode[] = [];
-     for (const it of items) byId.set(it.id, { ...(it as CommentDTO), replies: [] });
-     for (const node of byId.values()) {
-       // 从 likesMap 注入 UI 状态
-       const l = likesMap[node.id];
-       if (l) {
-         node.likes = l.likes;
-         node.liked = l.liked;
-       }
-       const parentId = node.parent_comment_id;
-       if (parentId) {
-         const parent = byId.get(parentId);
-         if (parent) parent.replies.push(node);
-         else roots.push(node); // 容错：父节点缺失
-       } else {
-         roots.push(node);
-       }
-     }
-     const byDesc = (a: CommentNode, b: CommentNode) =>
-       new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-     function sortRec(list: CommentNode[]) {
-       list.sort(byDesc);
-       for (const n of list) sortRec(n.replies);
-     }
-     sortRec(roots);
-     return roots;
-   }, [items, likesMap]);
+    const roots: CommentNode[] = [];
+    const orphans: CommentNode[] = []; // 暂时找不到父节点的评论
+    
+    // 单次遍历：创建节点并尝试构建树结构
+    for (const item of items) {
+      const node: CommentNode = { ...(item as CommentDTO), replies: [] };
+      
+      // 从 likesMap 注入 UI 状态
+      const l = likesMap[node.id];
+      if (l) {
+        node.likes = l.likes;
+        node.liked = l.liked;
+      }
+      
+      byId.set(node.id, node);
+      
+      if (node.parent_comment_id) {
+        const parent = byId.get(node.parent_comment_id);
+        if (parent) {
+          // 父节点已存在，直接添加到父节点的replies中
+          parent.replies.push(node);
+        } else {
+          // 父节点还未处理，暂存为孤儿节点
+          orphans.push(node);
+        }
+      } else {
+        // 顶级评论，直接添加到树根
+        roots.push(node);
+      }
+    }
+    
+    // 处理孤儿节点：尝试找到它们的父节点
+    for (const orphan of orphans) {
+      if (orphan.parent_comment_id) {
+        const parent = byId.get(orphan.parent_comment_id);
+        if (parent) {
+          parent.replies.push(orphan);
+        } else {
+          // 父评论不在当前页面，作为顶级评论处理
+          roots.push(orphan);
+        }
+      }
+    }
+    
+    // 递归排序：按时间倒序
+    const byDesc = (a: CommentNode, b: CommentNode) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    function sortRec(list: CommentNode[]) {
+      list.sort(byDesc);
+      for (const n of list) sortRec(n.replies);
+    }
+    sortRec(roots);
+    
+    const treeEndTime = Date.now(); // 性能监控：树结构计算结束时间
+    const treeDuration = treeEndTime - treeStartTime;
+    
+    // 性能日志记录
+    if (treeDuration > 10) { // 只记录超过10ms的计算
+      console.log(`[评论树结构计算] 优化后耗时: ${treeDuration}ms, 评论数: ${items.length}, 根节点数: ${roots.length}, 孤儿节点: ${orphans.length}`);
+    }
+    
+    return roots;
+  }, [items, likesMap]);
 
   function formatTime(iso: string) {
     try {
@@ -461,38 +589,49 @@ export default function CommentsSection({
       setItems((prev) => prev.filter((c) => c.id !== id));
       // 清理相关本地状态
       setLikesMap((prev) => {
-        const { [id]: _removed, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: _, ...rest } = prev;
         return rest;
       });
       setReplyOpen((prev) => {
-        const { [id]: _r, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: __, ...rest } = prev;
         return rest;
       });
       setReplyValue((prev) => {
-        const { [id]: _v, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: ___, ...rest } = prev;
         return rest;
       });
-      // 关键：重新拉取一次列表，确保若开启了级联删除，子回复也被一并移除
-      if (ideaId) {
-        try {
-          const resp = await fetch(`/api/comments?creative_id=${encodeURIComponent(ideaId)}`);
-          if (resp.ok) {
-            const json = (await resp.json().catch(() => null)) as { comments?: CommentDTO[] } | null;
-            const list = json?.comments ?? [];
-            setItems(list);
-            // 同步 likesMap（从后端聚合结果重建）
-            setLikesMap((prev) => {
-              const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
-              for (const it of list) {
-                const liked = Boolean(it.current_user_liked);
-                const likes = Number((it as { likes_count?: number }).likes_count ?? 0);
-                next[it.id] = { liked, likes: Math.max(0, likes) };
-              }
-              return next;
-            });
-          }
-        } catch {}
-      }
+      // 优化：直接从本地状态移除被删除的评论，避免重复API调用
+      // 递归删除函数：删除指定评论及其所有子回复
+      const removeCommentAndReplies = (commentId: string, comments: CommentDTO[]): CommentDTO[] => {
+        const toRemove = new Set<string>();
+        
+        // 找出所有需要删除的评论ID（包括子回复）
+        const findReplies = (parentId: string) => {
+          toRemove.add(parentId);
+          comments.forEach(comment => {
+            if (comment.parent_comment_id === parentId) {
+              findReplies(comment.id);
+            }
+          });
+        };
+        
+        findReplies(commentId);
+        
+        // 过滤掉需要删除的评论
+        return comments.filter(comment => !toRemove.has(comment.id));
+      };
+      
+      setItems(prev => removeCommentAndReplies(id, prev));
+      
+      // 清理对应的点赞状态
+      setLikesMap(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       return true;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "删除失败";
@@ -563,6 +702,19 @@ export default function CommentsSection({
             />
           ))}
         </ul>
+      )}
+
+      {/* 加载更多按钮 */}
+      {pagination.hasMore && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={loadMoreComments}
+            disabled={loadingMore}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loadingMore ? '加载中...' : '加载更多评论'}
+          </button>
+        </div>
       )}
 
       {/* 删除确认弹窗 */}
