@@ -1,16 +1,15 @@
-// 创意详情页面
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import CommentsSection from "@/components/CommentsSection";
 import RightInfo from "@/components/RightInfo";
 import ClientEffects from "@/components/ClientEffects";
 import Breadcrumb from "@/components/Breadcrumb";
-import LoadingSpinner from "@/components/LoadingSpinner";
-import Image from "next/image";
 import IdeaEditor from "@/components/IdeaEditor";
-import { useParams } from "next/navigation";
+import { PageLoading } from "@/components/GlobalLoading";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -33,97 +32,92 @@ function Avatar({ name, src }: { name: string; src?: string }) {
   );
 }
 
-// 定义创意数据类型
+// 创意数据类型
 type Creative = {
-  id: string | number
-  title: string
-  description?: string
-  created_at: string
-  terminals: string[] | string
-  bounty_amount?: number
-  profiles?: { nickname?: string; avatar_url?: string }
-  author_id?: string
-  upvote_count?: number
+  id: string | number;
+  title: string;
+  description?: string;
+  created_at: string;
+  terminals: string[] | string;
+  bounty_amount?: number;
+  profiles?: { nickname?: string; avatar_url?: string };
+  author_id?: string;
+  upvote_count?: number;
+};
+
+interface IdeaDetailClientProps {
+  id: string;
 }
 
-export default function IdeaDetailPage() {
-  const params = useParams();
-  const id = params.id as string;
-  
+export default function IdeaDetailClient({ id }: IdeaDetailClientProps) {
   const [creative, setCreative] = useState<Creative | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // 客户端数据获取
+  const { setLoading: setGlobalLoading, setLoadingText } = useGlobalLoading();
+
   useEffect(() => {
     const fetchCreative = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setGlobalLoading(true);
+        setLoadingText('正在加载创意详情...');
         
         const response = await fetch(`/api/creatives/${encodeURIComponent(id)}`);
         
         if (response.ok) {
           const data = await response.json();
           setCreative(data?.creative ?? null);
+          setError(null);
         } else {
           const errorData = await response.json();
-          setError(errorData?.message || "获取创意详情失败");
+          setError(errorData?.message || '获取创意详情失败');
         }
       } catch {
-        setError("网络连接错误，请稍后重试");
+        setError('网络连接错误，请稍后重试');
       } finally {
         setLoading(false);
+        setGlobalLoading(false);
       }
     };
-    
-    if (id) {
-      fetchCreative();
-    }
-  }, [id]);
-  
-  // 设置页面标题
-  useEffect(() => {
-    if (creative) {
-      document.title = `创意详情 - #${id}`;
-    }
-  }, [creative, id]);
 
-  // 加载状态
+    fetchCreative();
+  }, [id, setGlobalLoading, setLoadingText]);
+
+  // 如果正在加载，显示页面级loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-16">
-            <LoadingSpinner />
-          </div>
-        </div>
-      </div>
+      <>
+        <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
+        <PageLoading text="正在加载创意详情..." />
+      </>
     );
   }
-  
+
   // 如果没有找到创意，显示友好的错误页面
-  if (error || !creative) {
+  if (!creative) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🤔</div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              {error || "创意不存在"}
-            </h1>
-            <p className="text-gray-600 mb-6">
-              {error ? "请稍后重试" : "这个创意可能已被删除或不存在"}
-            </p>
-            <Link
-              href="/creatives"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      <>
+        <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
+        <div className="text-center py-16">
+          <h1 className="text-2xl font-bold text-[#2c3e50] mb-4">未找到创意</h1>
+          <p className="text-gray-600 mb-6">
+            {error || "抱歉，我们无法找到您请求的创意。可能它已被删除或URL不正确。"}
+          </p>
+          <div className="space-x-4">
+            <Link 
+              href="/creatives" 
+              className="inline-block px-6 py-2 bg-[#2ECC71] text-white rounded-lg hover:bg-[#27AE60] transition-colors"
             >
               返回创意广场
             </Link>
+            <Link 
+              href="/creatives/new" 
+              className="inline-block px-6 py-2 border border-[#2ECC71] text-[#2ECC71] rounded-lg hover:bg-[#2ECC71] hover:text-white transition-colors"
+            >
+              发布新创意
+            </Link>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -150,11 +144,8 @@ export default function IdeaDetailPage() {
     description: descriptionParas,
     platforms: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
     bounty: creative.bounty_amount || 500,
-    supporters: Number(creative.upvote_count ?? 0), // 以真实 upvote_count 初始化
+    supporters: Number(creative.upvote_count ?? 0),
   };
-
-
-
 
   return (
     <>
@@ -172,7 +163,7 @@ export default function IdeaDetailPage() {
             </div>
           </div>
 
-          {/* 将编辑入口移动到“创意描述”标题的右侧，仅作者可见 */}
+          {/* 将编辑入口移动到"创意描述"标题的右侧，仅作者可见 */}
           <div className="mt-6 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[#2c3e50]">创意描述</h2>
             {creative?.author_id ? (

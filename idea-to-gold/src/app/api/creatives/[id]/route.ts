@@ -36,10 +36,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
@@ -81,31 +91,11 @@ export async function GET(
 
     const creative = data as unknown as Creative
 
-    // 新增：计算 upvote_count（优先关联表 COUNT，失败或表缺失则回退到列值）
-    let total = 0;
-    let upvoteTableMissing = false;
-    const { count, error: countError } = await supabase
-      .from('creative_upvotes')
-      .select('*', { count: 'exact', head: true })
-      .eq('creative_id', id);
-
-    if (countError) {
-      const code = (countError as { code?: string } | null)?.code || '';
-      const msg = (countError as { message?: string } | null)?.message?.toLowerCase?.() || '';
-      upvoteTableMissing = code === '42P01' || (msg.includes('relation') && msg.includes('does not exist'));
-      console.warn('[CREATIVE_DETAIL_GET_COUNT_ERROR]', { code, msg });
-    }
-    if (typeof count === 'number' && count >= 0) total = count;
-
-    if ((countError && !upvoteTableMissing) || total === 0) {
-      const fallback = (creative as unknown as { upvote_count?: unknown })?.upvote_count;
-      if (typeof fallback === 'number') total = Number(fallback || 0);
-    }
-
-    const creativeWithCount: Creative = { ...creative, upvote_count: Number(total || 0) };
+    // 移除点赞数量查询以提升性能，点赞数量将由客户端异步获取
+    // 这样可以大幅减少服务端渲染的延迟
 
     return NextResponse.json(
-      { message: '获取创意成功', creative: creativeWithCount } satisfies CreativeResponse,
+      { message: '获取创意成功', creative } satisfies CreativeResponse,
       { status: 200 }
     )
   } catch (e) {
@@ -123,9 +113,20 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { env } = getRequestContext();
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL;
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY;
+    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
+    let supabaseUrl: string | undefined
+    let serviceRoleKey: string | undefined
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：从 process.env 读取
+      supabaseUrl = process.env.SUPABASE_URL
+      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    } else {
+      // 生产环境：从 Cloudflare Pages 运行时上下文读取
+      const { env } = getRequestContext()
+      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
+      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
+    }
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 });
