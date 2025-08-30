@@ -46,8 +46,11 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userCreatives, setUserCreatives] = useState<Creative[]>([]);
+  const [supportedCreatives, setSupportedCreatives] = useState<Creative[]>([]);
   const [creativesLoading, setCreativesLoading] = useState(false);
+  const [supportedLoading, setSupportedLoading] = useState(false);
   const [creativesError, setCreativesError] = useState<string | null>(null);
+  const [supportedError, setSupportedError] = useState<string | null>(null);
   
   // 删除相关状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -177,6 +180,66 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [userId]);
+
+  // 获取用户支持的创意列表
+  useEffect(() => {
+    let cancelled = false;
+    
+    const fetchSupportedCreatives = async () => {
+      // 只在切换到支持的创意tab时才加载
+      if (activeTab !== "supportedIdeas" || !userId || cancelled) {
+        return;
+      }
+      
+      try {
+        setSupportedLoading(true);
+        setSupportedError(null);
+        
+        // 获取当前用户的token
+        const supabase = requireSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          setSupportedError('登录已过期，请重新登录');
+          setSupportedLoading(false);
+          return;
+        }
+        
+        const response = await fetch(`/api/users/${userId}/supported-creatives`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          cache: 'default',
+          signal: AbortSignal.timeout(10000)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!cancelled) {
+          setSupportedCreatives(data.creatives || []);
+        }
+      } catch (err) {
+        console.error('获取支持的创意失败:', err);
+        if (!cancelled) {
+          setSupportedError(err instanceof Error ? err.message : '获取支持的创意列表失败');
+        }
+      } finally {
+        if (!cancelled) {
+          setSupportedLoading(false);
+        }
+      }
+    };
+    
+    fetchSupportedCreatives();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, activeTab]);
 
   // 处理删除创意
   const handleDeleteCreative = (creativeId: string, creativeTitle: string) => {
@@ -487,35 +550,76 @@ export default function ProfilePage() {
 
             {activeTab === "supportedIdeas" && (
               <div>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <CreativityCard
-                    authorName="Alex"
-                    publishedAtText="5 小时前"
-                    title="跨平台待办协作板"
-                    description="把日历、待办和看板融合到一起，支持家庭与小团队协作。"
-                    tags={["移动端", "协作"]}
-                    upvoteCount={233}
-                    commentCount={18}
-                  />
-                  <CreativityCard
-                    authorName="Mia"
-                    publishedAtText="3 天前"
-                    title="图片批量去背景云服务"
-                    description="面向电商卖家与设计师的批量去背景引擎，开放 API 接入。"
-                    tags={["云服务", "图像"]}
-                    upvoteCount={740}
-                    commentCount={92}
-                  />
-                  <CreativityCard
-                    authorName="Leo"
-                    publishedAtText="上周"
-                    title="RSS 智能聚合器"
-                    description="用大模型给订阅源做去重与摘要，节省阅读时间。"
-                    tags={["阅读", "AI"]}
-                    upvoteCount={401}
-                    commentCount={35}
-                  />
-                </div>
+                {supportedLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-600">加载支持的创意中...</p>
+                    </div>
+                  </div>
+                ) : supportedError ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">加载失败</h3>
+                    <p className="text-gray-600">{supportedError}</p>
+                  </div>
+                ) : supportedCreatives.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">还没有支持任何创意</h3>
+                    <p className="text-gray-600 mb-4">快去发现并支持感兴趣的创意吧！</p>
+                    <Link href="/" className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                      发现创意
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {supportedCreatives.map((creative) => {
+                      // 格式化发布时间
+                      const publishedAt = new Date(creative.created_at);
+                      const now = new Date();
+                      const diffInHours = Math.floor((now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60));
+                      
+                      let publishedAtText: string;
+                      if (diffInHours < 1) {
+                        publishedAtText = '刚刚';
+                      } else if (diffInHours < 24) {
+                        publishedAtText = `${diffInHours} 小时前`;
+                      } else if (diffInHours < 48) {
+                        publishedAtText = '昨天';
+                      } else if (diffInHours < 72) {
+                        publishedAtText = '2 天前';
+                      } else if (diffInHours < 168) {
+                        publishedAtText = `${Math.floor(diffInHours / 24)} 天前`;
+                      } else {
+                        publishedAtText = '上周';
+                      }
+                      
+                      return (
+                        <CreativityCard
+                          key={creative.id}
+                          creativeId={creative.id}
+                          authorName={creative.profiles.nickname}
+                          publishedAtText={publishedAtText}
+                          title={creative.title}
+                          description={creative.description}
+                          tags={creative.tags}
+                          upvoteCount={creative.upvote_count}
+                          commentCount={creative.comment_count}
+                          showDeleteButton={false}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
