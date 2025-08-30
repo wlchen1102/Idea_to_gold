@@ -76,6 +76,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (session?.user && session?.access_token) {
       userProfile = await fetchUserProfile(session.access_token);
+      
+      // 如果获取用户资料失败（token可能已过期），清理认证状态
+      if (!userProfile) {
+        console.warn('用户资料获取失败，可能token已过期，清理认证状态');
+        
+        // 清理localStorage状态
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('isLoggedIn');
+          localStorage.removeItem('userId');
+        }
+        
+        // 设置为未登录状态
+        setAuthState({
+          user: null,
+          authUser: null,
+          session: null,
+          loading: false,
+          token: null,
+          userId: null,
+        });
+        return;
+      }
+    } else {
+      // 当session无效时，清理localStorage状态
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userId');
+      }
     }
     
     setAuthState({

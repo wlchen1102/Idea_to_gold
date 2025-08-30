@@ -99,13 +99,15 @@ export default function ProfilePage() {
     }
   }, [userId, currentUser]);
 
-  // 跟踪创意是否已加载
-  const hasLoadedCreatives = useRef(false);
-  
   // 获取用户创意列表
   useEffect(() => {
+    let cancelled = false;
+    
     const fetchUserCreatives = async () => {
-      if (!userId || hasLoadedCreatives.current) return;
+      // 检查是否已取消或没有userId
+      if (!userId || cancelled) {
+        return;
+      }
       
       try {
         setCreativesLoading(true);
@@ -116,7 +118,13 @@ export default function ProfilePage() {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session?.access_token) {
-          setCreativesError('用户未登录');
+          setCreativesError('登录已过期，请重新登录');
+          setCreativesLoading(false);
+          // 清理本地存储的过期状态
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userId');
+          }
           return;
         }
         
@@ -135,20 +143,33 @@ export default function ProfilePage() {
         }
         
         const data = await response.json();
-        setUserCreatives(data.creatives || []);
-        hasLoadedCreatives.current = true;
+        
+        // 检查组件是否已卸载
+        if (!cancelled) {
+          setUserCreatives(data.creatives || []);
+        }
       } catch (err) {
         console.error('获取用户创意失败:', err);
-        setCreativesError(err instanceof Error ? err.message : '获取创意列表失败');
+        if (!cancelled) {
+          setCreativesError(err instanceof Error ? err.message : '获取创意列表失败');
+        }
       } finally {
-        setCreativesLoading(false);
+        if (!cancelled) {
+          setCreativesLoading(false);
+        }
       }
     };
     
-    if (userId && activeTab === 'createdIdeas') {
+    // 只在userId存在时调用API
+    if (userId) {
       fetchUserCreatives();
     }
-  }, [userId, activeTab]);
+    
+    // cleanup函数：组件卸载时取消请求
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   // 加载状态 - 优化的骨架屏
   if (loading) {
