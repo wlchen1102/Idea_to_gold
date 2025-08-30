@@ -23,6 +23,7 @@ interface Creative {
     avatar_url?: string;
   } | null;
   upvote_count?: number; // 新增：数据库真实点赞数
+  comment_count?: number; // 新增：数据库真实评论数
 }
 
 export default function Home() {
@@ -158,7 +159,7 @@ export default function Home() {
       description: creative.description,
       tags: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
       upvoteCount: Number(creative.upvote_count ?? 0), // 使用数据库真实点赞数
-      commentCount: Math.floor(Math.random() * 100),
+      commentCount: Number(creative.comment_count ?? 0), // 使用数据库真实评论数
       createdAt: new Date(creative.created_at).getTime(),
     };
   };
