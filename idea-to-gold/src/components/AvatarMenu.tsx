@@ -38,7 +38,7 @@ function AvatarMenu() {
     <div className="relative">
       <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="flex items-center gap-3 rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-200 hover:shadow-md transition-shadow"
+        className="flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-sm ring-1 ring-gray-200 hover:shadow-md transition-shadow"
       >
             {user.avatar_url ? (
               <Image 

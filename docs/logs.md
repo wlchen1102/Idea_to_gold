@@ -1,6 +1,44 @@
 # 开发日志
 按时间倒序显示，最新的在上面。
 
+---
+
+## 账户设置页面优化和语法错误修复 2025-01-21
+### 问题描述：
+1. 账户设置页面修改后出现两个"保存成功"的div提示，且提示一直存在
+2. AuthContext.tsx文件中存在TypeScript语法错误
+3. account/page.tsx文件中存在遗留的setMessage调用错误
+
+### 解决方案：
+1. **Toast提示系统优化**：
+   - 复用现有的ToastListener.tsx组件，避免重复开发
+   - 移除account/page.tsx中重复的保存成功提示div
+   - 使用localStorage和window事件触发全局Toast提示
+   - 删除不再使用的message状态变量
+
+2. **语法错误修复**：
+   - 修复AuthContext.tsx中cleanup函数的类型处理问题
+   - 重构useEffect中的异步清理逻辑，正确处理Promise返回值
+   - 移除account/page.tsx中所有对已删除setMessage函数的调用
+   - 替换为console.warn和全局Toast提示
+
+3. **UI间距调整**：
+   - 调整右上角头像按钮间距：头像和昵称间距从gap-3减少到gap-1.5
+   - 按钮内边距从p-1调整为px-2 py-1，增加水平间距
+
+### 技术要点：
+- 复用现有组件避免重复造轮子的重要性
+- TypeScript异步函数返回值的正确处理方式
+- 全局Toast系统的统一使用策略
+- 代码修改前的充分调研和检查
+
+### 验证结果：
+- ✅ TypeScript编译检查通过，无语法错误
+- ✅ 账户设置页面Toast提示正常工作
+- ✅ UI间距调整符合设计要求
+
+---
+
 ## 评论区性能优化 2025-08-29
 ### 问题描述：
 评论区加载缓慢，用户体验差：
@@ -105,6 +143,8 @@ ANALYZE comments, comment_likes, profiles;
 - 考虑实现Redis缓存层
 - 评估是否需要数据库连接池优化
 - 监控生产环境的实际性能表现
+
+---
 
 ## 评论接口重复调用问题  2025-08-29
 ### 原因：

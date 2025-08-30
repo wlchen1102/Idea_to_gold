@@ -9,6 +9,7 @@ interface UserProfile {
   id: string;
   nickname: string;
   avatar_url?: string;
+  bio?: string;
 }
 
 // 认证状态接口
@@ -44,22 +45,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userId: null,
   });
 
-  // 获取用户资料
-  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  // 获取用户资料 - 优化版本：使用统一的profile API接口
+  const fetchUserProfile = async (token: string): Promise<UserProfile | null> => {
     try {
-      const supabase = requireSupabaseClient();
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, nickname, avatar_url')
-        .eq('id', userId)
-        .single();
+      // 使用优化过的profile API接口，避免直接查询数据库
+      const response = await fetch('/api/users/me/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
+        },
+        cache: 'no-store'
+      });
       
-      if (error) {
-        console.warn('获取用户资料失败:', error);
+      if (!response.ok) {
+        console.warn('获取用户资料失败:', response.status, response.statusText);
         return null;
       }
       
-      return data;
+      const result = await response.json() as { profile: UserProfile | null };
+      return result.profile;
     } catch (error) {
       console.warn('获取用户资料异常:', error);
       return null;
@@ -70,8 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateAuthState = useCallback(async (session: Session | null) => {
     let userProfile: UserProfile | null = null;
     
-    if (session?.user) {
-      userProfile = await fetchUserProfile(session.user.id);
+    if (session?.user && session?.access_token) {
+      userProfile = await fetchUserProfile(session.access_token);
     }
     
     setAuthState({
@@ -127,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     let authListener: { subscription: { unsubscribe: () => void } } | null = null;
+    let authChangedHandler: (() => void) | null = null;
 
     const initAuth = async () => {
       try {
@@ -170,6 +175,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
         
         authListener = listener;
+
+        // 监听自定义的 auth:changed 事件（用于用户资料更新）
+        // 优化：避免无限循环，只更新用户资料而不触发完整的认证刷新
+        authChangedHandler = async () => {
+          if (mounted) {
+            try {
+              // 重新获取当前session以确保使用最新的token
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+              if (currentSession?.access_token) {
+                const userProfile = await fetchUserProfile(currentSession.access_token);
+                if (mounted) {
+                  setAuthState(prev => ({
+                    ...prev,
+                    user: userProfile
+                  }));
+                }
+              }
+            } catch (error) {
+              console.warn('更新用户资料失败:', error);
+            }
+          }
+        };
+
+        window.addEventListener('auth:changed', authChangedHandler);
+        
+        // 清理函数中移除事件监听器
+        const originalCleanup = () => {
+          mounted = false;
+          if (authListener) {
+            try {
+              authListener.subscription.unsubscribe();
+            } catch (error) {
+              console.warn('取消认证监听器失败:', error);
+            }
+          }
+          if (authChangedHandler) {
+            window.removeEventListener('auth:changed', authChangedHandler);
+          }
+        };
+        
+        return originalCleanup;
       } catch (error) {
         console.warn('认证初始化异常:', error);
         if (mounted) {
@@ -178,19 +224,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    initAuth();
+    let cleanupFn: (() => void) | null = null;
+    
+    initAuth().then(cleanup => {
+      cleanupFn = cleanup || null;
+    }).catch(error => {
+      console.warn('认证初始化失败:', error);
+    });
 
     return () => {
       mounted = false;
-      if (authListener) {
-        try {
-          authListener.subscription.unsubscribe();
-        } catch (error) {
-          console.warn('取消认证监听器失败:', error);
+      if (cleanupFn) {
+        cleanupFn();
+      } else {
+        // 默认清理
+        if (authListener) {
+          try {
+            authListener.subscription.unsubscribe();
+          } catch (error) {
+            console.warn('取消认证监听器失败:', error);
+          }
+        }
+        if (authChangedHandler) {
+          window.removeEventListener('auth:changed', authChangedHandler);
         }
       }
     };
-  }, [updateAuthState]);
+  }, [updateAuthState]); // 移除refreshAuth依赖以避免无限循环
 
   const contextValue: AuthContextType = {
     ...authState,
