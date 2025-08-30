@@ -1,19 +1,111 @@
 // 用户个人中心页面
 "use client";
-// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+// 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import CreativityCard from "@/components/CreativityCard";
+import { useAuth } from "@/contexts/AuthContext";
+import { requireSupabaseClient } from "@/lib/supabase";
 
 type TabType = "createdIdeas" | "supportedIdeas" | "developedProjects";
 
+// 用户资料接口
+interface UserProfile {
+  id: string;
+  nickname: string;
+  avatar_url?: string;
+  bio?: string;
+}
+
 export default function ProfilePage() {
   const params = useParams();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const userId = params.userId as string;
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("createdIdeas");
+  const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 获取用户资料
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 如果是当前用户的个人中心，直接使用当前用户信息
+        if (currentUser && currentUser.id === userId) {
+          setProfileUser({
+            id: currentUser.id,
+            nickname: currentUser.nickname,
+            avatar_url: currentUser.avatar_url,
+            bio: currentUser.bio
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // 否则从数据库获取其他用户的公开资料
+        const supabase = requireSupabaseClient();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, nickname, avatar_url, bio')
+          .eq('id', userId)
+          .single();
+        
+        if (error) {
+          console.error('获取用户资料失败:', error);
+          setError('用户不存在或获取资料失败');
+        } else {
+          setProfileUser(data);
+        }
+      } catch (err) {
+        console.error('获取用户资料异常:', err);
+        setError('获取用户资料时发生错误');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (userId) {
+      fetchUserProfile();
+    }
+  }, [userId, currentUser]);
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">加载用户资料中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error || !profileUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">用户不存在</h2>
+          <p className="text-gray-600 mb-4">{error || '找不到该用户的资料'}</p>
+          <Link href="/" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            返回首页
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,24 +116,35 @@ export default function ProfilePage() {
           <div className="flex items-start gap-6">
             {/* 左侧：头像 */}
             <div className="flex-shrink-0">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-4xl font-bold">
-                Z
-              </div>
+              {profileUser.avatar_url ? (
+                <Image
+                  src={profileUser.avatar_url}
+                  alt={`${profileUser.nickname}的头像`}
+                  width={128}
+                  height={128}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                  {profileUser.nickname?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
             </div>
 
             {/* 右侧：信息 */}
             <div className="flex-grow">
               {/* 昵称和等级 */}
               <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-3xl font-bold text-gray-900">Zoe</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{profileUser.nickname || '用户'}</h1>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border border-amber-300">
-                  Lv.5
+                  Lv.1
                 </span>
               </div>
 
               {/* 个人简介 */}
               <p className="text-gray-600 text-base mb-4 leading-relaxed">
-                热爱创新的产品设计师，专注于用户体验和交互设计。相信好的设计能够改变世界，让生活变得更美好。欢迎与我交流设计心得！
+                {profileUser.bio || '这个用户还没有填写个人简介。'}
               </p>
 
               {/* 核心数据统计 */}
