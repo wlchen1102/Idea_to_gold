@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getAdminEnvVars } from '@/lib/env'
 
 export const runtime = 'edge'
 
@@ -34,12 +34,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message:'缺少必填字段：email/phone 与 password' }, { status:400 })
     }
 
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    if(!supabaseUrl || !serviceRoleKey) return NextResponse.json({ message:'服务端环境变量未配置：SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY' },{ status:500 })
+    const { supabaseUrl, serviceRoleKey } = getAdminEnvVars()
+     if(!supabaseUrl || !serviceRoleKey) return NextResponse.json({ message:'服务端环境变量未配置：SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY' },{ status:500 })
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey)
+     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
     if (phone) {
       if (!isE164(phone)) return NextResponse.json({ message:'手机号格式无效，请输入 E.164（如 +8613xxxxxxxxx）'},{ status:400 })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getAdminEnvVars } from '@/lib/env'
 
 export const runtime = 'edge'
 
@@ -18,10 +18,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const phone = body?.phone
     if (!phone) return NextResponse.json({ message:'缺少必填字段：phone' }, { status:400 })
 
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceRoleKey) return NextResponse.json({ message:'服务端环境变量未配置' }, { status:500 })
+    const { supabaseUrl, serviceRoleKey } = getAdminEnvVars()
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
     const { data: users, error } = await supabase.auth.admin.listUsers()

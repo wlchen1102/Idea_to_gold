@@ -2,7 +2,7 @@
 // 迁移自 functions/api/creatives/[id]/index.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getEnvVars } from '@/lib/env'
 
 // 使用 Edge Runtime
 export const runtime = 'edge'
@@ -36,20 +36,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
@@ -113,20 +101,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 });

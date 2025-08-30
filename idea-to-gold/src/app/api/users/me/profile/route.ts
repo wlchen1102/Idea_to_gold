@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { UserProfile } from '@/lib/types'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getEnvVars } from '@/lib/env'
 
 export const runtime = 'edge'
 
@@ -39,46 +39,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now()
   
   try {
-    // 环境变量获取：兼容本地开发和生产环境
-    let supabaseUrl: string | undefined
-    let anonKey: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    // 优先尝试 process.env（本地开发）
-    supabaseUrl = process.env.SUPABASE_URL
-    anonKey = process.env.SUPABASE_ANON_KEY
-    serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    console.log('[DEBUG] 使用 process.env 获取环境变量:', { 
-      hasUrl: !!supabaseUrl, 
-      hasAnon: !!anonKey, 
-      hasService: !!serviceRoleKey 
-    })
-    
-    // 如果 process.env 没有获取到，再尝试 getRequestContext（生产环境）
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-      try {
-        const { env } = getRequestContext()
-        supabaseUrl = supabaseUrl || (env as { SUPABASE_URL?: string }).SUPABASE_URL
-        anonKey = anonKey || (env as { SUPABASE_ANON_KEY?: string }).SUPABASE_ANON_KEY
-        serviceRoleKey = serviceRoleKey || (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-        console.log('[DEBUG] 使用 getRequestContext 补充环境变量:', { 
-          hasUrl: !!supabaseUrl, 
-          hasAnon: !!anonKey, 
-          hasService: !!serviceRoleKey 
-        })
-      } catch (contextError) {
-        console.log('[DEBUG] getRequestContext 也失败了:', contextError)
-      }
-    }
-    
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-      console.log('[ERROR] 环境变量缺失:', { supabaseUrl, anonKey: anonKey?.slice(0, 10) + '...', serviceRoleKey: serviceRoleKey?.slice(0, 10) + '...' })
-      return NextResponse.json({ 
-        message: '服务端环境变量未配置', 
-        debug: { hasUrl: !!supabaseUrl, hasAnon: !!anonKey, hasService: !!serviceRoleKey }
-      }, { status: 500 })
-    }
+    // 获取环境变量
+    const { supabaseUrl, anonKey, serviceRoleKey } = getEnvVars()
 
     const authHeader = request.headers.get('Authorization') || ''
     if (!authHeader.startsWith('Bearer ')) {
@@ -172,25 +134,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now()
   
   try {
-    // 环境变量获取：兼容本地开发和生产环境
-    let supabaseUrl: string | undefined
-    let anonKey: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    try {
-      // 生产环境：使用 getRequestContext 获取环境变量
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      anonKey = (env as { SUPABASE_ANON_KEY?: string }).SUPABASE_ANON_KEY
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    } catch {
-      // 本地开发环境：使用 process.env 获取环境变量
-      supabaseUrl = process.env.SUPABASE_URL
-      anonKey = process.env.SUPABASE_ANON_KEY
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    }
-    
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) return NextResponse.json({ message:'服务端环境变量未配置' }, { status:500 })
+    // 获取环境变量
+    const { supabaseUrl, anonKey, serviceRoleKey } = getEnvVars()
 
     const authHeader = request.headers.get('Authorization') || ''
     if (!authHeader.startsWith('Bearer ')) return NextResponse.json({ message:'未授权' }, { status:401 })

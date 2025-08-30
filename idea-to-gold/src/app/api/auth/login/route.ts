@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
 import type { AuthResponse } from '@/lib/types'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getAuthEnvVars } from '@/lib/env'
 
 export const runtime = 'edge'
 
@@ -16,15 +16,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: '缺少必填字段：email/phone 和 password' }, { status: 400 })
     }
 
-    // 从 Cloudflare Pages 的运行时上下文中读取环境变量
-    const { env } = getRequestContext()
-    const supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-    const serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ message: '服务端环境变量未配置：SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
+    // 获取环境变量
+    const { supabaseUrl, anonKey } = getAuthEnvVars()
+    if (!supabaseUrl || !anonKey) {
+      return NextResponse.json({ error: '服务配置错误' }, { status: 500 })
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey)
+    const supabase = createClient(supabaseUrl, anonKey)
     const signInResult = phone
       ? await supabase.auth.signInWithPassword({ phone, password: password as string })
       : await supabase.auth.signInWithPassword({ email: email as string, password: password as string })

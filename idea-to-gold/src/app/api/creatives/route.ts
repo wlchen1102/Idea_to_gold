@@ -2,7 +2,7 @@
 // 迁移自 functions/api/creatives/index.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getEnvVars } from '@/lib/env'
 
 // 使用 Edge Runtime
 export const runtime = 'edge'
@@ -56,32 +56,20 @@ function makeSlugUnique(base: string): string {
 // GET /api/creatives - 获取创意列表
 export async function GET(): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+     const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
-    if (!supabaseUrl || !serviceRoleKey) {
+     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
         { message: '服务端环境变量未配置' },
         { status: 500 }
       )
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey)
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
     // 简单列表，可根据需要添加分页、排序
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('creatives')
       .select('*') // 包含 upvote_count 预计算字段
       .order('created_at', { ascending: false })
@@ -111,22 +99,10 @@ export async function GET(): Promise<NextResponse> {
 // POST /api/creatives - 创建新创意
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+     const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
-    if (!supabaseUrl || !serviceRoleKey) {
+     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
         { message: '服务端环境变量未配置' },
         { status: 500 }
@@ -143,10 +119,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey)
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
     // 验证 token 并获取用户信息
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     
     if (authError || !user) {
       return NextResponse.json(
@@ -184,7 +160,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       bounty_amount: typeof body.bounty_amount === 'number' ? body.bounty_amount : 0,
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('creatives')
       .insert(insertPayload)
       .select('*')

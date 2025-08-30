@@ -1,7 +1,7 @@
 // Next.js Route Handler - 评论系统（创意 & 多层回复）
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getEnvVars } from '@/lib/env'
 
 // 统一采用 Edge Runtime（与项目一致）
 export const runtime = 'edge'
@@ -65,20 +65,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : 20 // 默认20条，最多100条
     const offset = offsetParam ? Math.max(parseInt(offsetParam, 10), 0) : 0
 
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
@@ -278,30 +266,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 // 请求体：{ content: string, creative_id: string, parent_comment_id?: string }
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
-    
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
+
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
     }
 
-    // 鉴权（必须登录）
     const authHeader = request.headers.get('Authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
     if (!token) {
-      return NextResponse.json({ message: '未授权：缺少认证令牌' }, { status: 401 })
+      return NextResponse.json({ message: '缺少认证令牌，请先登录' }, { status: 401 })
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
@@ -373,30 +348,17 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: '缺少必填参数：id' }, { status: 400 })
     }
 
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
-    
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
+
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
     }
 
-    // 鉴权：需要 Bearer Token
     const authHeader = request.headers.get('Authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
     if (!token) {
-      return NextResponse.json({ message: '未授权：缺少认证令牌' }, { status: 401 })
+      return NextResponse.json({ message: '缺少认证令牌，请先登录' }, { status: 401 })
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)

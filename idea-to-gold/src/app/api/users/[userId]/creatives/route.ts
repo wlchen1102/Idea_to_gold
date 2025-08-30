@@ -4,36 +4,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSupabaseClient } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-
-// 获取环境变量的辅助函数
-function getEnvVars() {
-  let supabaseUrl: string | undefined;
-  let anonKey: string | undefined;
-  let serviceRoleKey: string | undefined;
-
-  // 优先使用 process.env (本地开发)
-  if (typeof process !== 'undefined' && process.env) {
-    supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  }
-
-  // 如果还没有获取到，尝试从 getRequestContext (生产环境)
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    try {
-      const context = getRequestContext();
-      if (context && context.env) {
-        supabaseUrl = supabaseUrl || context.env.SUPABASE_URL;
-        anonKey = anonKey || context.env.SUPABASE_ANON_KEY;
-        serviceRoleKey = serviceRoleKey || context.env.SUPABASE_SERVICE_ROLE_KEY;
-      }
-    } catch (error) {
-      console.log('无法获取 getRequestContext，可能在本地开发环境');
-    }
-  }
-
-  return { supabaseUrl, anonKey, serviceRoleKey };
-}
+import { getAuthEnvVars, getAdminEnvVars } from '@/lib/env';
 
 // 验证JWT令牌并获取用户信息
 async function verifyToken(authHeader: string | null) {
@@ -42,11 +13,7 @@ async function verifyToken(authHeader: string | null) {
   }
 
   const token = authHeader.substring(7);
-  const { supabaseUrl, anonKey } = getEnvVars();
-  
-  if (!supabaseUrl || !anonKey) {
-    throw new Error('Supabase配置缺失');
-  }
+  const { supabaseUrl, anonKey } = getAuthEnvVars();
 
   const supabase = createClient(supabaseUrl, anonKey);
   
@@ -86,14 +53,7 @@ export async function GET(
       // 目前允许查看其他用户的公开创意
     }
 
-    const { supabaseUrl, serviceRoleKey } = getEnvVars();
-    
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { message: '服务端配置错误' },
-        { status: 500 }
-      );
-    }
+    const { supabaseUrl, serviceRoleKey } = getAdminEnvVars();
 
     // 使用service_role密钥创建客户端
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -167,12 +127,3 @@ export async function GET(
     );
   }
 }
-
-// 声明 getRequestContext 函数（在 Cloudflare Workers 环境中可用）
-declare function getRequestContext(): {
-  env: {
-    SUPABASE_URL: string;
-    SUPABASE_ANON_KEY: string;
-    SUPABASE_SERVICE_ROLE_KEY: string;
-  };
-};
