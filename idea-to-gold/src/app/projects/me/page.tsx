@@ -1,4 +1,4 @@
-// 我的项目（当前用户）页面
+// 我的项目列表（当前用户）页面
 "use client";
 // 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
@@ -239,7 +239,7 @@ export default function ProjectsPage(): React.ReactElement {
           <section className="mt-8">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {projectsToRender.map((p) => (
-                <ProjectCard key={p.id} project={p} href={`/projects/${p.id}`} />
+                <ProjectCard key={p.id} project={p} href={`/projects/me/${p.id}`} />
               ))}
             </div>
           </section>

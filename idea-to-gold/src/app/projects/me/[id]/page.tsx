@@ -5,9 +5,10 @@
 // 声明允许cloudflare将动态页面部署到‘边缘环境’上
 export const runtime = 'edge';
 import Link from "next/link";
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import Modal from "@/components/Modal";
+import { requireSupabaseClient } from "@/lib/supabase";
 
 type PageParams = { id: string };
 type PageProps = { params: Promise<PageParams> };
@@ -62,14 +63,84 @@ type ProjectStatus = "planning" | "developing" | "internalTesting" | "released";
 export default function ProjectHomePage({ params }: PageProps): React.ReactElement {
   const { id } = use(params); // 使用 React.use() 来unwrap Promise
 
-  // 项目状态管理（模拟本地状态，实际应从API获取）
+  // 项目数据状态
+  const [projectData, setProjectData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // 项目状态管理（从API获取后设置）
   const [projectStatus, setProjectStatus] = useState<ProjectStatus>("planning");
   
+  // 获取项目数据
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      try {
+        setLoading(true);
+        
+        // 获取用户认证token
+        const supabase = requireSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          setError('请先登录');
+          return;
+        }
+        
+        const response = await fetch(`/api/projects/me/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('项目不存在');
+          } else if (response.status === 401) {
+            setError('未授权访问');
+          } else {
+            setError('获取项目数据失败');
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        setProjectData(data.project);
+        
+        // 初始化编辑状态
+        setEditName(data.project.name || '');
+        setEditDescription(data.project.description || '');
+        
+        // 根据项目状态设置对应的状态值
+        const statusMap: Record<string, ProjectStatus> = {
+          'planning': 'planning',
+          'developing': 'developing', 
+          'testing': 'internalTesting',
+          'published': 'released'
+        };
+        setProjectStatus(statusMap[data.project.status] || 'planning');
+        
+      } catch (err) {
+        console.error('获取项目数据失败:', err);
+        setError('网络错误，请稍后重试');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProjectData();
+  }, [id]);
+  
   // 新增：简单的发布状态控制（用于演示已发布页面布局）
-  const [status, setStatus] = useState('published'); // 改为 'draft' 可查看原布局
+  const [status, setStatus] = useState('draft'); // 改为 'draft' 可查看原布局
   
   // 控制"完成当前阶段"确认弹窗
   const [showConfirm, setShowConfirm] = useState(false);
+  
+  // 编辑功能状态
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [saving, setSaving] = useState(false);
   
   // Tab 状态管理（用于已发布页面）
   const [activeTab, setActiveTab] = useState('showcase');
@@ -120,10 +191,14 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
 
   const project = {
     id,
-    title: "【项目】会议纪要自动化助手",
-    owner: { name: "Zoe" },
-    fromIdea: { title: "AI会议纪要助手", href: `/idea/1` },
+    title: projectData?.name || "加载中...",
+    owner: { name: projectData?.creatives?.users?.username || "未知用户" },
+    fromIdea: { 
+      title: projectData?.creatives?.title || "未知创意", 
+      href: `/creatives/${projectData?.creative_id}` 
+    },
     status: projectStatus, // 使用动态状态
+    description: projectData?.description || ""
   };
 
   // 当前阶段中文名（用于弹窗标题）
@@ -157,11 +232,96 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     console.log(`项目状态已推进：${project.status} → ${nextStatus}`);
   };
 
+  // 保存编辑
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) {
+      alert('项目名称不能为空');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // 获取用户认证token
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('请先登录');
+        return;
+      }
+      
+      const response = await fetch(`/api/projects/me/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          name: editName.trim(),
+          description: editDescription.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProjectData(data.project);
+        setIsEditing(false);
+        console.log('项目更新成功');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || '保存失败');
+      }
+    } catch (error) {
+      console.error('保存项目时出错:', error);
+      alert('保存失败，请重试');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    setEditName(projectData?.name || '');
+    setEditDescription(projectData?.description || '');
+    setIsEditing(false);
+  };
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2ECC71] mx-auto mb-4"></div>
+          <p className="text-gray-600">加载项目数据中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">加载失败</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-[#2ECC71] hover:bg-[#27AE60] text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            重新加载
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // 已发布页面布局
   if (status === 'published') {
     return (
       <>
-        <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "项目详情" }]} />
+        <Breadcrumb paths={[{ href: "/projects/me", label: "我的项目" }, { label: "项目详情" }]} />
         
         {/* 大页头 (Grand Header) */}
         <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-6 shadow-sm">
@@ -175,8 +335,29 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               
               {/* 产品信息 */}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-[#2c3e50] mb-2">会议纪要自动化助手</h1>
-                <p className="text-lg text-[#7f8c8d] mb-3">释放你的会议生产力</p>
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="text-3xl font-bold text-[#2c3e50] bg-transparent border-b-2 border-[#2ECC71] focus:outline-none w-full"
+                      placeholder="项目名称"
+                    />
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="text-lg text-[#7f8c8d] bg-transparent border-b-2 border-[#2ECC71] focus:outline-none w-full resize-none"
+                      placeholder="项目描述"
+                      rows={2}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-3xl font-bold text-[#2c3e50] mb-2">{projectData?.name || '项目名称'}</h1>
+                    <p className="text-lg text-[#7f8c8d] mb-3">{projectData?.description || '项目描述'}</p>
+                  </>
+                )}
                 
                 {/* 平台标签 */}
                 <div className="flex gap-2">
@@ -192,13 +373,37 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
             
             {/* 右侧：核心行动区 */}
             <div className="flex flex-col sm:flex-row gap-3 lg:flex-col xl:flex-row">
-              <button className="bg-[#2ECC71] hover:bg-[#27AE60] text-white font-semibold px-8 py-4 rounded-xl text-lg transition-colors flex items-center justify-center gap-2">
-                <span>立即体验</span>
-                <span>→</span>
-              </button>
-              <button className="border border-gray-300 hover:bg-gray-50 text-[#2c3e50] font-medium px-6 py-4 rounded-xl transition-colors">
-                分享
-              </button>
+              {isEditing ? (
+                <>
+                  <button 
+                    onClick={handleSaveEdit}
+                    disabled={saving}
+                    className="bg-[#2ECC71] hover:bg-[#27AE60] disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    {saving ? '保存中...' : '保存'}
+                  </button>
+                  <button 
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className="border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100 text-[#2c3e50] font-medium px-6 py-3 rounded-xl transition-colors"
+                  >
+                    取消
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setIsEditing(true)}
+                    className="bg-[#2ECC71] hover:bg-[#27AE60] text-white font-semibold px-6 py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>✏️</span>
+                    <span>编辑项目</span>
+                  </button>
+                  <button className="border border-gray-300 hover:bg-gray-50 text-[#2c3e50] font-medium px-6 py-3 rounded-xl transition-colors">
+                    分享
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -406,7 +611,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   // 原有布局（当 status !== 'published' 时显示）
   return (
     <>
-      <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "项目详情" }]} />
+      <Breadcrumb paths={[{ href: "/projects/me", label: "我的项目" }, { label: "项目详情" }]} />
       
       {/* 调试按钮：切换到已发布布局 */}
       <div className="fixed bottom-4 right-4">
@@ -422,7 +627,31 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
         {/* 左侧主内容区 */}
         <section className="md:col-span-2">
           {/* 项目核心信息 */}
-          <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{project.title}</h1>
+          {isEditing ? (
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="text-3xl font-extrabold leading-9 text-[#2c3e50] bg-transparent border-b-2 border-[#2ECC71] focus:outline-none w-full"
+                placeholder="项目名称"
+              />
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="text-lg text-[#7f8c8d] bg-transparent border-b-2 border-[#2ECC71] focus:outline-none w-full resize-none mt-2"
+                placeholder="项目描述"
+                rows={3}
+              />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{project.title}</h1>
+              {projectData?.description && (
+                <p className="text-lg text-[#7f8c8d] mt-2">{projectData.description}</p>
+              )}
+            </>
+          )}
           <div className="mt-3 flex items-center gap-3">
             <Avatar name={project.owner.name} />
             <div>
@@ -511,7 +740,38 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               </div>
             
               {/* 动态操作按钮 */}
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
+                {/* 编辑按钮 - 在所有状态下都显示 */}
+                {!isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="w-full rounded-xl border border-blue-300 bg-blue-50 px-5 py-2.5 text-[14px] font-semibold text-blue-600 hover:bg-blue-100 transition-colors"
+                  >
+                    ✏️ 编辑项目
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      disabled={saving}
+                      className="flex-1 rounded-xl bg-[#2ECC71] px-3 py-2.5 text-[14px] font-semibold text-white hover:bg-[#27AE60] transition-colors disabled:opacity-50"
+                    >
+                      {saving ? '保存中...' : '💾 保存'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      disabled={saving}
+                      className="flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-[14px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      ❌ 取消
+                    </button>
+                  </div>
+                )}
+                
+                {/* 阶段推进按钮 */}
                 {project.status === "internalTesting" ? (
                   <Link 
                     href={`/projects/${id}/release`}

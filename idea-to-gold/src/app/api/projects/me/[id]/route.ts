@@ -1,0 +1,153 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { getEnvVars } from '@/lib/env';
+
+export const runtime = 'edge';
+
+type RouteParams = {
+  params: Promise<{ id: string }>;
+};
+
+// GET /api/projects/me/[id] - 获取我的项目详情
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const { supabaseUrl, serviceRoleKey } = getEnvVars();
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ error: '服务端环境变量未配置' }, { status: 500 });
+    }
+
+    // 解析并校验认证头
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) {
+      return NextResponse.json({ error: '缺少认证令牌，请先登录' }, { status: 401 });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    
+    // 验证 token 并获取用户信息
+    const { data: authData, error: authErr } = await supabase.auth.getUser(token);
+    const userId = authData?.user?.id || '';
+    if (authErr || !userId) {
+      return NextResponse.json({ error: '认证令牌无效，请重新登录' }, { status: 401 });
+    }
+
+    // 查询项目详情，确保是当前用户的项目
+    const { data: project, error } = await supabase
+      .from('projects')
+      .select(`
+        id,
+        name,
+        description,
+        status,
+        created_at,
+        updated_at,
+        developer_id,
+        creative_id,
+        creatives(
+          id,
+          title,
+          description,
+          author_id
+        )
+      `)
+      .eq('id', id)
+      .eq('developer_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: '项目不存在' }, { status: 404 });
+      }
+      console.error('获取项目详情失败:', error);
+      return NextResponse.json({ error: '获取项目详情失败' }, { status: 500 });
+    }
+
+    return NextResponse.json({ project });
+  } catch (error) {
+    console.error('API错误:', error);
+    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
+  }
+}
+
+// PUT /api/projects/me/[id] - 更新我的项目信息
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const { supabaseUrl, serviceRoleKey } = getEnvVars();
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ error: '服务端环境变量未配置' }, { status: 500 });
+    }
+
+    // 解析并校验认证头
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) {
+      return NextResponse.json({ error: '缺少认证令牌，请先登录' }, { status: 401 });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    
+    // 验证 token 并获取用户信息
+    const { data: authData, error: authErr } = await supabase.auth.getUser(token);
+    const userId = authData?.user?.id || '';
+    if (authErr || !userId) {
+      return NextResponse.json({ error: '认证令牌无效，请重新登录' }, { status: 401 });
+    }
+
+    // 解析请求体
+    const body = await request.json();
+    const { name, description } = body;
+
+    // 验证输入
+    if (!name || name.trim().length === 0) {
+      return NextResponse.json({ error: '项目名称不能为空' }, { status: 400 });
+    }
+
+    if (name.trim().length > 100) {
+      return NextResponse.json({ error: '项目名称不能超过100个字符' }, { status: 400 });
+    }
+
+    if (description && description.length > 1000) {
+      return NextResponse.json({ error: '项目描述不能超过1000个字符' }, { status: 400 });
+    }
+
+    // 更新项目信息，确保是当前用户的项目
+    const { data: project, error } = await supabase
+      .from('projects')
+      .update({
+        name: name.trim(),
+        description: description?.trim() || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('developer_id', userId)
+      .select(`
+        id,
+        name,
+        description,
+        status,
+        created_at,
+        updated_at,
+        developer_id,
+        creative_id
+      `)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: '项目不存在或无权限修改' }, { status: 404 });
+      }
+      console.error('更新项目失败:', error);
+      return NextResponse.json({ error: '更新项目失败' }, { status: 500 });
+    }
+
+    return NextResponse.json({ project });
+  } catch (error) {
+    console.error('API错误:', error);
+    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
+  }
+}
