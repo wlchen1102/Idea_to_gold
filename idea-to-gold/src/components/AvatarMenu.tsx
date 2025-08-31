@@ -145,7 +145,7 @@ function AvatarMenu() {
             我的项目
           </Link>
           <Link
-            href="/settings/account"
+            href="/projects/me"
             onClick={handleMenuItemClick}
             className="block px-6 py-1.5 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
           >

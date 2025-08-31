@@ -22,7 +22,7 @@ export default function NewProjectPage() {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // 跳转到新创建的项目详情页
-    router.push(`/project/${mockProjectId}`);
+    router.push(`/projects/${mockProjectId}`);
   };
 
   return (

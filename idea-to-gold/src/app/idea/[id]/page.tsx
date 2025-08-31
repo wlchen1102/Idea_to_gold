@@ -51,7 +51,7 @@ type Creative = {
 export default function IdeaDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const _router = useRouter();
   const id = params.id as string;
   
   // 获取来源信息

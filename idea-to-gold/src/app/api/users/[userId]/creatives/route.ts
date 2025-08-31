@@ -152,8 +152,8 @@ export async function GET(
     }
 
     // 使用对象而非Map提升性能
-    const upvoteCounts = {};
-    const commentCounts = {};
+    const upvoteCounts: Record<string, number> = {};
+    const commentCounts: Record<string, number> = {};
 
     // 统计点赞数
     if (upvoteData) {

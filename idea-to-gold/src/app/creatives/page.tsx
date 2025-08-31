@@ -151,7 +151,7 @@ export default function Home() {
   // 转换 Creative 数据为 CreativityCard 组件所需的格式
   const convertToCardData = (creative: Creative) => {
     return {
-      id: creative.id, // 使用 UUID 或自增ID
+      creativeId: String(creative.id), // 使用 UUID 或自增ID
       authorName: creative.profiles?.nickname || `用户${creative.author_id.slice(-4)}`,
       authorAvatarUrl: creative.profiles?.avatar_url,
       publishedAtText: new Date(creative.created_at).toLocaleDateString('zh-CN'),

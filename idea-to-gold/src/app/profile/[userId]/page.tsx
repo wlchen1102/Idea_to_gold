@@ -646,7 +646,7 @@ export default function ProfilePage() {
                           upvoteCount={creative.upvote_count}
                           commentCount={creative.comment_count}
                           onCardClick={() => handleCreativeCardClick(creative.id)}
-                          showDeleteButton={isCurrentUserCreative}
+                          showDeleteButton={isCurrentUserCreative || false}
                           onDelete={() => handleDeleteCreative(creative.id, creative.title)}
                         />
                       );
@@ -779,7 +779,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="mt-5">
-                      <Link href="/project/1" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
+                      <Link href="/projects/1" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
                         管理项目
                       </Link>
                     </div>
@@ -811,7 +811,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="mt-5">
-                      <Link href="/project/2" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
+                      <Link href="/projects/2" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
                         管理项目
                       </Link>
                     </div>

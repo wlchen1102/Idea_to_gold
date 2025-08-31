@@ -27,6 +27,7 @@ interface Creative {
 interface CreativesResponse {
   message: string
   creatives?: Creative[]
+  total?: number
   error?: string
 }
 

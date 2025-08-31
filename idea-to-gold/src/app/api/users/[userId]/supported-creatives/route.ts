@@ -62,10 +62,10 @@ export async function GET(
     
     const supabase = createClient(supabaseUrl, serviceRoleKey)
     
-    let currentUserId: string | null = null
+    let _currentUserId: string | null = null
     if (token) {
       const { data: userData } = await supabase.auth.getUser(token)
-      currentUserId = userData?.user?.id ?? null
+      _currentUserId = userData?.user?.id ?? null
     }
 
     // 获取分页参数
@@ -104,7 +104,7 @@ export async function GET(
     }
 
     // 转换数据格式
-    const creatives: Creative[] = supportedData.map((item: any) => ({
+    const creatives: Creative[] = supportedData.map((item: Record<string, unknown>) => ({
       id: item.id,
       title: item.title,
       description: item.description,

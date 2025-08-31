@@ -1,16 +1,19 @@
-// 发布产品页面
+// 规范化路由实现：/projects/[id]/release 发布产品页面（与旧 /project/[id]/release/page.tsx 等价实现，避免重导出依赖）
 "use client";
-// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+
+// 声明允许cloudflare将动态页面部署到“边缘环境”上（保持与项目一致的 Edge Runtime）
 export const runtime = 'edge';
+
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import Image from "next/image";
 
-
+// 产品类型定义
 type ProductType = "web" | "mobile" | "desktop" | "other";
 
 export default function ProductReleasePage(): React.ReactElement {
+  // 从路由中获取项目ID
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   
@@ -79,7 +82,7 @@ export default function ProductReleasePage(): React.ReactElement {
     return newErrors;
   };
 
-  // 处理表单提交
+  // 提交发布
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -101,8 +104,8 @@ export default function ProductReleasePage(): React.ReactElement {
       window.dispatchEvent(new Event("localToast"));
       await new Promise((resolve) => setTimeout(resolve, 2700));
 
-      // 跳转到已发布的项目主页
-      router.push(`/project/${id}`);
+      // 跳转到已发布的项目主页（规范路径 /projects/[id]）
+      router.push(`/projects/${id}`);
     } catch (error) {
       console.error("发布失败：", error);
     } finally {
@@ -116,13 +119,13 @@ export default function ProductReleasePage(): React.ReactElement {
 
   return (
     <>
-      {/* 面包屑导航 */}
+      {/* 面包屑导航（全部使用 /projects 规范路径）*/}
       <Breadcrumb 
-      paths={[
-           { href: "/projects", label: "我的项目" },
-           { href: `/project/${id}`, label: projectNameDisplay },
-           { label: "发布产品" }
-      ]} 
+        paths={[
+          { href: "/projects", label: "我的项目" },
+          { href: `/projects/${id}`, label: projectNameDisplay },
+          { label: "发布产品" }
+        ]} 
       />
 
       {/* 页面标题 */}
@@ -238,30 +241,30 @@ export default function ProductReleasePage(): React.ReactElement {
               {errors.features && <p className="text-xs text-red-500">{errors.features}</p>}
             </div>
 
-            {/* 产品类型（单选，必选） */}
+            {/* 产品类型（多选，必选） */}
             <div className="space-y-3">
-               <div className="text-sm font-medium text-[#2c3e50]">
+              <div className="text-sm font-medium text-[#2c3e50]">
                 产品类型 <span className="text-red-500">*</span>
-               </div>
-               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 ${productTypes.includes("web") ? "border-[#2ECC71]" : "border-gray-300"}`}>
-                <input type="checkbox" name="productTypes" value="web" checked={productTypes.includes("web")} onChange={() => toggleProductType("web")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
-                <span className="text-sm text-[#2c3e50]">网页应用</span>
+                  <input type="checkbox" name="productTypes" value="web" checked={productTypes.includes("web")} onChange={() => toggleProductType("web")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
+                  <span className="text-sm text-[#2c3e50]">网页应用</span>
                 </label>
                 <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 ${productTypes.includes("mobile") ? "border-[#2ECC71]" : "border-gray-300"}`}>
-                <input type="checkbox" name="productTypes" value="mobile" checked={productTypes.includes("mobile")} onChange={() => toggleProductType("mobile")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
-                <span className="text-sm text-[#2c3e50]">移动App</span>
+                  <input type="checkbox" name="productTypes" value="mobile" checked={productTypes.includes("mobile")} onChange={() => toggleProductType("mobile")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
+                  <span className="text-sm text-[#2c3e50]">移动应用</span>
                 </label>
                 <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 ${productTypes.includes("desktop") ? "border-[#2ECC71]" : "border-gray-300"}`}>
-                <input type="checkbox" name="productTypes" value="desktop" checked={productTypes.includes("desktop")} onChange={() => toggleProductType("desktop")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
-                <span className="text-sm text-[#2c3e50]">桌面客户端</span>
+                  <input type="checkbox" name="productTypes" value="desktop" checked={productTypes.includes("desktop")} onChange={() => toggleProductType("desktop")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
+                  <span className="text-sm text-[#2c3e50]">桌面应用</span>
                 </label>
                 <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 ${productTypes.includes("other") ? "border-[#2ECC71]" : "border-gray-300"}`}>
-                <input type="checkbox" name="productTypes" value="other" checked={productTypes.includes("other")} onChange={() => toggleProductType("other")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
-                <span className="text-sm text-[#2c3e50]">其他</span>
+                  <input type="checkbox" name="productTypes" value="other" checked={productTypes.includes("other")} onChange={() => toggleProductType("other")} className="h-4 w-4 text-[#2ECC71] focus:ring-[#2ECC71]" />
+                  <span className="text-sm text-[#2c3e50]">其他</span>
                 </label>
               </div>
-            {errors.productTypes && <p className="text-xs text-red-500">{errors.productTypes}</p>}
+              {errors.productTypes && <p className="text-xs text-red-500">{errors.productTypes}</p>}
             </div>
 
             {/* 链接区域（非必填） */}
@@ -344,17 +347,17 @@ export default function ProductReleasePage(): React.ReactElement {
               <button
                 type="button"
                 onClick={handleCancel}
+                className="border border-gray-300 hover:bg-gray-50 text-[#2c3e50] font-medium px-4 py-2 rounded-md transition-colors"
                 disabled={isSubmitting}
-                className="w-full sm:w-auto rounded-md border border-gray-300 px-6 py-3 text-sm font-medium text-[#2c3e50] hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 取消
               </button>
               <button
                 type="submit"
+                className={`bg-[#2ECC71] hover:bg-[#27AE60] text-white font-semibold px-5 py-2 rounded-md transition-colors ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
                 disabled={isSubmitting}
-                className="w-full sm:flex-1 rounded-md bg-[#2ECC71] px-6 py-3 text-[16px] font-semibold text-white hover:bg-[#27AE60] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? "发布中..." : "确认发布"}
+                {isSubmitting ? "发布中…" : "发布"}
               </button>
             </div>
           </form>

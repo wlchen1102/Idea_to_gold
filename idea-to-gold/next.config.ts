@@ -21,6 +21,15 @@ export default async function nextConfig(): Promise<NextConfig> {
     // 确保动态路由不被静态化
     trailingSlash: false,
 
+    // 路由兼容：将旧的 /project/* 永久重定向到规范路径 /projects/*
+    redirects: async () => [
+      {
+        source: "/project/:path*",
+        destination: "/projects/:path*",
+        permanent: true,
+      },
+    ],
+
     // 外部包配置（用于 Edge Runtime）
     serverExternalPackages: []
   };

@@ -8,7 +8,7 @@ interface CacheItem<T> {
 }
 
 class FrontendCache {
-  private memoryCache = new Map<string, CacheItem<any>>();
+  private memoryCache = new Map<string, CacheItem<unknown>>();
   private readonly DEFAULT_EXPIRY = 5 * 60 * 1000; // 5分钟默认过期时间
 
   /**
@@ -73,7 +73,7 @@ class FrontendCache {
       return null;
     }
     
-    return item.data;
+    return item.data as T;
   }
 
   /**

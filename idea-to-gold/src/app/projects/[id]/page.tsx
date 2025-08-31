@@ -1,4 +1,4 @@
-// 项目详情页面
+// 我的项目详情页面
 
 "use client";
 
@@ -514,7 +514,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               <div className="mt-4">
                 {project.status === "internalTesting" ? (
                   <Link 
-                    href={`/project/${id}/release`}
+                    href={`/projects/${id}/release`}
                     className="block w-full rounded-xl bg-[#2ECC71] px-5 py-3 text-center text-[16px] font-semibold text-white hover:bg-[#27AE60] transition-colors"
                   >
                     发布最终产品
