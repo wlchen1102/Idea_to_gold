@@ -138,14 +138,14 @@ function AvatarMenu() {
             个人中心
           </Link>
           <Link
-            href="/projects"
+            href="/projects/me"
             onClick={handleMenuItemClick}
             className="block px-6 py-1.5 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
           >
             我的项目
           </Link>
           <Link
-            href="/projects/me"
+            href="/settings"
             onClick={handleMenuItemClick}
             className="block px-6 py-1.5 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
           >

@@ -78,6 +78,22 @@ where
     *   `created_at` (timestamptz): 项目的创建时间。
     *   `updated_at` (timestamptz): 项目的最后更新时间。
 
+表结构如下：
+create table public.projects (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  name text not null,
+  description text not null,
+  status text not null default 'planning'::text,
+  developer_id uuid not null,
+  creative_id uuid not null,
+  product_info jsonb null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint projects_pkey primary key (id),
+  constraint projects_creative_id_fkey foreign KEY (creative_id) references creatives (id) on delete CASCADE,
+  constraint projects_developer_id_fkey foreign KEY (developer_id) references profiles (id) on delete CASCADE
+) TABLESPACE pg_default;
+
 #### **4. 【核心表】`public.project_logs` - 项目日志表**
 
 *   **它的作用**:
@@ -88,6 +104,18 @@ where
     *   `content` (text): 日志的具体内容（支持Markdown）。
     *   `author_id` (uuid, 外键 -> `public.profiles.id`): 发布这条日志的用户ID。
     *   `created_at` (timestamptz): 发布时间。
+
+表结构如下：
+create table public.project_logs (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  project_id uuid not null,
+  content text not null,
+  author_id uuid not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint project_logs_pkey primary key (id),
+  constraint project_logs_author_id_fkey foreign KEY (author_id) references profiles (id) on delete CASCADE,
+  constraint project_logs_project_id_fkey foreign KEY (project_id) references projects (id) on delete CASCADE
+) TABLESPACE pg_default;
 
 #### **5. 【核心表】`public.comments` - 评论/回复表**
 

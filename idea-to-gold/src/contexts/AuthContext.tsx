@@ -1,3 +1,5 @@
+// 文件说明：
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
@@ -278,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-  }, [updateAuthState]); // 移除refreshAuth依赖以避免无限循环
+  }, []); // 移除所有依赖以避免无限循环
 
   const contextValue: AuthContextType = {
     ...authState,

@@ -1,13 +1,14 @@
 // 我的项目（当前用户）页面
 "use client";
-// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+// 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type React from "react";
 import type { SVGProps } from "react";
 import Image from "next/image";
+import { requireSupabaseClient } from '@/lib/supabase';
 // 移除未使用的 Breadcrumb 导入
 
 type Project = {
@@ -95,49 +96,54 @@ function ProjectCard({ project, href }: { project: Project; href: string }) {
 }
 
 export default function ProjectsPage(): React.ReactElement {
-  // 模拟数据：4 个项目卡片
-  const projects: Project[] = [
-    {
-      id: "p1",
-      name: "会议纪要自动化助手",
-      status: "开发中",
-      intro: "将会议录音转写并自动抽取行动项，支持与团队协作工具同步。",
-      fromIdeaTitle: "AI会议纪要助手",
-      fromIdeaHref: "/idea/1",
-      views: 1280,
-      supports: 312,
-    },
-    {
-      id: "p2",
-      name: "语音转写与摘要服务",
-      status: "内测中",
-      intro: "高准确率语音识别与多语种摘要引擎，为企业会议提供结构化输出。",
-      fromIdeaTitle: "多语种语音摘要助手",
-      fromIdeaHref: "/idea/2",
-      views: 860,
-      supports: 190,
-    },
-    {
-      id: "p3",
-      name: "企业会议纪要机器人",
-      status: "开发中",
-      intro: "面向钉钉/企微的企业内协作机器人，自动输出纪要与OKR映射。",
-      fromIdeaTitle: "企业版会议纪要机器人",
-      fromIdeaHref: "/idea/3",
-      views: 2034,
-      supports: 528,
-    },
-    {
-      id: "p4",
-      name: "智能行动项追踪器",
-      status: "已发布",
-      intro: "基于NLP的行动项归因与提醒工具，帮助团队闭环推进任务。",
-      fromIdeaTitle: "行动项提取与提醒",
-      fromIdeaHref: "/idea/4",
-      views: 640,
-      supports: 120,
-    },
-  ];
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 获取用户项目数据
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 在客户端环境中获取 Supabase 客户端
+        const supabase = requireSupabaseClient();
+
+        // 获取当前用户的认证状态
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setError('请先登录');
+          return;
+        }
+
+        // 调用API获取项目列表
+        const response = await fetch('/api/projects/me', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          setProjects(result.data);
+        } else {
+          throw new Error(result.message || '获取项目列表失败');
+        }
+      } catch (err) {
+        console.error('获取项目列表失败:', err);
+        setError(err instanceof Error ? err.message : '获取项目列表失败');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProjects();
+  }, []); // 只在组件挂载时执行一次
 
   const hasProjects = projects.length > 0;
   const totalCount = projects.length;
@@ -155,7 +161,41 @@ export default function ProjectsPage(): React.ReactElement {
       <h1 className="text-3xl font-bold tracking-tight text-[#2c3e50]">我的项目</h1>
       <p className="mt-2 text-[#95a5a6]">每一个项目，都是改变世界的一次尝试</p>
 
-      {/* 选项卡（前端演示筛选） */}
+      {/* 加载状态 */}
+      {loading && (
+        <div className="mt-8 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2ECC71]"></div>
+        </div>
+      )}
+
+      {/* 错误状态 */}
+      {error && (
+        <div className="mt-8 rounded-lg bg-red-50 border border-red-200 p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">加载失败</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+              {error === '请先登录' && (
+                <div className="mt-4">
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    前往登录
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 只有在非加载和非错误状态下才显示内容 */}
+      {!loading && !error && (
+        <>
+          {/* 选项卡（前端演示筛选） */}
       <div className="mt-6 w-fit rounded-lg bg-gray-100 p-1">
         {([
           { key: "全部", label: `全部 (${totalCount})` },
@@ -194,15 +234,17 @@ export default function ProjectsPage(): React.ReactElement {
         </section>
       )}
 
-      {/* 项目卡片列表 */}
-      {hasProjects && (
-        <section className="mt-8">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projectsToRender.map((p, idx) => (
-              <ProjectCard key={p.id} project={p} href={`/projects/${idx + 1}`} />
-            ))}
-          </div>
-        </section>
+        {/* 项目卡片列表 */}
+        {hasProjects && (
+          <section className="mt-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {projectsToRender.map((p) => (
+                <ProjectCard key={p.id} project={p} href={`/projects/${p.id}`} />
+              ))}
+            </div>
+          </section>
+        )}
+        </>
       )}
     </>
   );
