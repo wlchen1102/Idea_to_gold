@@ -65,7 +65,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: '获取项目详情失败' }, { status: 500 });
     }
 
-    return NextResponse.json({ project });
+    // 为了兼容前端，添加 title 字段
+    const projectWithTitle = {
+      ...project,
+      title: project.name // 将 name 字段复制为 title
+    };
+
+    return NextResponse.json({ project: projectWithTitle });
   } catch (error) {
     console.error('API错误:', error);
     return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
@@ -100,14 +106,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // 解析请求体
     const body = await request.json();
-    const { name, description } = body;
+    const { name, title, description } = body;
+    
+    // 支持 title 或 name 字段
+    const projectName = title || name;
 
     // 验证输入
-    if (!name || name.trim().length === 0) {
+    if (!projectName || projectName.trim().length === 0) {
       return NextResponse.json({ error: '项目名称不能为空' }, { status: 400 });
     }
 
-    if (name.trim().length > 100) {
+    if (projectName.trim().length > 100) {
       return NextResponse.json({ error: '项目名称不能超过100个字符' }, { status: 400 });
     }
 
@@ -119,7 +128,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { data: project, error } = await supabase
       .from('projects')
       .update({
-        name: name.trim(),
+        name: projectName.trim(),
         description: description?.trim() || null,
         updated_at: new Date().toISOString()
       })
@@ -145,7 +154,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: '更新项目失败' }, { status: 500 });
     }
 
-    return NextResponse.json({ project });
+    // 为了兼容前端，添加 title 字段
+    const projectWithTitle = {
+      ...project,
+      title: project.name // 将 name 字段复制为 title
+    };
+
+    return NextResponse.json({ project: projectWithTitle });
   } catch (error) {
     console.error('API错误:', error);
     return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });

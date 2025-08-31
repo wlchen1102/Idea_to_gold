@@ -8,6 +8,8 @@ import Link from "next/link";
 import React, { useState, use, useEffect } from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import Modal from "@/components/Modal";
+import TextInput from "@/components/ui/TextInput";
+import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
 
 type PageParams = { id: string };
@@ -107,7 +109,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
         setProjectData(data.project);
         
         // 初始化编辑状态
-        setEditName(data.project.name || '');
+        setEditName(data.project.title || data.project.name || '');
         setEditDescription(data.project.description || '');
         
         // 根据项目状态设置对应的状态值
@@ -257,7 +259,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          name: editName.trim(),
+          title: editName.trim(),
           description: editDescription.trim(),
         }),
       });
@@ -281,7 +283,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
 
   // 取消编辑
   const handleCancelEdit = () => {
-    setEditName(projectData?.name || '');
+    setEditName(projectData?.title || projectData?.name || '');
     setEditDescription(projectData?.description || '');
     setIsEditing(false);
   };
@@ -539,7 +541,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               </div>
             ) : activeTab === 'idea' ? (
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-[#2c3e50]">原始创意11</h3>
+              <h3 className="text-xl font-semibold text-[#2c3e50]">原始创意</h3>
                 
                 {/* 添加来源链接 */}
                 <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
@@ -626,63 +628,98 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* 左侧主内容区 */}
         <section className="md:col-span-2">
-          {/* 项目核心信息 */}
-          {isEditing ? (
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="text-3xl font-extrabold leading-9 text-[#2c3e50] bg-transparent border-b-2 border-[#2ECC71] focus:outline-none w-full"
-                placeholder="项目名称"
-              />
+          {/* 项目核心信息 - 参考创意详情页布局 */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex-1">
+              {isEditing ? (
+                <TextInput
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="请输入项目名称"
+                  fontSize="text-2xl"
+                  className="!font-extrabold !leading-9 !text-[#2c3e50]"
+                />
+              ) : (
+                <h1 className="text-2xl font-extrabold leading-9 text-[#2c3e50]">{projectData?.title || projectData?.name || '项目名称'}</h1>
+              )}
+            </div>
+          </div>
+
+          {/* 项目详情区域 */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-[#2c3e50]">项目详情</h2>
+              
+              {/* 编辑按钮区域 */}
+              {!isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center rounded-lg border border-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50"
+                >
+                  编辑
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={saving}
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* 项目详情内容 */}
+            <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+              {isEditing ? (
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="请输入项目详情描述"
+                  rows={6}
+                  autoResize={true}
+                />
+              ) : (
+                <div>
+                  {projectData?.description ? (
+                    <div className="text-[15px] leading-7 text-gray-700 whitespace-pre-wrap">{projectData.description}</div>
+                  ) : (
+                    <p className="text-[15px] leading-7 text-gray-400">暂无项目详情</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 发布项目动态区域 - 参考创意详情页布局 */}
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-[#2c3e50] mb-3">发布项目动态</h2>
+            <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-4">
               <textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="text-lg text-[#7f8c8d] bg-transparent border-b-2 border-[#2ECC71] focus:outline-none w-full resize-none mt-2"
-                placeholder="项目描述"
+                placeholder="分享项目最新进展..."
+                className="w-full text-[15px] leading-7 text-gray-700 bg-transparent border-none focus:outline-none resize-none"
                 rows={3}
               />
-            </div>
-          ) : (
-            <>
-              <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{project.title}</h1>
-              {projectData?.description && (
-                <p className="text-lg text-[#7f8c8d] mt-2">{projectData.description}</p>
-              )}
-            </>
-          )}
-          <div className="mt-3 flex items-center gap-3">
-            <Avatar name={project.owner.name} />
-            <div>
-              <p className="text-[14px] font-medium text-[#2c3e50]">{project.owner.name}</p>
-              <p className="text-[12px] text-[#95a5a6]">项目所有者</p>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-xl bg-gray-50 p-4">
-            <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
-              <Link href={project.fromIdea.href} className="text-[#3498db] hover:underline">
-                源于创意：{project.fromIdea.title}
-              </Link>
-            </div>
-          </div>
-
-          {/* 发布动态入口（模拟） */}
-          <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <label htmlFor="postUpdate" className="block text-sm font-medium text-[#2c3e50]">
-              发布项目动态
-            </label>
-            <textarea
-              id="postUpdate"
-              rows={4}
-              placeholder="有什么新进展？和大家分享一下吧..."
-              className="mt-2 w-full rounded-md border border-gray-300 p-3 text-[14px] leading-6 focus:border-[#2ECC71] focus:outline-none"
-            />
-            <div className="mt-3 text-right">
-              <button type="button" className="rounded-lg bg-[#2ECC71] px-4 py-2 text-[14px] font-semibold text-white hover:bg-[#27AE60]">
-                发布动态
-              </button>
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                >
+                  发布动态
+                </button>
+              </div>
             </div>
           </div>
 
@@ -741,35 +778,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
             
               {/* 动态操作按钮 */}
               <div className="mt-4 space-y-2">
-                {/* 编辑按钮 - 在所有状态下都显示 */}
-                {!isEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="w-full rounded-xl border border-blue-300 bg-blue-50 px-5 py-2.5 text-[14px] font-semibold text-blue-600 hover:bg-blue-100 transition-colors"
-                  >
-                    ✏️ 编辑项目
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSaveEdit}
-                      disabled={saving}
-                      className="flex-1 rounded-xl bg-[#2ECC71] px-3 py-2.5 text-[14px] font-semibold text-white hover:bg-[#27AE60] transition-colors disabled:opacity-50"
-                    >
-                      {saving ? '保存中...' : '💾 保存'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      disabled={saving}
-                      className="flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-[14px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
-                      ❌ 取消
-                    </button>
-                  </div>
-                )}
+
                 
                 {/* 阶段推进按钮 */}
                 {project.status === "internalTesting" ? (
@@ -795,13 +804,9 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               </div>
             </div>
             
-            {/* 核心数据仪表盘：保持不变 */}
+            {/* 核心数据仪表盘 */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
               <ul className="space-y-3 text-[14px] text-[#2c3e50]">
-                <li className="flex items-center justify-between">
-                  <span className="text-gray-600">想要用户数</span>
-                  <span className="font-semibold">1.5k</span>
-                </li>
                 <li className="flex items-center justify-between">
                   <span className="text-gray-600">日志更新数</span>
                   <span className="font-semibold">5</span>
@@ -811,6 +816,22 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                   <span className="font-semibold">3.2k</span>
                 </li>
               </ul>
+            </div>
+            
+            {/* 创意信息与想要用户数卡片 */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-[16px] font-semibold text-[#2c3e50]">创意信息</h3>
+              <div className="space-y-3">
+                <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
+                  <Link href={project.fromIdea.href} className="text-[#3498db] hover:underline">
+                    源于创意：{project.fromIdea.title}
+                  </Link>
+                </div>
+                <div className="flex items-center justify-between text-[14px] text-[#2c3e50]">
+                  <span className="text-gray-600">想要用户数</span>
+                  <span className="font-semibold">1.5k</span>
+                </div>
+              </div>
             </div>
             
             {/* 移除：原独立发布产品按钮卡片（已并入项目控制卡片）*/}
