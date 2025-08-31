@@ -1,5 +1,10 @@
 // 我的项目详情页面
 
+/**
+ * 页面：我的项目详情页（项目主页）
+ * 功能：展示项目详情、发布/删除项目动态、阶段推进等。客户端组件，运行在 Edge Runtime。
+ */
+
 "use client";
 
 // 声明允许cloudflare将动态页面部署到‘边缘环境’上
@@ -11,11 +16,12 @@ import Modal from "@/components/Modal";
 import TextInput from "@/components/ui/TextInput";
 import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
 type PageParams = { id: string };
 type PageProps = { params: Promise<PageParams> };
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   const initials = name
     .trim()
     .split(/\s+/)
@@ -23,7 +29,9 @@ function Avatar({ name }: { name: string }) {
     .map((p) => p[0] ?? "")
     .join("")
     .toUpperCase();
-  return (
+  return avatarUrl ? (
+    <img src={avatarUrl} alt={name} className="h-10 w-10 rounded-full object-cover" />
+  ) : (
     <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ecf0f1] text-[#2c3e50] text-sm font-semibold">
       {initials}
     </div>
@@ -60,6 +68,19 @@ function Step({
   );
 }
 
+// 新增：时间格式化函数，输出形如 2025/8/30 22:17:48（年月日不补零，时分秒补零）
+function formatDateTime(input: string | number | Date): string {
+  const date = new Date(input);
+  if (isNaN(date.getTime())) return '';
+  const Y = date.getFullYear();
+  const M = date.getMonth() + 1; // 不补零
+  const D = date.getDate(); // 不补零
+  const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const h = pad2(date.getHours());
+  const m = pad2(date.getMinutes());
+  const s = pad2(date.getSeconds());
+  return `${Y}/${M}/${D} ${h}:${m}:${s}`;
+}
 type ProjectStatus = "planning" | "developing" | "internalTesting" | "released";
 
 export default function ProjectHomePage({ params }: PageProps): React.ReactElement {
@@ -74,62 +95,90 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   const [projectStatus, setProjectStatus] = useState<ProjectStatus>("planning");
   
   // 获取项目数据
+  const fetchProjectData = async () => {
+    try {
+      setLoading(true);
+      
+      // 获取用户认证token
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setError('请先登录');
+        return;
+      }
+      
+      const response = await fetch(`/api/projects/me/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError('项目不存在');
+        } else if (response.status === 401) {
+          setError('未授权访问');
+        } else {
+          setError('获取项目数据失败');
+        }
+        return;
+      }
+      
+      const data = await response.json();
+      setProjectData(data.project);
+      
+      // 初始化编辑状态
+      setEditName(data.project.title || data.project.name || '');
+      setEditDescription(data.project.description || '');
+      
+      // 根据项目状态设置对应的状态值
+      const statusMap: Record<string, ProjectStatus> = {
+        'planning': 'planning',
+        'developing': 'developing', 
+        'testing': 'internalTesting',
+        'published': 'released'
+      };
+      setProjectStatus(statusMap[data.project.status] || 'planning');
+      
+    } catch (err) {
+      console.error('获取项目数据失败:', err);
+      setError('网络错误，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    const fetchProjectData = async () => {
+    const fetchProjectLogs = async () => {
       try {
-        setLoading(true);
-        
-        // 获取用户认证token
         const supabase = requireSupabaseClient();
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session?.access_token) {
-          setError('请先登录');
+          console.log('未登录，无法获取项目日志');
           return;
         }
         
-        const response = await fetch(`/api/projects/me/${id}`, {
+        const response = await fetch(`/api/projects/${id}/logs`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
         });
         
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError('项目不存在');
-          } else if (response.status === 401) {
-            setError('未授权访问');
-          } else {
-            setError('获取项目数据失败');
-          }
-          return;
+        if (response.ok) {
+          const data = await response.json();
+          setProjectLogs(data.logs || []);
+        } else {
+          console.error('获取项目日志失败');
         }
-        
-        const data = await response.json();
-        setProjectData(data.project);
-        
-        // 初始化编辑状态
-        setEditName(data.project.title || data.project.name || '');
-        setEditDescription(data.project.description || '');
-        
-        // 根据项目状态设置对应的状态值
-        const statusMap: Record<string, ProjectStatus> = {
-          'planning': 'planning',
-          'developing': 'developing', 
-          'testing': 'internalTesting',
-          'published': 'released'
-        };
-        setProjectStatus(statusMap[data.project.status] || 'planning');
-        
-      } catch (err) {
-        console.error('获取项目数据失败:', err);
-        setError('网络错误，请稍后重试');
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error('获取项目日志时出错:', error);
       }
     };
     
     fetchProjectData();
+    fetchProjectLogs();
   }, [id]);
   
   // 新增：简单的发布状态控制（用于演示已发布页面布局）
@@ -143,6 +192,16 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  // 项目日志功能状态
+  const [logContent, setLogContent] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [projectLogs, setProjectLogs] = useState<any[]>([]);
+  const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
+  
+  // 新增：删除弹窗状态与目标日志
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [pendingDeleteLog, setPendingDeleteLog] = useState<{ id: string; content: string } | null>(null);
   
   // Tab 状态管理（用于已发布页面）
   const [activeTab, setActiveTab] = useState('showcase');
@@ -286,6 +345,109 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     setEditName(projectData?.title || projectData?.name || '');
     setEditDescription(projectData?.description || '');
     setIsEditing(false);
+  };
+
+  // 删除项目日志
+  const handleDeleteLog = async (logId: string) => {
+    setDeletingLogId(logId);
+    try {
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('请先登录');
+        return;
+      }
+      
+      const response = await fetch(`/api/projects/${id}/logs/${logId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (response.ok) {
+        // 从列表中移除已删除的日志
+        setProjectLogs(prev => prev.filter(log => log.id !== logId));
+        console.log('项目日志删除成功');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除项目日志时出错:', error);
+      alert('删除失败，请重试');
+    } finally {
+      setDeletingLogId(null);
+      setIsDeleteDialogOpen(false);
+      setPendingDeleteLog(null);
+    }
+  };
+
+  // 发布项目日志
+  const handlePublishLog = async () => {
+    if (isPublishing) return; // 防重复提交：发布中直接忽略点击
+    if (!logContent.trim()) return;
+    
+    setIsPublishing(true);
+    try {
+      // 获取用户认证token
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('请先登录');
+        return;
+      }
+      
+      // 乐观更新：立即添加到UI
+      const optimisticLog = {
+        id: `temp-${Date.now()}`,
+        content: logContent.trim(),
+        created_at: new Date().toISOString(),
+        author: {
+          name: '我', // 临时显示
+          nickname: '我',
+          avatar_url: null
+        },
+        can_delete: true // 新发布的日志可以删除
+      };
+      setProjectLogs([optimisticLog, ...projectLogs]);
+      const originalContent = logContent;
+      setLogContent(''); // 立即清空输入框
+      
+      const response = await fetch(`/api/projects/${id}/logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          content: originalContent.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // 替换临时日志为真实日志
+        setProjectLogs(prev => [
+          data.log,
+          ...prev.filter(log => log.id !== optimisticLog.id)
+        ]);
+        console.log('项目日志发布成功');
+      } else {
+        // 发布失败，移除乐观更新的日志
+        setProjectLogs(prev => prev.filter(log => log.id !== optimisticLog.id));
+        const errorData = await response.json();
+        alert(errorData.error || '发布失败');
+        setLogContent(originalContent); // 恢复输入内容
+      }
+    } catch (error) {
+      console.error('发布项目日志时出错:', error);
+      alert('发布失败，请重试');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // 加载状态
@@ -705,17 +867,21 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
 
           {/* 发布项目动态区域 - 参考创意详情页布局 */}
           <div className="mt-8">
-            <h2 className="text-lg font-semibold text-[#2c3e50] mb-3">发布项目动态</h2>
             <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-4">
-              <textarea
+              <Textarea
+                value={logContent}
+                onChange={(e) => setLogContent(e.target.value)}
                 placeholder="分享项目最新进展..."
-                className="w-full text-[15px] leading-7 text-gray-700 bg-transparent border-none focus:outline-none resize-none"
+                className="border-none bg-transparent text-[15px] leading-7 text-gray-700 focus:border-none focus:outline-none"
                 rows={3}
+                autoResize={true}
               />
               <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                  onClick={handlePublishLog}
+                  disabled={!logContent.trim()}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   发布动态
                 </button>
@@ -726,36 +892,46 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
           {/* 开发日志时间轴 */}
           <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-[#2c3e50]">开发日志</h2>
-            <ul className="mt-4 space-y-6">
-              {/* 日志 1：规划阶段 */}
-              <li className="flex items-start gap-3">
-                <Avatar name="Zoe" />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="text-[14px] font-medium text-[#2c3e50]">Zoe</div>
-                    <div className="text-[12px] text-gray-500">3天前</div>
-                  </div>
-                  <div className="mt-1 text-[15px] font-semibold text-[#2c3e50]">项目规划与功能定义 V1.0</div>
-                  <p className="mt-1 text-[14px] leading-6 text-gray-700">
-                    进行了整体功能范围界定与优先级排序，确定了 MVP 的目标：自动转写、行动项提取与协作平台同步。
-                  </p>
-                </div>
-              </li>
-              {/* 日志 2：开发阶段 */}
-              <li className="flex items-start gap-3">
-                <Avatar name="Ken" />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="text-[14px] font-medium text-[#2c3e50]">Ken</div>
-                    <div className="text-[12px] text-gray-500">1天前</div>
-                  </div>
-                  <div className="mt-1 text-[15px] font-semibold text-[#2c3e50]">第一周开发进度</div>
-                  <p className="mt-1 text-[14px] leading-6 text-gray-700">
-                    已完成核心API的开发，下一步将进行前端对接。
-                  </p>
-                </div>
-              </li>
-            </ul>
+            {projectLogs.length > 0 ? (
+              <ul className="mt-4 space-y-6">
+                {projectLogs.map((log) => (
+                   <li key={log.id} className="flex items-start gap-3">
+                     <Avatar name={log.author?.nickname || log.author?.name || '匿名用户'} avatarUrl={log.author?.avatar_url} />
+                     <div className="flex-1">
+                       <div className="text-[14px] font-medium text-[#2c3e50]">{log.author?.nickname || log.author?.name || '匿名用户'}</div>
+                       <p className="mt-1 text-[14px] leading-6 text-gray-700 whitespace-pre-wrap">
+                         {log.content}
+                       </p>
+                       <div className="mt-2 flex items-center gap-3 text-[12px] text-gray-500">
+                         <span>{formatDateTime(log.created_at)}</span>
+                         {log.can_delete && (
+                           <button
+                             onClick={() => { setPendingDeleteLog({ id: log.id, content: log.content }); setIsDeleteDialogOpen(true); }}
+                             disabled={deletingLogId === log.id}
+                             className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                             title="删除动态"
+                           >
+                             {deletingLogId === log.id ? (
+                               <span className="text-xs">删除中...</span>
+                             ) : (
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                               </svg>
+                             )}
+                           </button>
+                         )}
+                       </div>
+                     </div>
+                   </li>
+                 ))}
+              </ul>
+            ) : (
+              <div className="mt-4 text-center py-8">
+                <div className="text-gray-400 text-4xl mb-2">📝</div>
+                <p className="text-gray-500 text-sm">暂无开发日志</p>
+                <p className="text-gray-400 text-xs mt-1">发布第一条项目动态吧！</p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -865,6 +1041,61 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
           </button>
         </div>
       </Modal>
+
+      {/* 删除动态：确认弹窗 */}
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        subject={pendingDeleteLog?.content}
+        title="确定删除此动态？"
+        confirmText="确认"
+        cancelText="取消"
+        isDeleting={deletingLogId === pendingDeleteLog?.id}
+        onConfirm={async () => {
+          if (!pendingDeleteLog) return;
+          const delId = pendingDeleteLog.id;
+          // 记录原位置与备份，便于失败回滚
+          const prevIndex = projectLogs.findIndex((l) => l.id === delId);
+          const backup = projectLogs.find((l) => l.id === delId) || null;
+          // 1) 立刻关闭弹窗
+          setIsDeleteDialogOpen(false);
+          setPendingDeleteLog(null);
+          // 2) 乐观更新：立即从UI移除日志
+          setProjectLogs((prev) => prev.filter((l) => l.id !== delId));
+
+          // 3) 异步删除接口
+          try {
+            const supabase = requireSupabaseClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+              throw new Error('请先登录');
+            }
+            const res = await fetch(`/api/projects/${id}/logs/${delId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${session.access_token}` },
+            });
+            if (!res.ok) {
+              const j = await res.json().catch(() => null) as { message?: string; error?: string } | null;
+              throw new Error(j?.error || j?.message || `删除失败（${res.status}）`);
+            }
+          } catch (e) {
+            // 回滚UI并提示
+            if (backup) {
+              setProjectLogs((prev) => {
+                const next = [...prev];
+                const insertAt = prevIndex >= 0 && prevIndex <= next.length ? prevIndex : 0;
+                next.splice(insertAt, 0, backup);
+                return next;
+              });
+            }
+            const msg = e instanceof Error ? e.message : '删除失败，请重试';
+            alert(msg);
+          }
+        }}
+        onCancel={() => {
+          setIsDeleteDialogOpen(false);
+          setPendingDeleteLog(null);
+        }}
+      />
 
       {/* 移除：发布最终产品表单弹窗 */}
       {false && (

@@ -187,7 +187,7 @@ export default function IdeaDetailPage() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">
           <div className="mb-4">
-            <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
+            <h1 className="text-2xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <Avatar name={idea.author.name} src={idea.author.avatarUrl} />

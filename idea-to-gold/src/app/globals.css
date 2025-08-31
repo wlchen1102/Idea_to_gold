@@ -10,6 +10,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* 自定义字体大小定义 - 基于项目设计规范 */
+  --text-xs: 0.75rem;     /* 12px - 极小文字 */
+  --text-sm: 0.875rem;    /* 14px - 辅助文字 */
+  --text-base: 1rem;      /* 16px - 正文 */
+  --text-lg: 1.125rem;    /* 18px - 大正文 */
+  --text-xl: 1.25rem;     /* 20px - H3 */
+  --text-2xl: 1.5rem;     /* 24px - H2 */
+  --text-3xl: 1.75rem;   /* 30px - 大标题 */
+  --text-4xl: 2.25rem;    /* 36px - 超大标题 */
+  --text-5xl: 3rem;       /* 48px - 巨大标题 */
 }
 
 @media (prefers-color-scheme: dark) {

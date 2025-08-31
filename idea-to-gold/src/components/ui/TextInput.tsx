@@ -6,7 +6,7 @@ export interface TextInputProps extends React.InputHTMLAttributes<HTMLInputEleme
   label?: string;
   description?: string;
   error?: string;
-  fontSize?: string; // 字体大小，如 'text-3xl', 'text-lg' 等
+  fontSize?: string; // 字体大小，如 'text-2xl', 'text-lg' 等
 }
 
 export default function TextInput({ label, description, error, className = "", fontSize = "text-[14px]", id, ...rest }: TextInputProps) {
