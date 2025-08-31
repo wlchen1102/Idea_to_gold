@@ -1,6 +1,9 @@
+// 组件：AvatarMenu
+// 功能：展示用户头像及其下拉菜单（个人中心、我的项目、账户设置、退出登录）。
+// 交互：悬浮头像显示菜单，离开区域延迟隐藏；菜单宽度自适应内容，左右相对触发器居中，尽量减少留白。
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -52,6 +55,7 @@ const prefetchSupportedCreatives = async (userId: string) => {
 function AvatarMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -73,15 +77,30 @@ function AvatarMenu() {
     setIsMenuOpen(false);
   };
 
+  // 处理鼠标进入
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsMenuOpen(true);
+  };
+
+  // 处理鼠标离开
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsMenuOpen(false);
+    }, 150); // 150ms延迟，避免鼠标快速移动时闪烁
+  };
+
   // 如果没有用户信息，不渲染组件
   if (!user) {
     return null;
   }
 
   return (
-    <div className="relative">
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
         className="flex items-center gap-1.5 rounded-full bg-white px-2 py-1 shadow-sm ring-1 ring-gray-200 hover:shadow-md transition-shadow"
       >
             {user.avatar_url ? (
@@ -103,14 +122,8 @@ function AvatarMenu() {
       </button>
 
       {isMenuOpen && (
-        <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white py-2 shadow-lg ring-1 ring-gray-200">
-          <Link
-            href="/projects"
-            onClick={handleMenuItemClick}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            我的项目
-          </Link>
+        // 使用 inline-block + w-auto 让容器宽度根据内容收缩，避免右侧大留白；并将参考点改为头像圆心（约24px：左内边距8px + 头像半径16px）
+        <div className="absolute left-[24px] -translate-x-1/2 mt-2 inline-block w-auto rounded-lg bg-white py-1 shadow-lg ring-1 ring-gray-200 z-50">
           <Link
             href={`/profile/${user?.id}?tab=createdIdeas`}
             onClick={handleMenuItemClick}
@@ -120,20 +133,27 @@ function AvatarMenu() {
                 prefetchSupportedCreatives(user.id);
               }
             }}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="block px-6 py-1.5 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
           >
             个人中心
           </Link>
           <Link
+            href="/projects"
+            onClick={handleMenuItemClick}
+            className="block px-6 py-1.5 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+          >
+            我的项目
+          </Link>
+          <Link
             href="/settings/account"
             onClick={handleMenuItemClick}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="block px-6 py-1.5 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
           >
             账户设置
           </Link>
           <button
             onClick={handleLogout}
-            className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="block w-full px-6 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
           >
             退出登录
           </button>
