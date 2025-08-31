@@ -112,7 +112,7 @@ function AvatarMenu() {
             我的项目
           </Link>
           <Link
-            href={`/profile/${user?.id}`}
+            href={`/profile/${user?.id}?tab=createdIdeas`}
             onClick={handleMenuItemClick}
             onMouseEnter={() => {
               // 悬停时预加载支持的创意数据

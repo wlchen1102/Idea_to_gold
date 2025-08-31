@@ -3,7 +3,7 @@
 // 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import CreativityCard from "@/components/CreativityCard";
@@ -41,9 +41,24 @@ interface Creative {
 
 export default function ProfilePage() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const userId = params.userId as string;
   const { user: currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("createdIdeas");
+  
+  // 从URL参数中获取当前TAB状态，支持从创意详情页返回时的参数映射
+  const getInitialTab = (): TabType => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'my-creatives') return 'createdIdeas';
+    if (tabParam === 'supported-creatives') return 'supportedIdeas';
+    if (tabParam === 'createdIdeas' || tabParam === 'supportedIdeas' || tabParam === 'developedProjects') {
+      return tabParam as TabType;
+    }
+    return 'createdIdeas'; // 默认值
+  };
+  
+  const initialTab = getInitialTab();
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,6 +282,8 @@ export default function ProfilePage() {
     };
   }, [userId, activeTab]);
 
+
+
   // 加载更多支持的创意
   const loadMoreSupportedCreatives = async () => {
     if (!userId || supportedLoadingMore || !supportedHasMore) {
@@ -365,6 +382,25 @@ export default function ProfilePage() {
       setDeletingCreativeId(null);
       setDeletingCreativeTitle('');
     }
+  };
+
+  // 处理TAB切换并更新URL参数
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    // 更新URL参数，保持TAB状态
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.set('tab', tab);
+    router.replace(`/profile/${userId}?${newSearchParams.toString()}`, { scroll: false });
+  };
+
+  // 处理创意卡片点击，跳转到详情页并记录来源TAB
+  const handleCreativeCardClick = (creativeId: string) => {
+    // 将TAB类型转换为对应的参数值
+    const tabParam = activeTab === "createdIdeas" ? "my-creatives" : 
+                    activeTab === "supportedIdeas" ? "supported-creatives" : "my-creatives";
+    
+    // 跳转到创意详情页，并在URL中记录来源TAB和用户ID
+    router.push(`/idea/${creativeId}?fromTab=${tabParam}&fromUserId=${userId}`);
   };
 
   // 取消删除
@@ -503,7 +539,7 @@ export default function ProfilePage() {
           <div className="border-b border-gray-200">
             <nav className="flex gap-8 px-6" aria-label="选项卡">
               <button
-                onClick={() => setActiveTab("createdIdeas")}
+                onClick={() => handleTabChange("createdIdeas")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === "createdIdeas"
                     ? "border-emerald-500 text-emerald-600"
@@ -514,7 +550,7 @@ export default function ProfilePage() {
                 我的创意
               </button>
               <button
-                onClick={() => setActiveTab("supportedIdeas")}
+                onClick={() => handleTabChange("supportedIdeas")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === "supportedIdeas"
                     ? "border-emerald-500 text-emerald-600"
@@ -525,7 +561,7 @@ export default function ProfilePage() {
                 支持的创意
               </button>
               <button
-                onClick={() => setActiveTab("developedProjects")}
+                onClick={() => handleTabChange("developedProjects")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === "developedProjects"
                     ? "border-emerald-500 text-emerald-600"
@@ -609,6 +645,7 @@ export default function ProfilePage() {
                           tags={creative.tags}
                           upvoteCount={creative.upvote_count}
                           commentCount={creative.comment_count}
+                          onCardClick={() => handleCreativeCardClick(creative.id)}
                           showDeleteButton={isCurrentUserCreative}
                           onDelete={() => handleDeleteCreative(creative.id, creative.title)}
                         />
@@ -702,6 +739,7 @@ export default function ProfilePage() {
                           tags={creative.tags}
                           upvoteCount={creative.upvote_count}
                           commentCount={creative.comment_count}
+                          onCardClick={() => handleCreativeCardClick(creative.id)}
                           showDeleteButton={false}
                         />
                       );
