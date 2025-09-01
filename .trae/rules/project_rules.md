@@ -12,6 +12,8 @@
 - 点击效果：点击元素时，元素会有一定的变化，例如改变颜色、大小、位置等。
 
 ## 代码原则
+首先要为清晰而编写代码。倾向于使用可读、可维护、具有清晰名称、必要注释和直接控制流的解决方案。除非明确要求，否则不要产出代码高尔夫（code-golf）或过于取巧的单行代码。在编写代码和使用代码工具时，使用高详细度（high verbosity）。
+
 ### KISS原则 (Keep It Simple, Stupid)
  - 鼓励AI编写简洁明了的解决方案。
  - 避免过度设计和不必要的复杂性。
@@ -21,13 +23,6 @@
  - 防止AI添加当前用不到的预测性功能。
  - 专注于实现当前已明确的需求。
  - 减少代码冗余和维护成本。
-
-### SOLID原则
- - 单一职责原则 (Single Responsibility Principle)
- - 开闭原则 (Open-Closed Principle)
- - 里氏替换原则 (Liskov Substitution Principle)
- - 接口隔离原则 (Interface Segregation Principle)
- - 依赖倒置原则 (Dependency Inversion Principle)
  
  ### 代码通用规范
  - 优先保证代码简洁易懂。

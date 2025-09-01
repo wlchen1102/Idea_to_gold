@@ -364,14 +364,8 @@ export default function ProfilePage() {
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
       
-      // 从本地状态中移除已删除的创意
+      // 从本地状态中移除已删除的创意（立即反馈，已移除全局 Toast）
       setUserCreatives(prev => prev.filter(creative => creative.id !== deletingCreativeId));
-      
-      // 显示成功提示
-      if (typeof window !== "undefined") {
-        localStorage.setItem("pendingToast", "删除成功");
-        window.dispatchEvent(new Event("localToast"));
-      }
       
     } catch (err) {
       console.error('删除创意失败:', err);

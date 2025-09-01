@@ -1,4 +1,11 @@
-// Next.js Route Handler - 评论系统（创意 & 多层回复）
+// Next.js Route Handler - 评论系统（创意 & 多层回复 & 项目/日志）
+// 功能与作用：
+// - 提供统一的评论接口，支持三种评论目标：创意、产品(项目)、开发日志
+// - GET：根据 creative_id / project_id / project_log_id 动态获取评论列表
+// - POST：根据请求体中的目标ID智能构造插入数据，确保与数据库CHECK约束一致
+// - DELETE：仅作者可删除自己的评论
+// - 运行于 Edge Runtime，兼容 Cloudflare Pages
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getEnvVars } from '@/lib/env'
@@ -16,6 +23,7 @@ interface CommentItem {
   content: string
   author_id: string
   creative_id: string | null
+  project_id: string | null // 新增：项目ID，支持“产品评论”和“日志评论”
   project_log_id: string | null
   parent_comment_id: string | null
   created_at: string
@@ -46,215 +54,143 @@ interface CreateCommentResponse {
   error?: string
 }
 
-// GET /api/comments?creative_id=xxx - 获取某个创意下的全部评论（含作者公开资料），按时间升序
+// GET /api/comments?creative_id=xxx | ?project_id=xxx[&project_log_id=yyy]
+// - 支持三种目标：创意、产品(项目)、开发日志
+// - 当仅提供 project_id 时，默认只返回“产品评论”（即 project_log_id IS NULL）
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const startTime = Date.now() // 性能监控：开始时间
-  
   try {
-    const creativeId = request.nextUrl.searchParams.get('creative_id')?.trim() || ''
-    if (!creativeId) {
+    const search = request.nextUrl.searchParams
+    const creativeId = search.get('creative_id')?.trim() || null
+    const projectId = search.get('project_id')?.trim() || null
+    const projectLogId = search.get('project_log_id')?.trim() || null
+    // 是否包含点赞统计
+    const includeLikesParam = search.get('include_likes')
+    const includeLikes = includeLikesParam === '1' || includeLikesParam === 'true'
+
+    if (!creativeId && !projectId && !projectLogId) {
       return NextResponse.json(
-        { message: '缺少必填查询参数：creative_id' } satisfies Partial<CommentsListResponse>,
+        { message: '缺少查询参数：请提供 creative_id 或 project_id 或 project_log_id' },
         { status: 400 }
       )
     }
 
-    // 分页参数
-    const limitParam = request.nextUrl.searchParams.get('limit')
-    const offsetParam = request.nextUrl.searchParams.get('offset')
-    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : 20 // 默认20条，最多100条
+    // 可选分页参数（与旧实现兼容）
+    const limitParam = search.get('limit')
+    const offsetParam = search.get('offset')
+    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : null
     const offset = offsetParam ? Math.max(parseInt(offsetParam, 10), 0) : 0
 
     // 获取环境变量
     const { supabaseUrl, serviceRoleKey } = getEnvVars()
-
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 优化认证：快速token解析，避免完整的用户查询
-    const authStartTime = Date.now() // 性能监控：认证开始时间
-    const authHeader = request.headers.get('Authorization') || ''
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-    let userId: string | null = null
-    
-    if (token) {
-      try {
-        // 使用轻量级的JWT解析，避免数据库查询
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        userId = payload.sub || null
-        
-        // 简单的token有效性检查（检查过期时间）
-        const now = Math.floor(Date.now() / 1000)
-        if (payload.exp && payload.exp < now) {
-          userId = null // token已过期
-        }
-      } catch {
-        // token格式错误，忽略认证
-        userId = null
-      }
-    }
-    
-    const authEndTime = Date.now() // 性能监控：认证结束时间
-    const authDuration = authEndTime - authStartTime
+    // 构建动态查询
+    let query = supabase
+      .from('comments')
+      .select(
+        `id, content, author_id, creative_id, project_id, project_log_id, parent_comment_id, created_at,
+         profiles(nickname, avatar_url)`
+      )
 
-    // 直接查询数据库（使用Next.js内置缓存机制）
-    const queryStartTime = Date.now() // 性能监控：查询开始时间
-    
-    let enriched: CommentItem[] = []
-    let likesQueryDuration = 0
-    
-    if (userId) {
-      // 用户已登录：使用复杂查询一次性获取评论、作者信息和点赞统计
-      const { data: rawData, error } = await supabase.rpc('get_comments_with_likes', {
-        p_creative_id: creativeId,
-        p_user_id: userId,
-        p_limit: limit,
-        p_offset: offset
-      })
-      
-      if (error) {
-        // 如果存储过程不存在，回退到原有查询方式
-        console.warn('存储过程不存在，使用原有查询方式:', error.message)
-        
-        // 原有的分离查询逻辑
-        const { data, error: commentsError } = await supabase
-          .from('comments')
-          .select(
-            `id, content, author_id, creative_id, project_log_id, parent_comment_id, created_at,
-             profiles(nickname, avatar_url)`
-          )
-          .eq('creative_id', creativeId)
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1)
-          
-        if (commentsError) {
-          return NextResponse.json(
-            { message: '查询评论失败', error: commentsError.message } satisfies Partial<CommentsListResponse>,
-            { status: 500 }
-          )
-        }
-        
-        const base = (data || []) as unknown as CommentItem[]
-        
-        if (base.length > 0) {
-          const likesQueryStartTime = Date.now()
-          const ids = base.map((c) => c.id)
-          const { data: likeRows, error: likeErr } = await supabase
-            .from('comment_likes')
-            .select('comment_id, user_id')
-            .in('comment_id', ids)
-          likesQueryDuration = Date.now() - likesQueryStartTime
-          
-          if (!likeErr && likeRows) {
-            const countMap = new Map<string, number>()
-            const likedSet = new Set<string>()
-            for (const row of likeRows as Array<{ comment_id: string; user_id: string }>) {
-              countMap.set(row.comment_id, (countMap.get(row.comment_id) || 0) + 1)
-              if (row.user_id === userId) likedSet.add(row.comment_id)
-            }
-            enriched = base.map((c) => ({
-              ...c,
-              likes_count: countMap.get(c.id) || 0,
-              current_user_liked: likedSet.has(c.id),
-            }))
-          } else {
-            enriched = base.map((c) => ({ ...c, likes_count: 0, current_user_liked: false }))
-          }
-        }
-      } else {
-        // 存储过程调用成功，直接使用返回的数据
-        enriched = (rawData || []).map((row: Record<string, unknown>) => ({
-          id: row.id as string,
-          content: row.content as string,
-          author_id: row.author_id as string,
-          creative_id: row.creative_id as string | null,
-          project_log_id: row.project_log_id as string | null,
-          parent_comment_id: row.parent_comment_id as string | null,
-          created_at: row.created_at as string,
-          profiles: row.nickname || row.avatar_url ? {
-            nickname: row.nickname as string | null,
-            avatar_url: row.avatar_url as string | null
-          } : null,
-          likes_count: (row.likes_count as number) || 0,
-          current_user_liked: (row.current_user_liked as boolean) || false,
-        }))
-      }
-    } else {
-      // 用户未登录：只查询评论和作者信息，不查询点赞数据
-      const { data, error } = await supabase
-        .from('comments')
-        .select(
-          `id, content, author_id, creative_id, project_log_id, parent_comment_id, created_at,
-           profiles(nickname, avatar_url)`
-        )
-        .eq('creative_id', creativeId)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1)
-        
-      if (error) {
+    if (creativeId) {
+      query = query.eq('creative_id', creativeId)
+    }
+
+    if (projectId && projectLogId) {
+      // 日志评论：同时匹配 project_id + project_log_id
+      query = query.eq('project_id', projectId).eq('project_log_id', projectLogId)
+    } else if (projectId) {
+      // 产品(项目)评论：仅匹配 project_id，并限定 project_log_id 为空
+      query = query.eq('project_id', projectId).is('project_log_id', null)
+    } else if (projectLogId) {
+      // 仅提供了 project_log_id 的情况（宽松支持）
+      query = query.eq('project_log_id', projectLogId)
+    }
+
+    // 排序与分页
+    query = query.order('created_at', { ascending: true })
+    if (limit !== null) {
+      const to = offset + (limit || 0) - 1
+      query = query.range(offset, Math.max(offset, to))
+    }
+
+    const { data, error } = await query
+    if (error) {
+      return NextResponse.json(
+        { message: '查询评论失败', error: error.message } satisfies Partial<CommentsListResponse>,
+        { status: 500 }
+      )
+    }
+
+    const comments = (data || []) as unknown as CommentItem[]
+
+    // 可选的点赞统计逻辑（方案A：仅在 include_likes=1 时计算）
+    let resultComments: CommentItem[] = comments
+    if (includeLikes && comments.length > 0) {
+      const commentIds = comments.map((c) => c.id)
+
+      // 统计每条评论的点赞数量
+      const { data: likeRows, error: likesErr } = await supabase
+        .from('comment_likes')
+        .select('comment_id')
+        .in('comment_id', commentIds)
+
+      if (likesErr) {
         return NextResponse.json(
-          { message: '查询评论失败', error: error.message } satisfies Partial<CommentsListResponse>,
+          { message: '查询点赞数据失败', error: likesErr.message },
           { status: 500 }
         )
       }
-      
-      enriched = (data || []).map((c: Record<string, unknown>) => ({
-        id: c.id as string,
-        content: c.content as string,
-        author_id: c.author_id as string,
-        creative_id: c.creative_id as string | null,
-        project_log_id: c.project_log_id as string | null,
-        parent_comment_id: c.parent_comment_id as string | null,
-        created_at: c.created_at as string,
-        profiles: c.profiles as { nickname: string | null; avatar_url: string | null } | null,
-        likes_count: 0,
-        current_user_liked: false,
+
+      const likeCountMap = new Map<string, number>()
+      for (const row of (likeRows || []) as Array<{ comment_id: string }>) {
+        likeCountMap.set(row.comment_id, (likeCountMap.get(row.comment_id) || 0) + 1)
+      }
+
+      // 当前用户是否点赞（若带有Authorization），失败则优雅降级为不返回 current_user_liked
+      let likedSet: Set<string> | null = null
+      const authHeader = request.headers.get('Authorization') || ''
+      const hasBearer = authHeader.startsWith('Bearer ')
+      if (hasBearer) {
+        const token = authHeader.slice(7)
+        const { data: authData, error: authErr } = await supabase.auth.getUser(token)
+        const userId = authData?.user?.id || null
+        if (!authErr && userId) {
+          const { data: myLikeRows, error: myLikesErr } = await supabase
+            .from('comment_likes')
+            .select('comment_id')
+            .eq('user_id', userId)
+            .in('comment_id', commentIds)
+
+          if (!myLikesErr) {
+            likedSet = new Set<string>((myLikeRows || []).map((r: { comment_id: string }) => r.comment_id))
+          }
+        }
+      }
+
+      resultComments = comments.map((c) => ({
+        ...c,
+        likes_count: likeCountMap.get(c.id) ?? 0,
+        ...(likedSet ? { current_user_liked: likedSet.has(c.id) } : {}),
       }))
     }
-    
-    const queryEndTime = Date.now() // 性能监控：查询结束时间
-    const queryDuration = queryEndTime - queryStartTime
-
-    // 移除内存缓存逻辑，依赖Next.js内置缓存
-
-    // 优化：通过返回数据量判断是否还有更多数据，避免昂贵的count查询
-    const hasMore = enriched.length === limit
-    
-    const endTime = Date.now() // 性能监控：总结束时间
-    const totalDuration = endTime - startTime
-    
-    // 性能日志记录
-    console.log(`[评论API性能] 总耗时: ${totalDuration}ms, 认证: ${authDuration}ms, 主查询: ${queryDuration}ms, 点赞查询: ${likesQueryDuration}ms, 评论数: ${enriched.length}`)
 
     const response = NextResponse.json(
-      { 
-        message: '获取评论成功', 
-        comments: enriched,
-        pagination: {
-          limit,
-          offset,
-          hasMore
-        },
-        // 开发环境下返回性能数据
-        ...(process.env.NODE_ENV === 'development' && {
-          performance: {
-            totalDuration,
-            authDuration,
-            queryDuration,
-            likesQueryDuration,
-            cached: false
-          }
-        })
-      } satisfies CommentsListResponse,
+      { message: '获取评论成功', comments: resultComments } satisfies Partial<CommentsListResponse>,
       { status: 200 }
     )
-    
+
     // 添加缓存控制头，让浏览器和CDN缓存30秒
     response.headers.set('Cache-Control', 'public, max-age=30, s-maxage=30')
-    
+    // 当包含个性化字段时，避免缓存污染
+    if (includeLikes) {
+      response.headers.set('Vary', 'Authorization')
+    }
+
     return response
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown error'
@@ -263,7 +199,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 // POST /api/comments - 发表新评论（需要登录）
-// 请求体：{ content: string, creative_id: string, parent_comment_id?: string }
+// 请求体：{ content: string, creative_id?: string, project_id?: string, project_log_id?: string, parent_comment_id?: string }
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // 获取环境变量
@@ -290,34 +226,57 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = (await request.json().catch(() => null)) as {
       content?: string
       creative_id?: string
+      project_id?: string
+      project_log_id?: string
       parent_comment_id?: string | null
     } | null
 
     const rawContent = body?.content
     const content = typeof rawContent === 'string' ? rawContent.trim() : ''
-    const creativeId = body?.creative_id?.trim() || ''
+    const creativeId = body?.creative_id?.trim() || null
+    const projectId = body?.project_id?.trim() || null
+    const projectLogId = body?.project_log_id?.trim() || null
     const parentId = (body?.parent_comment_id ?? null) as string | null
 
-    if (!content || !creativeId) {
+    if (!content) {
       return NextResponse.json(
-        { message: '缺少必填字段：content 或 creative_id' } satisfies Partial<CreateCommentResponse>,
+        { message: '缺少必填字段：content' } satisfies Partial<CreateCommentResponse>,
         { status: 400 }
       )
     }
 
-    // 插入评论：author_id 来自已验证用户；parent_comment_id 可为 null
-    const insertPayload = {
+    // 构造插入对象：满足数据库三种互斥组合
+    const insertPayload: Record<string, unknown> = {
       content,
-      creative_id: creativeId,
       author_id: userId,
-      parent_comment_id: parentId,
+    }
+
+    if (creativeId) {
+      // 创意评论
+      insertPayload.creative_id = creativeId
+    } else if (projectId && projectLogId) {
+      // 开发日志评论
+      insertPayload.project_id = projectId
+      insertPayload.project_log_id = projectLogId
+    } else if (projectId) {
+      // 产品(项目)评论
+      insertPayload.project_id = projectId
+    } else {
+      return NextResponse.json(
+        { message: '缺少评论目标ID：请提供 creative_id 或 project_id[/project_log_id]' } satisfies Partial<CreateCommentResponse>,
+        { status: 400 }
+      )
+    }
+
+    if (parentId) {
+      insertPayload.parent_comment_id = parentId
     }
 
     const { data, error } = await supabase
       .from('comments')
       .insert(insertPayload)
       .select(
-        `id, content, author_id, creative_id, project_log_id, parent_comment_id, created_at,
+        `id, content, author_id, creative_id, project_id, project_log_id, parent_comment_id, created_at,
          profiles(nickname, avatar_url)`
       )
       .single()

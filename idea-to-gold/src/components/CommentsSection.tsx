@@ -179,12 +179,13 @@ function NodeView({
                 取消
               </button>
               <button
-                onClick={async () => {
+                onClick={() => {
                   const text = (replyValue[node.id] ?? "").trim();
                   if (!text) return;
-                  await submitComment(text, node.id);
+                  // 先响应：立即清空并关闭输入框，后续异步提交
                   setReplyValue((p) => ({ ...p, [node.id]: "" }));
                   setReplyOpen((p) => ({ ...p, [node.id]: false }));
+                  submitComment(text, node.id);
                 }}
                 className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
               >
@@ -281,7 +282,7 @@ export default function CommentsSection({
       }
       
       const currentOffset = isLoadMore ? pagination.offset + pagination.limit : 0;
-      const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}`;
+      const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}&include_likes=1`;
       
       const res = await fetch(url, { 
         headers,
@@ -525,15 +526,35 @@ export default function CommentsSection({
     const text = content.trim();
     if (!text) return;
 
-    try {
-      const supabase = requireSupabaseClient();
-      const sessionRes = await supabase.auth.getSession();
-      const token = sessionRes.data?.session?.access_token ?? "";
-      if (!token) {
-        alert("请先登录后再发表评论");
-        return;
-      }
+    // 先获取登录态，未登录则不进行乐观更新
+    const supabase = requireSupabaseClient();
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data?.session?.access_token ?? "";
+    if (!token) {
+      alert("请先登录后再发表评论");
+      return;
+    }
 
+    // 乐观创建一个临时评论，立即显示到列表
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimistic: CommentDTO = {
+      id: tempId,
+      content: text,
+      author_id: currentUserId ?? "",
+      creative_id: ideaId,
+      project_log_id: null,
+      parent_comment_id: parentId,
+      created_at: new Date().toISOString(),
+      profiles: { nickname: "我", avatar_url: null },
+      likes_count: 0,
+      current_user_liked: false,
+    };
+
+    // 插入临时评论与本地点赞状态
+    setItems((prev) => [...prev, optimistic]);
+    setLikesMap((prev) => ({ ...prev, [tempId]: { liked: false, likes: 0 } }));
+
+    try {
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: {
@@ -544,20 +565,54 @@ export default function CommentsSection({
       });
       const j = (await res.json().catch(() => null)) as { comment?: CommentDTO | null; message?: string; error?: string } | null;
       if (res.status === 401) {
+        // 回滚临时评论
+        setItems((prev) => prev.filter((c) => c.id !== tempId));
+        setLikesMap((prev) => {
+          const next = { ...prev };
+          delete next[tempId];
+          return next;
+        });
         alert("登录已过期，请重新登录");
         return;
       }
       if (!res.ok) {
+        // 回滚临时评论
+        setItems((prev) => prev.filter((c) => c.id !== tempId));
+        setLikesMap((prev) => {
+          const next = { ...prev };
+          delete next[tempId];
+          return next;
+        });
         throw new Error(j?.error || j?.message || `请求失败（${res.status}）`);
       }
 
       const created = (j?.comment ?? null) as CommentDTO | null;
       if (created) {
-        setItems((prev) => [...prev, created]);
-        // 初始化点赞项
-        setLikesMap((prev) => ({ ...prev, [created.id]: prev[created.id] ?? { liked: false, likes: 0 } }));
+        // 用真实返回替换临时评论
+        setItems((prev) => prev.map((c) => (c.id === tempId ? created : c)));
+        setLikesMap((prev) => {
+          const { [tempId]: _temp, ...rest } = prev;
+          const likes = Number((created as { likes_count?: number }).likes_count ?? 0);
+          const liked = Boolean(created.current_user_liked);
+          return { ...rest, [created.id]: { liked, likes: Math.max(0, likes) } };
+        });
+      } else {
+        // 未拿到新评论，回滚
+        setItems((prev) => prev.filter((c) => c.id !== tempId));
+        setLikesMap((prev) => {
+          const next = { ...prev };
+          delete next[tempId];
+          return next;
+        });
       }
     } catch (e) {
+      // 回滚临时评论
+      setItems((prev) => prev.filter((c) => c.id !== tempId));
+      setLikesMap((prev) => {
+        const next = { ...prev };
+        delete next[tempId];
+        return next;
+      });
       const msg = e instanceof Error ? e.message : "发表失败";
       alert(msg);
     }
@@ -565,75 +620,94 @@ export default function CommentsSection({
 
   // 删除评论（仅作者可删）
   async function deleteCommentById(id: string): Promise<boolean> {
+    // 先在本地进行乐观移除（包含子回复）
+    const prevItems = items;
+    const prevLikes = likesMap;
+    const prevReplyOpen = replyOpen;
+    const prevReplyValue = replyValue;
+
+    // 计算将要删除的所有ID（包含子树）
+    const collectToRemove = (rootId: string, comments: CommentDTO[]): Set<string> => {
+      const toRemove = new Set<string>();
+      const dfs = (pid: string) => {
+        toRemove.add(pid);
+        for (const c of comments) {
+          if (c.parent_comment_id === pid) dfs(c.id);
+        }
+      };
+      dfs(rootId);
+      return toRemove;
+    };
+
+    const toRemoveIds = collectToRemove(id, prevItems);
+
+    const removeCommentAndReplies = (commentId: string, comments: CommentDTO[]): CommentDTO[] => {
+      const toRemoveInner = collectToRemove(commentId, comments);
+      return comments.filter((c) => !toRemoveInner.has(c.id));
+    };
+
+    // 本地立即移除
+    setItems((prev) => removeCommentAndReplies(id, prev));
+    setLikesMap((prev) => {
+      const next = { ...prev };
+      toRemoveIds.forEach((rid) => delete next[rid]);
+      return next;
+    });
+    setReplyOpen((prev) => {
+      const next = { ...prev };
+      toRemoveIds.forEach((rid) => delete next[rid]);
+      return next;
+    });
+    setReplyValue((prev) => {
+      const next = { ...prev };
+      toRemoveIds.forEach((rid) => delete next[rid]);
+      return next;
+    });
+
     try {
       const supabase = requireSupabaseClient();
       const sessionRes = await supabase.auth.getSession();
       const token = sessionRes.data?.session?.access_token ?? "";
       if (!token) {
+        // 回滚
+        setItems(prevItems);
+        setLikesMap(prevLikes);
+        setReplyOpen(prevReplyOpen);
+        setReplyValue(prevReplyValue);
         alert("请先登录");
         return false;
       }
+
       const res = await fetch(`/api/comments?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
       if (res.status === 401) {
+        // 回滚
+        setItems(prevItems);
+        setLikesMap(prevLikes);
+        setReplyOpen(prevReplyOpen);
+        setReplyValue(prevReplyValue);
         alert("登录已过期，请重新登录");
         return false;
       }
       if (!res.ok) {
+        // 回滚
+        setItems(prevItems);
+        setLikesMap(prevLikes);
+        setReplyOpen(prevReplyOpen);
+        setReplyValue(prevReplyValue);
         throw new Error(j?.error || j?.message || `请求失败（${res.status}）`);
       }
-      // 乐观移除被删节点，避免界面延迟
-      setItems((prev) => prev.filter((c) => c.id !== id));
-      // 清理相关本地状态
-      setLikesMap((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: _, ...rest } = prev;
-        return rest;
-      });
-      setReplyOpen((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: __, ...rest } = prev;
-        return rest;
-      });
-      setReplyValue((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: ___, ...rest } = prev;
-        return rest;
-      });
-      // 优化：直接从本地状态移除被删除的评论，避免重复API调用
-      // 递归删除函数：删除指定评论及其所有子回复
-      const removeCommentAndReplies = (commentId: string, comments: CommentDTO[]): CommentDTO[] => {
-        const toRemove = new Set<string>();
-        
-        // 找出所有需要删除的评论ID（包括子回复）
-        const findReplies = (parentId: string) => {
-          toRemove.add(parentId);
-          comments.forEach(comment => {
-            if (comment.parent_comment_id === parentId) {
-              findReplies(comment.id);
-            }
-          });
-        };
-        
-        findReplies(commentId);
-        
-        // 过滤掉需要删除的评论
-        return comments.filter(comment => !toRemove.has(comment.id));
-      };
-      
-      setItems(prev => removeCommentAndReplies(id, prev));
-      
-      // 清理对应的点赞状态
-      setLikesMap(prev => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+
       return true;
     } catch (e) {
+      // 回滚
+      setItems(prevItems);
+      setLikesMap(prevLikes);
+      setReplyOpen(prevReplyOpen);
+      setReplyValue(prevReplyValue);
       const msg = e instanceof Error ? e.message : "删除失败";
       alert(msg);
       return false;
@@ -663,11 +737,12 @@ export default function CommentsSection({
         />
         <div className="flex justify-end">
           <button
-            onClick={async () => {
+            onClick={() => {
               const text = value.trim();
               if (!text) return;
-              await submitComment(text, null);
+              // 先响应：立即清空输入框并发起异步提交
               setValue("");
+              submitComment(text, null);
             }}
             className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
           >
@@ -745,8 +820,7 @@ export default function CommentsSection({
               const ok = await deleteCommentById(id);
               setDeleting(false);
               if (ok && typeof window !== "undefined") {
-                localStorage.setItem("pendingToast", "删除成功");
-                window.dispatchEvent(new Event("localToast"));
+                
               }
             }}
             className="rounded-md bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
