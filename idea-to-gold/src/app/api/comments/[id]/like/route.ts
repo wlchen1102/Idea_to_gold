@@ -1,3 +1,8 @@
+// Next.js Route Handler - 评论点赞接口：点赞与取消点赞
+// 功能与作用：
+// - 提供对单条评论的点赞与取消点赞能力
+// - 本次改动：在点赞时，将评论内容快照写入 comment_likes.comment_content 字段（无触发器）
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAdminEnvVars } from '@/lib/env'
@@ -25,10 +30,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const userId = authData?.user?.id || ''
     if (!userId) return NextResponse.json({ message: '未授权或登录过期' }, { status: 401 })
 
-    // 插入点赞，若已存在则忽略（幂等）
+    // 先获取评论内容，失败不阻塞点赞但不写入内容
+    let commentContent: string | null = null
+    try {
+      const { data: commentRow, error: commentErr } = await supabaseAdmin
+        .from('comments')
+        .select('content')
+        .eq('id', commentId)
+        .maybeSingle()
+
+      if (!commentErr && commentRow) {
+        commentContent = (commentRow as { content?: string | null }).content ?? null
+      }
+    } catch (_e) {
+      // 忽略评论内容获取错误，继续点赞流程
+      commentContent = null
+    }
+
+    // 插入点赞，若已存在则忽略（幂等）；在开发环境把评论内容快照写入 comment_content 字段
     const { error: insErr } = await supabaseAdmin
       .from('comment_likes')
-      .insert({ comment_id: commentId, user_id: userId })
+      .insert({ comment_id: commentId, user_id: userId, ...(commentContent !== null ? { comment_content: commentContent } : {}) })
 
     if (insErr) {
       const code = (insErr as { code?: string } | null)?.code || ''
