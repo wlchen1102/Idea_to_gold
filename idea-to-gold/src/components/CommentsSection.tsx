@@ -64,7 +64,7 @@ interface CommentNode extends CommentDTO {
 }
 
 // 每个父评论默认预览的回复数量
-const REPLY_PREVIEW_COUNT = 2;
+const REPLY_PREVIEW_COUNT = 0;
 
 // 新增：将节点视图组件提升为顶层，避免因父组件重渲染导致的子树重挂载，从而避免回复框反复 autoFocus 抢占焦点
 function NodeView({
@@ -232,14 +232,14 @@ function NodeView({
               />
             ))}
 
-            {/* 查看更多回复 - 默认只展示2条，超过时给出入口 */}
+            {/* 折叠/展开：默认展示2条，提供“查看全部回复（n）”与“收起全部回复”切换 */}
             {!isExpanded && node.replies.length > REPLY_PREVIEW_COUNT ? (
               <li className="list-none pl-0">
                 <button
                   onClick={() => setExpandedReplies((p) => ({ ...p, [node.id]: true }))}
                   className="group mt-1 inline-flex items-center gap-1 rounded px-2 py-1 text-[13px] text-[#3498db] hover:text-[#1d6fa5]"
                 >
-                  <span>查看更多回复</span>
+                  <span>查看全部回复（{node.replies.length}）</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -249,6 +249,27 @@ function NodeView({
                     className="h-4 w-4 transition-transform group-hover:translate-y-0.5"
                   >
                     <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </li>
+            ) : null}
+
+            {isExpanded && node.replies.length > REPLY_PREVIEW_COUNT ? (
+              <li className="list-none pl-0">
+                <button
+                  onClick={() => setExpandedReplies((p) => ({ ...p, [node.id]: false }))}
+                  className="group mt-1 inline-flex items-center gap-1 rounded px-2 py-1 text-[13px] text-[#3498db] hover:text-[#1d6fa5]"
+                >
+                  <span>收起全部回复</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4 transition-transform group-hover:-translate-y-0.5"
+                  >
+                    <path d="M6 15l6-6 6 6" />
                   </svg>
                 </button>
               </li>
