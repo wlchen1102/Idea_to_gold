@@ -301,7 +301,6 @@ export default function CommentsSection({
   const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
   // 新增：删除确认弹窗状态
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // 新增：本地可见的顶级评论数量（默认显示5条，每次+5）
   const [visibleRootCount, setVisibleRootCount] = useState<number>(5);
@@ -620,7 +619,7 @@ export default function CommentsSection({
     const old = likesMap[id] ?? { liked: false, likes: 0 };
     const optimisticLiked = !old.liked;
     const optimisticLikes = Math.max(0, old.likes + (optimisticLiked ? 1 : -1));
-    // 先做乐观更新
+    // 先做 optimistic 更新
     setLikesMap((prev) => ({ ...prev, [id]: { liked: optimisticLiked, likes: optimisticLikes } }));
 
     (async () => {
@@ -713,8 +712,43 @@ export default function CommentsSection({
         throw new Error(j?.error || j?.message || `发表评论失败（${res.status}）`);
       }
 
-      // 发表成功后，静默刷新第一页评论，并保留本地视图（不重置展开/可见数）
-      if (ideaId) await fetchComments(ideaId, false, true, true);
+      // 发表评论成功后不再触发任何立即 GET 请求（Solution A）
+      // 说明：前面已经完成本地状态与第一页缓存的更新，并清空了其余页缓存，
+      // 因而无需再静默刷新，避免产生「新增后立刻 GET」的网络回流。
+      // 如果未来需要做一致性校准，可基于“队列清空后再刷新”的策略做合并刷新。
+      // （此处故意留空）
+      const data = (await res.json().catch(() => null)) as { comment?: CommentDTO } | null;
+      const created = data?.comment;
+      // 使用服务端返回的数据替换临时评论，并更新本地与缓存（仅第一页），不立即请求网络
+      setItems((prev) => prev.map((c) => (c.id === tempId && created ? created : c)));
+      setLikesMap((prev) => {
+        const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
+        delete next[tempId];
+        if (created) {
+          next[created.id] = { liked: Boolean(created.current_user_liked), likes: Number(created.likes_count ?? 0) };
+        }
+        return next;
+      });
+      setPagination((prev) => ({ ...prev, total: (Number(prev.total) || 0) + 1 }));
+      if (ideaId) {
+        try {
+          const limit = pagination.limit || 20;
+          const cached = commentsCache.get(ideaId, limit, 0);
+          const base = cached?.comments ?? [];
+          const top = (created ?? tempComment);
+          const updatedList = [top, ...base].slice(0, limit);
+          const newTotal = (cached?.pagination.total ?? pagination.total ?? 0) + 1;
+          commentsCache.clearCreative(ideaId);
+          commentsCache.set(
+            ideaId,
+            { comments: updatedList, pagination: { limit, offset: 0, total: newTotal, hasMore: newTotal > updatedList.length } },
+            limit,
+            0
+          );
+        } catch (_e) {
+          // 忽略缓存写入异常
+        }
+      }
     } catch (err) {
       // 回滚临时评论
       setItems((prev) => prev.filter((c) => c.id !== tempId));
@@ -848,7 +882,8 @@ export default function CommentsSection({
       <Modal
         isOpen={!!confirmDeleteId}
         onClose={() => {
-          if (!deleting) setConfirmDeleteId(null);
+          // 不再依赖全局 deleting，允许直接关闭
+          setConfirmDeleteId(null);
         }}
       >
         <p className="text-[16px] sm:text-[18px] leading-7 text-gray-800">确定删除此评论？</p>
@@ -864,38 +899,115 @@ export default function CommentsSection({
             type="button"
             onClick={async () => {
               if (!confirmDeleteId) return;
-              setDeleting(true);
+              // 先响应：立即关闭弹窗，后台执行删除
+              const targetId = confirmDeleteId;
+              setConfirmDeleteId(null);
+
+              // 乐观更新：立刻从本地移除该评论及其所有子回复
+              const prevItemsSnapshot = items;
+              const prevLikesSnapshot = likesMap;
               try {
-                const supabase = requireSupabaseClient();
-                const sessionRes = await supabase.auth.getSession();
-                const token = sessionRes.data?.session?.access_token ?? "";
-                if (!token) throw new Error("请先登录");
-                const res = await fetch(`/api/comments/${encodeURIComponent(confirmDeleteId)}`, {
-                  method: 'DELETE',
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!res.ok) {
-                  const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
-                  throw new Error(j?.error || j?.message || `删除失败（${res.status}）`);
+                // 计算需要删除的所有ID（包含目标及其所有后代）
+                const idsToRemove = new Set<string>();
+                idsToRemove.add(targetId);
+                let added = true;
+                while (added) {
+                  added = false;
+                  for (const c of prevItemsSnapshot) {
+                    if (c.parent_comment_id && idsToRemove.has(c.parent_comment_id) && !idsToRemove.has(c.id)) {
+                      idsToRemove.add(c.id);
+                      added = true;
+                    }
+                  }
                 }
-                // 刷新评论
-                if (ideaId) await fetchComments(ideaId);
-                setConfirmDeleteId(null);
-              } catch (err) {
-                alert(err instanceof Error ? err.message : '删除失败');
-              } finally {
-                setDeleting(false);
+
+                // 应用本地移除
+                setItems(prev => prev.filter(c => !idsToRemove.has(c.id)));
+                setLikesMap(prev => {
+                  const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
+                  idsToRemove.forEach(id => { delete next[id]; });
+                  return next;
+                });
+                const removedCount = idsToRemove.size;
+                setPagination(prev => ({ ...prev, total: Math.max(0, (Number(prev.total) || 0) - removedCount) }));
+                if (ideaId) {
+                  try {
+                    const limit = pagination.limit || 20;
+                    const cached = commentsCache.get(ideaId, limit, 0);
+                    const base = (cached?.comments ?? prevItemsSnapshot).filter(c => !idsToRemove.has(c.id));
+                    const newTotal = Math.max(0, (cached?.pagination.total ?? pagination.total ?? 0) - removedCount);
+                    commentsCache.clearCreative(ideaId);
+                    commentsCache.set(
+                      ideaId,
+                      { comments: base.slice(0, limit), pagination: { limit, offset: 0, total: newTotal, hasMore: newTotal > base.length } },
+                      limit,
+                      0
+                    );
+                  } catch (_e) {
+                    // 忽略缓存写入异常
+                  }
+                }
+
+                // 将后端删除操作排入队列，确保串行执行（弹窗已关闭，此处 await 不影响 UI）
+                await enqueueDeletion(async () => {
+                  const supabase = requireSupabaseClient();
+                  const sessionRes = await supabase.auth.getSession();
+                  const token = sessionRes.data?.session?.access_token ?? "";
+                  if (!token) throw new Error("请先登录");
+
+                  const res = await fetch(`/api/comments?id=${encodeURIComponent(targetId)}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (!res.ok) {
+                    const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+                    throw new Error(j?.error || j?.message || `删除失败（${res.status}）`);
+                  }
+
+                  // 删除成功：不触发任何立即 GET（方案A）。
+                  // 本地状态与第一页缓存已在上文完成更新，其余页缓存已清空，后续访问其他页时再按需获取。
+                });
+              } catch (_err) {
+                // 回滚本地删除
+                setItems(prevItemsSnapshot);
+                setLikesMap(prevLikesSnapshot);
+                // 失败：使用全局 Toast 提示，并保持弹窗关闭，不打断用户操作
+                try {
+                  localStorage.setItem('pendingToast', '删除失败，请重试~');
+                  window.dispatchEvent(new Event('localToast'));
+                } catch (_e) {
+                  // ignore
+                }
               }
             }}
             className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-            disabled={deleting}
           >
-            {deleting ? '删除中…' : '确定删除'}
+            确定删除
           </button>
         </div>
       </Modal>
     </div>
   );
 }
+
+
+
+// 模块级：删除请求串行队列，保证多个删除任务按顺序一个个执行
+let __deleteQueue: Promise<void> = Promise.resolve();
+function enqueueDeletion(task: () => Promise<void>) {
+  const run = async () => {
+    try {
+      await task();
+    } catch (_e) {
+      // 任务内部已处理错误与回滚，这里吞掉异常，确保队列继续执行
+    }
+  };
+  const next = __deleteQueue.then(run, run);
+  __deleteQueue = next;
+  return next;
+}
+
+
+/* 删除队列定义已移至模块顶部，无需在组件后再次定义 */
 
 

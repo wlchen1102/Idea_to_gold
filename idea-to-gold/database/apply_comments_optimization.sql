@@ -155,3 +155,75 @@ WHERE routine_name = 'get_comments_with_likes';
 
 -- 优化完成提示
 SELECT 'Comments performance optimization completed successfully!' as status;
+
+
+-- 8. 删除路径优化（级联删除与关键索引）
+-- 8.1 为父子评论关系添加索引（部分索引，忽略 NULL）
+CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id
+ON comments(parent_comment_id)
+WHERE parent_comment_id IS NOT NULL;
+
+-- 8.2 确保点赞表已按 comment_id 建索引（你已有，再保险一次）
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id
+ON comment_likes(comment_id);
+
+-- 8.3 将 comments(parent_comment_id) 和 comment_likes(comment_id) 的外键改为 ON DELETE CASCADE
+-- 注意：需要动态查找并替换已有外键；在生产执行前请先在测试库验证
+
+DO $$
+DECLARE
+  fk_name text;
+BEGIN
+  -- comments.parent_comment_id 外键 → comments.id
+  SELECT tc.constraint_name INTO fk_name
+  FROM information_schema.table_constraints tc
+  JOIN information_schema.key_column_usage kcu
+    ON tc.constraint_name = kcu.constraint_name
+   AND tc.table_schema = kcu.table_schema
+   AND tc.table_name = kcu.table_name
+  WHERE tc.table_name = 'comments'
+    AND tc.constraint_type = 'FOREIGN KEY'
+    AND kcu.column_name = 'parent_comment_id';
+
+  IF fk_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE comments DROP CONSTRAINT %I', fk_name);
+  END IF;
+
+  EXECUTE 'ALTER TABLE comments
+           ADD CONSTRAINT comments_parent_comment_id_fkey
+           FOREIGN KEY (parent_comment_id)
+           REFERENCES comments(id)
+           ON DELETE CASCADE';
+END
+$$;
+
+DO $$
+DECLARE
+  fk_name text;
+BEGIN
+  -- comment_likes.comment_id 外键 → comments.id
+  SELECT tc.constraint_name INTO fk_name
+  FROM information_schema.table_constraints tc
+  JOIN information_schema.key_column_usage kcu
+    ON tc.constraint_name = kcu.constraint_name
+   AND tc.table_schema = kcu.table_schema
+   AND tc.table_name = kcu.table_name
+  WHERE tc.table_name = 'comment_likes'
+    AND tc.constraint_type = 'FOREIGN KEY'
+    AND kcu.column_name = 'comment_id';
+
+  IF fk_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE comment_likes DROP CONSTRAINT %I', fk_name);
+  END IF;
+
+  EXECUTE 'ALTER TABLE comment_likes
+           ADD CONSTRAINT comment_likes_comment_id_fkey
+           FOREIGN KEY (comment_id)
+           REFERENCES comments(id)
+           ON DELETE CASCADE';
+END
+$$;
+
+-- 8.4 更新统计信息
+ANALYZE comments;
+ANALYZE comment_likes;
