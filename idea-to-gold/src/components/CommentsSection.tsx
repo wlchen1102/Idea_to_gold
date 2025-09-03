@@ -188,7 +188,7 @@ function NodeView({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setReplyOpen((p) => ({ ...p, [node.id]: false }))}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-[14px] text-gray-700 hover:bg-gray-50"
               >
                 取消
               </button>
@@ -201,7 +201,7 @@ function NodeView({
                   setReplyOpen((p) => ({ ...p, [node.id]: false }));
                   submitComment(text, node.id);
                 }}
-                className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
+                className="rounded-lg bg-[#2ECC71] px-4 py-2 text-[14px] text-white hover:bg-[#27AE60]"
               >
                 发表回复
               </button>
@@ -798,7 +798,7 @@ export default function CommentsSection({
               setValue("");
               submitComment(text, null);
             }}
-            className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
+            className="rounded-lg bg-[#2ECC71] px-4 py-2 text-[14px] text-white hover:bg-[#27AE60]"
           >
             发表评论
           </button>
