@@ -56,7 +56,7 @@ interface CreateCommentResponse {
 
 // GET /api/comments?creative_id=xxx | ?project_id=xxx[&project_log_id=yyy]
 // - 支持三种目标：创意、产品(项目)、开发日志
-// - 当仅提供 project_id 时，默认只返回“产品评论”（即 project_log_id IS NULL）
+// - 使用优化的存储过程避免N+1查询问题，提升性能
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const search = request.nextUrl.searchParams
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // 可选分页参数（与旧实现兼容）
     const limitParam = search.get('limit')
     const offsetParam = search.get('offset')
-    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : null
+    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : 20
     const offset = offsetParam ? Math.max(parseInt(offsetParam, 10), 0) : 0
 
     // 获取环境变量
@@ -88,37 +88,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 构建动态查询
-    let query = supabase
-      .from('comments')
-      .select(
-        `id, content, author_id, creative_id, project_id, project_log_id, parent_comment_id, created_at,
-         profiles(nickname, avatar_url)`
-      )
-
-    if (creativeId) {
-      query = query.eq('creative_id', creativeId)
+    // 获取当前用户ID（如果有认证token）
+    let userId: string | null = null
+    if (includeLikes) {
+      const authHeader = request.headers.get('Authorization') || ''
+      if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7)
+        const { data: authData, error: authErr } = await supabase.auth.getUser(token)
+        if (!authErr && authData?.user?.id) {
+          userId = authData.user.id
+        }
+      }
     }
 
-    if (projectId && projectLogId) {
-      // 日志评论：同时匹配 project_id + project_log_id
-      query = query.eq('project_id', projectId).eq('project_log_id', projectLogId)
-    } else if (projectId) {
-      // 产品(项目)评论：仅匹配 project_id，并限定 project_log_id 为空
-      query = query.eq('project_id', projectId).is('project_log_id', null)
-    } else if (projectLogId) {
-      // 仅提供了 project_log_id 的情况（宽松支持）
-      query = query.eq('project_log_id', projectLogId)
-    }
+    // 使用优化的存储过程进行查询
+    const { data, error } = await supabase.rpc('get_comments_with_likes', {
+      p_creative_id: creativeId,
+      p_project_id: projectId,
+      p_project_log_id: projectLogId,
+      p_user_id: userId,
+      p_limit: limit,
+      p_offset: offset
+    })
 
-    // 排序与分页
-    query = query.order('created_at', { ascending: true })
-    if (limit !== null) {
-      const to = offset + (limit || 0) - 1
-      query = query.range(offset, Math.max(offset, to))
-    }
-
-    const { data, error } = await query
     if (error) {
       return NextResponse.json(
         { message: '查询评论失败', error: error.message } satisfies Partial<CommentsListResponse>,
@@ -126,61 +118,60 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const comments = (data || []) as unknown as CommentItem[]
-
-    // 可选的点赞统计逻辑（方案A：仅在 include_likes=1 时计算）
-    let resultComments: CommentItem[] = comments
-    if (includeLikes && comments.length > 0) {
-      const commentIds = comments.map((c) => c.id)
-
-      // 统计每条评论的点赞数量
-      const { data: likeRows, error: likesErr } = await supabase
-        .from('comment_likes')
-        .select('comment_id')
-        .in('comment_id', commentIds)
-
-      if (likesErr) {
-        return NextResponse.json(
-          { message: '查询点赞数据失败', error: likesErr.message },
-          { status: 500 }
-        )
-      }
-
-      const likeCountMap = new Map<string, number>()
-      for (const row of (likeRows || []) as Array<{ comment_id: string }>) {
-        likeCountMap.set(row.comment_id, (likeCountMap.get(row.comment_id) || 0) + 1)
-      }
-
-      // 当前用户是否点赞（若带有Authorization），失败则优雅降级为不返回 current_user_liked
-      let likedSet: Set<string> | null = null
-      const authHeader = request.headers.get('Authorization') || ''
-      const hasBearer = authHeader.startsWith('Bearer ')
-      if (hasBearer) {
-        const token = authHeader.slice(7)
-        const { data: authData, error: authErr } = await supabase.auth.getUser(token)
-        const userId = authData?.user?.id || null
-        if (!authErr && userId) {
-          const { data: myLikeRows, error: myLikesErr } = await supabase
-            .from('comment_likes')
-            .select('comment_id')
-            .eq('user_id', userId)
-            .in('comment_id', commentIds)
-
-          if (!myLikesErr) {
-            likedSet = new Set<string>((myLikeRows || []).map((r: { comment_id: string }) => r.comment_id))
-          }
+    // 转换存储过程结果为期望的格式
+    const comments: CommentItem[] = (data || []).map((row: any) => {
+      const comment: CommentItem = {
+        id: row.id,
+        content: row.content,
+        author_id: row.author_id,
+        creative_id: row.creative_id,
+        project_id: row.project_id,
+        project_log_id: row.project_log_id,
+        parent_comment_id: row.parent_comment_id,
+        created_at: row.created_at,
+        profiles: {
+          nickname: row.nickname || null,
+          avatar_url: row.avatar_url || null
         }
       }
 
-      resultComments = comments.map((c) => ({
-        ...c,
-        likes_count: likeCountMap.get(c.id) ?? 0,
-        ...(likedSet ? { current_user_liked: likedSet.has(c.id) } : {}),
-      }))
+      // 如果包含点赞统计，添加相关字段
+      if (includeLikes) {
+        comment.likes_count = Number(row.likes_count) || 0
+        comment.current_user_liked = Boolean(row.current_user_liked)
+      }
+
+      return comment
+    })
+
+    // 统计总数：用于前端显示“全部评论数”与是否还有更多
+    let countBuilder = supabase
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+
+    if (creativeId) {
+      countBuilder = countBuilder.eq('creative_id', creativeId)
+    } else if (projectId && projectLogId) {
+      countBuilder = countBuilder.eq('project_id', projectId).eq('project_log_id', projectLogId)
+    } else if (projectId) {
+      // 仅项目层级评论（不含日志）
+      // 使用 is(null) 区分
+      countBuilder = countBuilder.eq('project_id', projectId).is('project_log_id', null)
     }
 
+    const { count: totalCount, error: countErr } = await countBuilder
+    if (countErr) {
+      return NextResponse.json(
+        { message: '查询评论总数失败', error: countErr.message } satisfies Partial<CommentsListResponse>,
+        { status: 500 }
+      )
+    }
+
+    const total = totalCount ?? 0
+    const hasMore = offset + comments.length < total
+
     const response = NextResponse.json(
-      { message: '获取评论成功', comments: resultComments } satisfies Partial<CommentsListResponse>,
+      { message: '获取评论成功', comments, pagination: { limit, offset, total, hasMore } } satisfies Partial<CommentsListResponse>,
       { status: 200 }
     )
 

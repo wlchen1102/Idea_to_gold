@@ -293,7 +293,8 @@ idea-to-gold/
 │  ├─ components/                # 可复用的 React 组件
 │  ├─ lib/                       # 工具函数、SDK 封装（如 Supabase 客户端）
 │  └─ data/                      # 静态数据或类型（非机密）
-├─ public/                       # 静态资源（图片、favicon 等）
+├─ database/                     # 数据库相关文件
+├─public/                        # 静态资源（图片、favicon 等）
 ├─ .dev.vars                     # 本地开发环境变量（切勿提交到 Git）
 ├─ .gitignore                    # 必须包含 .dev.vars
 ├─ next.config.ts                # Next.js 配置（确保未设置 output: 'export'）
