@@ -1,5 +1,8 @@
-// 账户设置页面
+// 页面：账户设置（/settings/account）
+// 作用：提供用户在客户端编辑基础资料（昵称、头像预览、个人简介）；通过 Edge API 读取/写入；符合 Cloudflare Pages + Next.js Edge Runtime 架构。
 "use client";
+
+export const runtime = 'edge';
 
 import { useEffect, useRef, useState } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
