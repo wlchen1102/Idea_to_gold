@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { cache, getCacheKey, CACHE_DURATION } from "@/lib/cache";
 
-type TabType = "createdIdeas" | "supportedIdeas" | "developedProjects";
+type TabType = "createdIdeas" | "supportedIdeas";
 
 // 用户资料接口
 interface UserProfile {
@@ -51,7 +51,7 @@ export default function ProfilePage() {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'my-creatives') return 'createdIdeas';
     if (tabParam === 'supported-creatives') return 'supportedIdeas';
-    if (tabParam === 'createdIdeas' || tabParam === 'supportedIdeas' || tabParam === 'developedProjects') {
+    if (tabParam === 'createdIdeas' || tabParam === 'supportedIdeas') {
       return tabParam as TabType;
     }
     return 'createdIdeas'; // 默认值
@@ -518,10 +518,7 @@ export default function ProfilePage() {
                   <div className="text-2xl font-bold text-gray-900">15</div>
                   <div className="text-sm text-gray-500">我的创意</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">3</div>
-                  <div className="text-sm text-gray-500">我的项目</div>
-                </div>
+                {/* 第三个统计项（原“我的项目”）已下线 */}
               </div>
             </div>
           </div>
@@ -554,17 +551,8 @@ export default function ProfilePage() {
               >
                 支持的创意
               </button>
-              <button
-                onClick={() => handleTabChange("developedProjects")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === "developedProjects"
-                    ? "border-emerald-500 text-emerald-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                aria-current={activeTab === "developedProjects" ? "page" : undefined}
-              >
-                我的项目
-              </button>
+              {/* 第三个 Tab 已移除 */}
+              {/* Tab 已移除 */}
             </nav>
           </div>
 
@@ -743,77 +731,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {activeTab === "developedProjects" && (
-              <div>
-                {/* 轻量内联 ProjectCard，只用于个人主页演示复用样式 */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div>
-                      <h3 className="text-[18px] font-semibold text-[#2c3e50]">会议纪要自动化助手</h3>
-                      <div className="mt-3 flex items-center gap-3">
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 border-green-200">开发中</span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-gray-600">将会议录音转写并自动抽取行动项，支持与团队协作工具同步。</p>
-                      <div className="mt-4 flex items-start justify-between gap-3">
-                        <div className="flex-1 border-l-4 border-gray-200 pl-3">
-                          <Link href="/idea/1" className="text-[13px] text-[#3498db] hover:underline">
-                            源于创意：AI会议纪要助手
-                          </Link>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-4 text-[12px] text-gray-500">
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
-                            1280
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" /></svg>
-                            312
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-5">
-                      <Link href="/projects/1" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
-                        管理项目
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div>
-                      <h3 className="text-[18px] font-semibold text-[#2c3e50]">智能行动项追踪器</h3>
-                      <div className="mt-3 flex items-center gap-3">
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 border-gray-200">已发布</span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-gray-600">基于NLP的行动项归因与提醒工具，帮助团队闭环推进任务。</p>
-                      <div className="mt-4 flex items-start justify-between gap-3">
-                        <div className="flex-1 border-l-4 border-gray-200 pl-3">
-                          <Link href="/idea/2" className="text-[13px] text-[#3498db] hover:underline">
-                            源于创意：行动项提取与提醒
-                          </Link>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-4 text-[12px] text-gray-500">
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
-                            640
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" /></svg>
-                            120
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-5">
-                      <Link href="/projects/2" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
-                        管理项目
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            {/* 第三个内容面板已下线 */}          </div>
         </div>
       </div>
     </div>
