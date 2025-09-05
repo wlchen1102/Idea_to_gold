@@ -2,16 +2,16 @@
 // 功能：删除指定项目的某条动态日志；仅作者本人可删除；使用 Supabase 服务端权限执行硬删除
 export const runtime = 'edge'
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getEnvVars } from '@/lib/env';
 
 // 删除项目动态
-export async function DELETE(request: NextRequest, { params }: { params: { id: string; logId: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string; logId: string }> }) {
   try {
-    const resolvedParams = await params;
-    const projectId = resolvedParams.id;
-    const logId = resolvedParams.logId;
+    const awaitedParams = await params;
+    const projectId = awaitedParams.id;
+    const logId = awaitedParams.logId;
 
     // 从请求头获取 JWT 令牌
     const authHeader = request.headers.get('authorization');

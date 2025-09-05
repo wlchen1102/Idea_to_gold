@@ -36,6 +36,16 @@ interface CommentItem {
   current_user_liked?: boolean
 }
 
+// 归一化后的用户信息（用于避免 Supabase 关联选择在 TS 中被推断为数组的情况）
+type ProfileCompact = { nickname: string | null; avatar_url: string | null }
+
+// 类型守卫：判断未知值是否为 ProfileCompact 对象
+function isProfileCompact(value: unknown): value is ProfileCompact {
+  if (!value || typeof value !== 'object') return false
+  const obj = value as Record<string, unknown>
+  return 'nickname' in obj && 'avatar_url' in obj
+}
+
 interface CommentsListResponse {
   message: string
   comments?: CommentItem[]
@@ -52,6 +62,23 @@ interface CreateCommentResponse {
   message: string
   comment?: CommentItem | null
   error?: string
+}
+
+// 存储过程返回的行类型（用于类型安全）
+interface RpcCommentRow {
+  id: string
+  content: string
+  author_id: string
+  creative_id: string | null
+  project_id: string | null
+  project_log_id: string | null
+  parent_comment_id: string | null
+  created_at: string
+  nickname?: string | null
+  avatar_url?: string | null
+  // likes_count 可能为 number 或字符串（取决于数据库聚合返回类型），也可能为 null
+  likes_count?: number | string | null
+  current_user_liked?: boolean | null
 }
 
 // GET /api/comments?creative_id=xxx | ?project_id=xxx[&project_log_id=yyy]
@@ -80,24 +107,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 100) : 20
     const offset = offsetParam ? Math.max(parseInt(offsetParam, 10), 0) : 0
 
-    // 获取环境变量
+    // 获取环境变量与 Supabase 客户端
     const { supabaseUrl, serviceRoleKey } = getEnvVars()
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
-    }
-
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 获取当前用户ID（如果有认证token）
+    // 当前用户ID（用于计算是否点赞）
     let userId: string | null = null
-    if (includeLikes) {
-      const authHeader = request.headers.get('Authorization') || ''
-      if (authHeader.startsWith('Bearer ')) {
-        const token = authHeader.slice(7)
-        const { data: authData, error: authErr } = await supabase.auth.getUser(token)
-        if (!authErr && authData?.user?.id) {
-          userId = authData.user.id
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7)
+      try {
+        const { data: userData, error: authError } = await supabase.auth.getUser(token)
+        if (!authError && userData?.user?.id) {
+          userId = userData.user.id
         }
+      } catch (_e) {
+        // 忽略认证错误，仍可获取公共评论
       }
     }
 
@@ -119,7 +144,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // 转换存储过程结果为期望的格式
-    const comments: CommentItem[] = (data || []).map((row: any) => {
+    const comments: CommentItem[] = (data || []).map((row: RpcCommentRow) => {
       const comment: CommentItem = {
         id: row.id,
         content: row.content,
@@ -137,7 +162,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       // 如果包含点赞统计，添加相关字段
       if (includeLikes) {
-        comment.likes_count = Number(row.likes_count) || 0
+        comment.likes_count = Number(row.likes_count ?? 0)
         comment.current_user_liked = Boolean(row.current_user_liked)
       }
 
@@ -159,200 +184,201 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       countBuilder = countBuilder.eq('project_id', projectId).is('project_log_id', null)
     }
 
-    const { count: totalCount, error: countErr } = await countBuilder
-    if (countErr) {
-      return NextResponse.json(
-        { message: '查询评论总数失败', error: countErr.message } satisfies Partial<CommentsListResponse>,
-        { status: 500 }
-      )
-    }
+    const { count } = await countBuilder
+    const hasMore = typeof count === 'number' ? offset + comments.length < count : false
 
-    const total = totalCount ?? 0
-    const hasMore = offset + comments.length < total
-
-    const response = NextResponse.json(
-      { message: '获取评论成功', comments, pagination: { limit, offset, total, hasMore } } satisfies Partial<CommentsListResponse>,
-      { status: 200 }
+    return NextResponse.json(
+      {
+        message: '查询成功',
+        comments,
+        pagination: { limit, offset, total: count ?? undefined, hasMore }
+      } satisfies CommentsListResponse,
+      { status: 200, headers: { 'Cache-Control': 'no-store' } }
     )
-
-    // 添加缓存控制头，让浏览器和CDN缓存30秒
-    response.headers.set('Cache-Control', 'public, max-age=30, s-maxage=30')
-    // 当包含个性化字段时，避免缓存污染
-    if (includeLikes) {
-      response.headers.set('Vary', 'Authorization')
-    }
-
-    return response
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'unknown error'
-    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
+    return NextResponse.json(
+      { message: '服务器内部错误', error: (e as Error).message } satisfies Partial<CommentsListResponse>,
+      { status: 500 }
+    )
   }
 }
 
-// POST /api/comments - 发表新评论（需要登录）
-// 请求体：{ content: string, creative_id?: string, project_id?: string, project_log_id?: string, parent_comment_id?: string }
+// 发表评论
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 获取环境变量
+    const body = await request.json()
+
+    const targetIds = [body.creative_id, body.project_id, body.project_log_id].filter(Boolean)
+    if (targetIds.length !== 1) {
+      return NextResponse.json(
+        { message: '参数错误：三种目标ID中必须且只能出现一个', error: '参数错误' } satisfies Partial<CreateCommentResponse>,
+        { status: 400 }
+      )
+    }
+
+    if (!body.content || typeof body.content !== 'string' || !body.content.trim()) {
+      return NextResponse.json(
+        { message: '评论内容不能为空', error: '内容为空' } satisfies Partial<CreateCommentResponse>,
+        { status: 400 }
+      )
+    }
+
     const { supabaseUrl, serviceRoleKey } = getEnvVars()
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
-    }
-
-    const authHeader = request.headers.get('Authorization') || ''
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-    if (!token) {
-      return NextResponse.json({ message: '缺少认证令牌，请先登录' }, { status: 401 })
-    }
-
     const supabase = createClient(supabaseUrl, serviceRoleKey)
-    const { data: authData, error: authErr } = await supabase.auth.getUser(token)
-    const userId = authData?.user?.id || ''
-    if (authErr || !userId) {
-      return NextResponse.json({ message: '访问令牌无效或已过期' }, { status: 401 })
-    }
 
-    // 解析请求体
-    const body = (await request.json().catch(() => null)) as {
-      content?: string
-      creative_id?: string
-      project_id?: string
-      project_log_id?: string
-      parent_comment_id?: string | null
-    } | null
-
-    const rawContent = body?.content
-    const content = typeof rawContent === 'string' ? rawContent.trim() : ''
-    const creativeId = body?.creative_id?.trim() || null
-    const projectId = body?.project_id?.trim() || null
-    const projectLogId = body?.project_log_id?.trim() || null
-    const parentId = (body?.parent_comment_id ?? null) as string | null
-
-    if (!content) {
+    // 鉴权：必须登录
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { message: '缺少必填字段：content' } satisfies Partial<CreateCommentResponse>,
-        { status: 400 }
+        { message: '未登录或令牌无效', error: '未登录' } satisfies Partial<CreateCommentResponse>,
+        { status: 401 }
       )
     }
 
-    // 构造插入对象：满足数据库三种互斥组合
-    const insertPayload: Record<string, unknown> = {
-      content,
+    const token = authHeader.substring(7)
+    const { data: userData, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !userData?.user?.id) {
+      return NextResponse.json(
+        { message: '无效的认证信息', error: authError?.message ?? '无效认证' } satisfies Partial<CreateCommentResponse>,
+        { status: 401 }
+      )
+    }
+
+    const userId = userData.user.id
+
+    // 构造插入行，严格区分三种目标（满足数据库CHECK约束）
+    const insertRow: {
+      content: string
+      author_id: string
+      creative_id: string | null
+      project_id: string | null
+      project_log_id: string | null
+    } = {
+      content: body.content.trim(),
       author_id: userId,
+      creative_id: null,
+      project_id: null,
+      project_log_id: null
     }
 
-    if (creativeId) {
-      // 创意评论
-      insertPayload.creative_id = creativeId
-    } else if (projectId && projectLogId) {
-      // 开发日志评论
-      insertPayload.project_id = projectId
-      insertPayload.project_log_id = projectLogId
-    } else if (projectId) {
-      // 产品(项目)评论
-      insertPayload.project_id = projectId
-    } else {
-      return NextResponse.json(
-        { message: '缺少评论目标ID：请提供 creative_id 或 project_id[/project_log_id]' } satisfies Partial<CreateCommentResponse>,
-        { status: 400 }
-      )
+    if (body.creative_id) {
+      insertRow.creative_id = String(body.creative_id)
+    } else if (body.project_id && body.project_log_id) {
+      insertRow.project_id = String(body.project_id)
+      insertRow.project_log_id = String(body.project_log_id)
+    } else if (body.project_id) {
+      insertRow.project_id = String(body.project_id)
     }
 
-    if (parentId) {
-      insertPayload.parent_comment_id = parentId
-    }
-
-    const { data, error } = await supabase
+    const { data: inserted, error: insertError } = await supabase
       .from('comments')
-      .insert(insertPayload)
+      .insert(insertRow)
       .select(
         `id, content, author_id, creative_id, project_id, project_log_id, parent_comment_id, created_at,
-         profiles(nickname, avatar_url)`
+         profiles:profiles!comments_author_id_fkey ( nickname, avatar_url )`
       )
       .single()
 
-    if (error) {
+    if (insertError) {
       return NextResponse.json(
-        { message: '发表评论失败', error: error.message } satisfies Partial<CreateCommentResponse>,
+        { message: '发表评论失败', error: insertError.message } satisfies Partial<CreateCommentResponse>,
         { status: 500 }
       )
     }
 
-    const created = (data || null) as unknown as CommentItem | null
+    // 归一化 Supabase 关联返回的 profiles（可能是对象或数组）
+    let normalizedProfile: ProfileCompact | null = null
+    const pUnknown: unknown = (inserted as { profiles?: unknown } | null)?.profiles ?? null
+    if (Array.isArray(pUnknown)) {
+      const first = pUnknown[0]
+      if (isProfileCompact(first)) {
+        normalizedProfile = {
+          nickname: first.nickname ?? null,
+          avatar_url: first.avatar_url ?? null
+        }
+      }
+    } else if (isProfileCompact(pUnknown)) {
+      normalizedProfile = {
+        nickname: pUnknown.nickname ?? null,
+        avatar_url: pUnknown.avatar_url ?? null
+      }
+    }
+
+    const newComment: CommentItem = {
+      id: inserted.id,
+      content: inserted.content,
+      author_id: inserted.author_id,
+      creative_id: inserted.creative_id,
+      project_id: inserted.project_id,
+      project_log_id: inserted.project_log_id,
+      parent_comment_id: inserted.parent_comment_id,
+      created_at: inserted.created_at,
+      profiles: normalizedProfile
+    }
+
     return NextResponse.json(
-      { message: '发表成功', comment: created } satisfies CreateCommentResponse,
+      { message: '发表成功', comment: newComment } satisfies CreateCommentResponse,
       { status: 201 }
     )
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'unknown error'
-    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
+    return NextResponse.json(
+      { message: '服务器内部错误', error: (e as Error).message } satisfies Partial<CreateCommentResponse>,
+      { status: 500 }
+    )
   }
 }
 
-// DELETE /api/comments?id=xxx - 删除单条评论（仅作者可删）
+// 删除评论（仅作者本人）
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
-    const id = request.nextUrl.searchParams.get('id')?.trim() || ''
-    if (!id) {
-      return NextResponse.json({ message: '缺少必填参数：id' }, { status: 400 })
+    const search = request.nextUrl.searchParams
+    const commentId = search.get('id')?.trim()
+    if (!commentId) {
+      return NextResponse.json({ message: '缺少评论ID' }, { status: 400 })
     }
 
-    // 获取环境变量
     const { supabaseUrl, serviceRoleKey } = getEnvVars()
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 })
-    }
-
-    const authHeader = request.headers.get('Authorization') || ''
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-    if (!token) {
-      return NextResponse.json({ message: '缺少认证令牌，请先登录' }, { status: 401 })
-    }
-
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 验证 token，获取 userId
-    const { data: authData, error: authErr } = await supabase.auth.getUser(token)
-    const userId = authData?.user?.id || ''
-    if (authErr || !userId) {
-      return NextResponse.json({ message: '访问令牌无效或已过期' }, { status: 401 })
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: '未登录或令牌无效' }, { status: 401 })
     }
 
-    // 确认评论存在并且属于当前用户
-    const { data: row, error: qErr } = await supabase
+    const token = authHeader.substring(7)
+    const { data: userData, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !userData?.user?.id) {
+      return NextResponse.json({ message: '无效的认证信息' }, { status: 401 })
+    }
+
+    const userId = userData.user.id
+
+    // 确认评论存在且为当前用户所写
+    const { data: comment, error: fetchError } = await supabase
       .from('comments')
       .select('id, author_id')
-      .eq('id', id)
-      .maybeSingle()
+      .eq('id', commentId)
+      .single()
 
-    if (qErr) {
-      return NextResponse.json({ message: '查询评论失败', error: qErr.message }, { status: 500 })
+    if (fetchError || !comment) {
+      return NextResponse.json({ message: '评论不存在' }, { status: 404 })
     }
 
-    if (!row) {
-      return NextResponse.json({ message: '评论不存在或已被删除' }, { status: 404 })
+    if (comment.author_id !== userId) {
+      return NextResponse.json({ message: '只有作者可以删除自己的评论' }, { status: 403 })
     }
 
-    if ((row as { author_id: string }).author_id !== userId) {
-      return NextResponse.json({ message: '无权限删除他人评论' }, { status: 403 })
-    }
-
-    // 允许删除，即使存在子回复（交由数据库外键策略决定级联或拒绝）
-    const { error: delErr } = await supabase
+    const { error: delError } = await supabase
       .from('comments')
       .delete()
-      .eq('id', id)
+      .eq('id', commentId)
 
-    if (delErr) {
-      const msg = (delErr as unknown as { message?: string }).message || ''
-      return NextResponse.json({ message: '删除失败', error: msg || 'unknown' }, { status: 500 })
+    if (delError) {
+      return NextResponse.json({ message: '删除失败', error: delError.message }, { status: 500 })
     }
 
     return NextResponse.json({ message: '删除成功' }, { status: 200 })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'unknown error'
-    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 })
+    return NextResponse.json({ message: '服务器内部错误', error: (e as Error).message }, { status: 500 })
   }
 }

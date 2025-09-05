@@ -1,3 +1,5 @@
+// 我的项目详情 API 路由（Edge Runtime）
+// 功能：获取/更新当前登录用户的指定项目详情；校验 Authorization 令牌并使用 service_role 访问数据库；仅返回本页所需字段
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getEnvVars } from '@/lib/env';

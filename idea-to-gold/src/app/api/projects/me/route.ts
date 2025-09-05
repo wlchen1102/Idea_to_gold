@@ -11,6 +11,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getEnvVars } from '@/lib/env'
 
+// 关联创意的精简类型（避免 any）
+type CreativeCompact = { id: string; title: string; slug: string | null }
+
+// Supabase 查询返回的项目行（仅声明我们会用到的字段）
+interface ProjectRow {
+  id: string
+  name: string
+  description: string | null
+  status: string
+  created_at: string
+  updated_at: string
+  // 关联的创意，可能被推断为对象或数组，使用 unknown 后续运行时判定
+  creative?: unknown
+}
+
+// 类型守卫：判断是否为 CreativeCompact（最小字段）
+function isCreativeCompact(val: unknown): val is CreativeCompact {
+  if (!val || typeof val !== 'object') return false
+  const o = val as Record<string, unknown>
+  return 'id' in o && 'title' in o && 'slug' in o
+}
+
 // GET /api/projects/me - 获取当前用户的项目列表
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -62,20 +84,42 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // 转换数据格式以匹配前端期望的结构
-    const formattedProjects = (projects || []).map(project => ({
-      id: project.id,
-      name: project.name,
-      status: getStatusDisplayName(project.status),
-      intro: project.description,
-      fromIdeaTitle: project.creative?.title || '未知创意',
-      fromIdeaHref: project.creative?.slug ? `/creatives/${project.creative.slug}` : '#',
-      createdAt: project.created_at,
-      updatedAt: project.updated_at,
-      // 注意：views 和 supports 需要从其他表获取，这里先设为0
-      // 后续可以通过关联查询或单独的统计表来获取真实数据
-      views: 0,
-      supports: 0
-    }))
+    const formattedProjects = ((projects ?? []) as ProjectRow[]).map((project: ProjectRow) => {
+      // 归一化 creative（可能为对象或数组）
+      let creative: CreativeCompact | null = null
+      const cUnknown = project.creative ?? null
+      if (Array.isArray(cUnknown)) {
+        const first = cUnknown[0]
+        if (isCreativeCompact(first)) {
+          creative = {
+            id: String(first.id),
+            title: String(first.title),
+            slug: first.slug ? String(first.slug) : null
+          }
+        }
+      } else if (isCreativeCompact(cUnknown)) {
+        creative = {
+          id: String(cUnknown.id),
+          title: String(cUnknown.title),
+          slug: cUnknown.slug ? String(cUnknown.slug) : null
+        }
+      }
+
+      return {
+        id: project.id,
+        name: project.name,
+        status: getStatusDisplayName(project.status),
+        intro: project.description,
+        fromIdeaTitle: creative?.title ?? '未知创意',
+        fromIdeaHref: creative?.slug ? `/creatives/${creative.slug}` : '#',
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        // 注意：views 和 supports 需要从其他表获取，这里先设为0
+        // 后续可以通过关联查询或单独的统计表来获取真实数据
+        views: 0,
+        supports: 0
+      }
+    })
 
     return NextResponse.json({
       success: true,

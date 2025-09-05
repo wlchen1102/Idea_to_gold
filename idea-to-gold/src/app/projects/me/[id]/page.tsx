@@ -10,7 +10,8 @@
 // 声明允许cloudflare将动态页面部署到‘边缘环境’上
 export const runtime = 'edge';
 import Link from "next/link";
-import React, { useState, use, useEffect } from "react";
+import React, { useState, use, useEffect, useCallback } from "react";
+import Image from "next/image";
 import Breadcrumb from "@/components/Breadcrumb";
 import Modal from "@/components/Modal";
 import TextInput from "@/components/ui/TextInput";
@@ -21,6 +22,110 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 type PageParams = { id: string };
 type PageProps = { params: Promise<PageParams> };
 
+// 最小必要的作者信息类型
+type AuthorInfo = {
+  id: string | null;
+  nickname: string | null;
+  avatar_url: string | null;
+};
+
+// 增加：创意的精简类型与归一化工具（Supabase 关联结果可能为对象或数组）
+type CreativeCompact = { id: string; title: string | null };
+
+// 新增：通用对象类型守卫（避免使用 as）
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === 'object' && x !== null;
+}
+
+// 安全的 CreativeCompact 类型守卫
+function isCreativeCompact(x: unknown): x is CreativeCompact {
+  if (!isRecord(x)) return false;
+  const id = x.id;
+  const title = x.title;
+  const isIdOk = typeof id === 'string';
+  const isTitleOk = title === null || typeof title === 'string' || typeof title === 'undefined';
+  return isIdOk && isTitleOk;
+}
+
+// 归一化 creatives 字段：后端可能返回对象或数组
+function normalizeCreative(input: unknown): CreativeCompact | null {
+  if (!input) return null;
+  if (isCreativeCompact(input)) return input;
+  if (Array.isArray(input)) {
+    const first = input.find(isCreativeCompact);
+    return first ?? null;
+  }
+  return null;
+}
+
+
+
+// 归一化作者信息
+function normalizeAuthorInfo(input: unknown): AuthorInfo {
+  if (!isRecord(input)) return { id: null, nickname: null, avatar_url: null };
+  const id = typeof input.id === 'string' ? input.id : null;
+  const nickname = typeof input.nickname === 'string' ? input.nickname : null;
+  const avatar_url = typeof input.avatar_url === 'string' ? input.avatar_url : null;
+  return { id, nickname, avatar_url };
+}
+
+// 归一化项目数据（仅当前页面所需字段）
+function normalizeProjectResponse(input: unknown): ProjectData | null {
+  if (!isRecord(input)) return null;
+  const id = input.id;
+  if (typeof id !== 'string') return null;
+  const title = typeof input.title === 'string' ? input.title : (typeof input.name === 'string' ? input.name : null);
+  const name = typeof input.name === 'string' ? input.name : undefined;
+  const description = typeof input.description === 'string' ? input.description : undefined;
+  const status = typeof input.status === 'string' ? input.status : undefined;
+  const creative_id = typeof input.creative_id === 'string' ? input.creative_id : undefined;
+  const creatives = 'creatives' in input ? input['creatives'] : undefined;
+  return { id, title, name, description, status, creative_id, creatives };
+}
+
+// 归一化日志列表响应
+function normalizeLogsResponse(input: unknown): ProjectLog[] {
+  if (!isRecord(input)) return [];
+  const arr = Array.isArray(input.logs) ? input.logs : [];
+  const result: ProjectLog[] = [];
+  for (const item of arr) {
+    if (!isRecord(item)) continue;
+    const id = typeof item.id === 'string' ? item.id : null;
+    const content = typeof item.content === 'string' ? item.content : null;
+    const created_at = typeof item.created_at === 'string' ? item.created_at : null;
+    const author_id = typeof item.author_id === 'string' ? item.author_id : null;
+    const author = normalizeAuthorInfo(item.author);
+    const can_delete = typeof item.can_delete === 'boolean' ? item.can_delete : false;
+    if (id && content && created_at && author_id) {
+      result.push({ id, content, created_at, author_id, author, can_delete });
+    }
+  }
+  return result;
+}
+
+// 项目动态（日志）类型定义（与 /api/projects/[id]/logs 对齐）
+export type ProjectLog = {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  author: AuthorInfo;
+  can_delete: boolean;
+};
+
+// 项目数据最小必要类型（仅包含本页使用到的字段）
+export type ProjectData = {
+  id: string;
+  title?: string | null;
+  name?: string | null;
+  description?: string | null;
+  status?: string | null;
+  // 来自后端 /api/projects/me/[id] 的字段
+  creative_id?: string | null;
+  // 关联查询的创意对象，可能是对象或数组，这里用 unknown 并在运行时归一化
+  creatives?: unknown;
+};
+
 function Avatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   const initials = name
     .trim()
@@ -30,7 +135,7 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }
     .join("")
     .toUpperCase();
   return avatarUrl ? (
-    <img src={avatarUrl} alt={name} className="h-10 w-10 rounded-full object-cover" />
+    <Image src={avatarUrl} alt={name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
   ) : (
     <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ecf0f1] text-[#2c3e50] text-sm font-semibold">
       {initials}
@@ -87,15 +192,15 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   const { id } = use(params); // 使用 React.use() 来unwrap Promise
 
   // 项目数据状态
-  const [projectData, setProjectData] = useState<any>(null);
+  const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // 项目状态管理（从API获取后设置）
   const [projectStatus, setProjectStatus] = useState<ProjectStatus>("planning");
   
-  // 获取项目数据
-  const fetchProjectData = async () => {
+  // 获取项目数据（useCallback 包装，保证依赖稳定）
+  const fetchProjectData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -126,11 +231,16 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
       }
       
       const data = await response.json();
-      setProjectData(data.project);
+      const normalized = normalizeProjectResponse(data?.project);
+      if (!normalized) {
+        setError('返回数据格式不正确');
+        return;
+      }
+      setProjectData(normalized);
       
       // 初始化编辑状态
-      setEditName(data.project.title || data.project.name || '');
-      setEditDescription(data.project.description || '');
+      setEditName(normalized.title || normalized.name || '');
+      setEditDescription(normalized.description || '');
       
       // 根据项目状态设置对应的状态值
       const statusMap: Record<string, ProjectStatus> = {
@@ -139,7 +249,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
         'testing': 'internalTesting',
         'published': 'released'
       };
-      setProjectStatus(statusMap[data.project.status] || 'planning');
+      setProjectStatus(statusMap[normalized.status ?? ''] || 'planning');
       
     } catch (err) {
       console.error('获取项目数据失败:', err);
@@ -147,39 +257,41 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+  
+  // 获取项目日志（useCallback 包装）
+  const fetchProjectLogs = useCallback(async () => {
+    try {
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.log('未登录，无法获取项目日志');
+        return;
+      }
+      
+      const response = await fetch(`/api/projects/${id}/logs`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const logs = normalizeLogsResponse(data);
+        setProjectLogs(logs);
+      } else {
+        console.error('获取项目日志失败');
+      }
+    } catch (error) {
+      console.error('获取项目日志时出错:', error);
+    }
+  }, [id]);
   
   useEffect(() => {
-    const fetchProjectLogs = async () => {
-      try {
-        const supabase = requireSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.access_token) {
-          console.log('未登录，无法获取项目日志');
-          return;
-        }
-        
-        const response = await fetch(`/api/projects/${id}/logs`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setProjectLogs(data.logs || []);
-        } else {
-          console.error('获取项目日志失败');
-        }
-      } catch (error) {
-        console.error('获取项目日志时出错:', error);
-      }
-    };
-    
     fetchProjectData();
     fetchProjectLogs();
-  }, [id]);
+  }, [fetchProjectData, fetchProjectLogs]);
   
   // 新增：简单的发布状态控制（用于演示已发布页面布局）
   const [status, setStatus] = useState('draft'); // 改为 'draft' 可查看原布局
@@ -196,7 +308,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   // 项目日志功能状态
   const [logContent, setLogContent] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
-  const [projectLogs, setProjectLogs] = useState<any[]>([]);
+  const [projectLogs, setProjectLogs] = useState<ProjectLog[]>([]);
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
   
   // 新增：删除弹窗状态与目标日志
@@ -213,11 +325,25 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   // 新增：评价格输入的本地状态（仅用于演示，不做实际提交）
   const [reviewText, setReviewText] = useState('');
   // 新增：模拟用户评价列表数据（按时间倒序排列）
-  const mockReviews = [
+  type Review = { user: string; date: string; rating: string; content: string };
+  const mockReviews: Review[] = [
     { user: 'Cindy', date: '1 天前', rating: '★★★★☆', content: '多端同步很方便，希望尽快支持会议模板。' },
     { user: 'Bob', date: '3 天前', rating: '★★★★★', content: '自动生成行动项太省心了！' },
     { user: 'Alice', date: '1 周前', rating: '★★★★☆', content: '很好用，语音转写很准确。' },
   ];
+  const [localReviews, setLocalReviews] = useState<Review[]>(mockReviews);
+  const handlePublishReview = () => {
+    const text = reviewText.trim();
+    if (!text) return;
+    const newReview: Review = {
+      user: '你',
+      date: '刚刚',
+      rating: '★★★★★',
+      content: text,
+    };
+    setLocalReviews(prev => [newReview, ...prev]);
+    setReviewText('');
+  };
   // 新增：模拟原始创意信息
   const ideaInfo = {
     title: 'AI会议纪要助手', // 添加标题
@@ -234,29 +360,17 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     { author: 'Zoe', time: '3 天前', title: '项目规划与功能定义 V1.0', content: '完成整体功能范围界定与优先级排序，明确 MVP：自动转写、行动项提取与协作平台同步。' },
   ];
 
-  // 新增：发布评价功能
-  const [localReviews, setLocalReviews] = useState(mockReviews);
-  
-  const handlePublishReview = () => {
-    if (reviewText.trim()) {
-      const newReview = {
-        user: '你', // 当前用户
-        date: '刚刚',
-        rating: '★★★★★', // 默认五星
-        content: reviewText.trim()
-      };
-      setLocalReviews([newReview, ...localReviews]); // 添加到列表顶部
-      setReviewText(''); // 清空输入框
-    }
-  };
+  // 基于返回数据归一化创意信息
+  const creative = normalizeCreative(projectData?.creatives);
 
   const project = {
     id,
     title: projectData?.name || "加载中...",
-    owner: { name: projectData?.creatives?.users?.username || "未知用户" },
+    // 后端暂未返回开发者昵称，先使用占位符
+    owner: { name: "未知用户" },
     fromIdea: { 
-      title: projectData?.creatives?.title || "未知创意", 
-      href: `/creatives/${projectData?.creative_id}` 
+      title: creative?.title ?? "未知创意", 
+      href: `/creatives/${creative?.id ?? projectData?.creative_id ?? ''}` 
     },
     status: projectStatus, // 使用动态状态
     description: projectData?.description || ""
@@ -325,7 +439,10 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
 
       if (response.ok) {
         const data = await response.json();
-        setProjectData(data.project);
+        const normalized = normalizeProjectResponse(data?.project);
+        if (normalized) {
+          setProjectData(normalized);
+        }
         setIsEditing(false);
         console.log('项目更新成功');
       } else {
@@ -401,16 +518,25 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
       }
       
       // 乐观更新：立即添加到UI
-      const optimisticLog = {
+      const getUserMetaString = (user: unknown, key: string): string | null => {
+        if (!isRecord(user)) return null;
+        const metaMaybe = isRecord(user['user_metadata']) ? user['user_metadata'] : null;
+        if (!isRecord(metaMaybe)) return null;
+        const val = metaMaybe[key];
+        return typeof val === 'string' ? val : null;
+      };
+      const userId = typeof session?.user?.id === 'string' ? session.user.id : null;
+      const optimisticLog: ProjectLog = {
         id: `temp-${Date.now()}`,
         content: logContent.trim(),
         created_at: new Date().toISOString(),
+        author_id: userId ?? 'anonymous',
         author: {
-          name: '我', // 临时显示
-          nickname: '我',
-          avatar_url: null
+          id: userId,
+          nickname: getUserMetaString(session?.user, 'nickname') ?? '我',
+          avatar_url: getUserMetaString(session?.user, 'avatar_url'),
         },
-        can_delete: true // 新发布的日志可以删除
+        can_delete: true, // 新发布的日志可以删除
       };
       setProjectLogs([optimisticLog, ...projectLogs]);
       const originalContent = logContent;
@@ -896,9 +1022,9 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               <ul className="mt-4 space-y-6">
                 {projectLogs.map((log) => (
                    <li key={log.id} className="flex items-start gap-3">
-                     <Avatar name={log.author?.nickname || log.author?.name || '匿名用户'} avatarUrl={log.author?.avatar_url} />
+                     <Avatar name={log.author?.nickname || '匿名用户'} avatarUrl={log.author?.avatar_url} />
                      <div className="flex-1">
-                       <div className="text-[14px] font-medium text-[#2c3e50]">{log.author?.nickname || log.author?.name || '匿名用户'}</div>
+                       <div className="text-[14px] font-medium text-[#2c3e50]">{log.author?.nickname || '匿名用户'}</div>
                        <p className="mt-1 text-[14px] leading-6 text-gray-700 whitespace-pre-wrap">
                          {log.content}
                        </p>
@@ -1074,8 +1200,10 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               headers: { 'Authorization': `Bearer ${session.access_token}` },
             });
             if (!res.ok) {
-              const j = await res.json().catch(() => null) as { message?: string; error?: string } | null;
-              throw new Error(j?.error || j?.message || `删除失败（${res.status}）`);
+              let j: unknown = null;
+              try { j = await res.json(); } catch {}
+              const msg = isRecord(j) ? (typeof j.error === 'string' ? j.error : (typeof j.message === 'string' ? j.message : null)) : null;
+              throw new Error(msg || `删除失败（${res.status}）`);
             }
           } catch (e) {
             // 回滚UI并提示

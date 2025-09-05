@@ -1,12 +1,42 @@
 // 项目动态API路由 - 获取和新增动态
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getEnvVars } from '@/lib/env';
 
 export const runtime = 'edge';
 
+// 统一类型定义，供 GET/POST 复用，避免 any
+type DbLogRow = {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  profiles?: {
+    id?: string | null;
+    nickname?: string | null;
+    avatar_url?: string | null;
+  } | null;
+};
+
+// 归一化后返回给前端的结构
+type NormalizedLog = {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  author: {
+    id: string | null;
+    nickname: string | null;
+    avatar_url: string | null;
+  };
+  can_delete: boolean;
+};
+
+// 插入后 select 返回的行结构（与 DbLogRow 相同字段集，这里单独命名便于语义化）
+type InsertedLogRow = DbLogRow;
+
 // 获取项目动态列表
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const resolvedParams = await params;
     const projectId = resolvedParams.id;
@@ -65,8 +95,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    // 归一化结构：profiles -> author，并添加 can_delete
-    const normalizedLogs = (logs || []).map((log: any) => ({
+    // 使用统一类型归一化数据，添加 can_delete 字段
+    const normalizedLogs: NormalizedLog[] = (logs as DbLogRow[]).map((log) => ({
       id: log.id,
       content: log.content,
       created_at: log.created_at,
@@ -76,7 +106,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         nickname: log.profiles?.nickname ?? null,
         avatar_url: log.profiles?.avatar_url ?? null,
       },
-      can_delete: currentUserId === log.author_id,
+      can_delete: currentUserId ? log.author_id === currentUserId : false,
     }));
 
     return NextResponse.json({ logs: normalizedLogs });
@@ -90,7 +120,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // 新增项目动态
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const resolvedParams = await params;
     const projectId = resolvedParams.id;
@@ -195,16 +225,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    // 归一化返回结构
-    const normalizedLog = {
-      id: (newLog as any).id,
-      content: (newLog as any).content,
-      created_at: (newLog as any).created_at,
-      author_id: (newLog as any).author_id,
+    // 归一化返回结构（严格类型，避免 any）
+    const row = newLog as InsertedLogRow;
+    const normalizedLog: NormalizedLog = {
+      id: row.id,
+      content: row.content,
+      created_at: row.created_at,
+      author_id: row.author_id,
       author: {
-        id: (newLog as any).profiles?.id ?? null,
-        nickname: (newLog as any).profiles?.nickname ?? null,
-        avatar_url: (newLog as any).profiles?.avatar_url ?? null,
+        id: row.profiles?.id ?? null,
+        nickname: row.profiles?.nickname ?? null,
+        avatar_url: row.profiles?.avatar_url ?? null,
       },
       can_delete: true,
     };

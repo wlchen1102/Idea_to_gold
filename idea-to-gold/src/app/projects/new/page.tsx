@@ -1,6 +1,10 @@
 // 创建新项目页面（功能：从创意立项，提交后调用 /api/projects 创建真实项目，并根据 URL 的 idea_id 关联创意）
 "use client";
 
+// 声明页面运行在 Edge Runtime，并强制动态渲染以避免构建期预渲染错误
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
+
 import Breadcrumb from "@/components/Breadcrumb";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -292,5 +296,6 @@ export default function NewProjectPage() {
     </>
   );
 }
+
 
 
