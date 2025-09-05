@@ -56,13 +56,21 @@ function ProjectCard({ project, href }: { project: Project; href: string }) {
     <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       {/* 顶部：项目名称 */}
       <div>
-        <h3 className="text-[18px] font-semibold text-[#2c3e50]">{project.name}</h3>
+        <h3 className="text-[18px] leading-6 font-semibold text-[#2c3e50] line-clamp-2 break-words h-12" title={project.name}>
+          {project.name}
+        </h3>
 
         {/* 中部：状态 + 一句话简介 */}
         <div className="mt-3 flex items-center gap-3">
           <StatusBadge status={project.status} />
         </div>
-        <p className="mt-2 text-sm leading-6 text-gray-600">{project.intro}</p>
+        {/* 优化：长URL/长词自动换行，最多展示三行并省略，保留换行符；固定高度为3行（leading-6 => 1.5rem，因此 3 行 = 4.5rem） */}
+        <p
+          className="mt-2 text-sm leading-6 text-gray-600 break-words whitespace-pre-line line-clamp-3 h-[4.5rem]"
+          title={project.intro}
+        >
+          {project.intro}
+        </p>
 
         {/* 底部：引用 + 关键数据 */}
         <div className="mt-4 flex items-start justify-between gap-3">
@@ -86,7 +94,8 @@ function ProjectCard({ project, href }: { project: Project; href: string }) {
       <div className="mt-5">
         <Link
           href={href}
-          className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]"
+          className="relative block w-full select-none overflow-hidden rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white transition-colors transition-transform duration-150 ease-out hover:bg-[#27AE60] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#27AE60] focus-visible:ring-offset-2 before:pointer-events-none before:absolute before:inset-0 before:rounded-lg before:bg-white/20 before:opacity-0 before:transition-opacity before:duration-300 before:ease-out active:before:opacity-100"
+          aria-label="管理项目"
         >
           管理项目
         </Link>
