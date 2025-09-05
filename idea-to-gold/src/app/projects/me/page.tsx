@@ -204,55 +204,66 @@ export default function ProjectsPage(): React.ReactElement {
       {/* 只有在非加载和非错误状态下才显示内容 */}
       {!loading && !error && (
         <>
-          {/* 选项卡（前端演示筛选） */}
-      <div className="mt-6 w-fit rounded-lg bg-gray-100 p-1">
-        {([
-          { key: "全部", label: `全部 (${totalCount})` },
-          { key: "规划中", label: `规划中 (${planningCount})` },
-          { key: "开发中", label: `开发中 (${developingCount})` },
-          { key: "内测中", label: `内测中 (${betaCount})` },
-          { key: "已发布", label: `已发布 (${publishedCount})` },
-        ] as const).map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
-              activeTab === tab.key
-                ? "bg-[#2ECC71] text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-            }`}
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 空状态 */}
-      {!hasProjects && (
-        <section className="mt-16 flex flex-col items-center justify-center text-center">
-          <Image src="/globe.svg" alt="empty" width={112} height={112} className="h-28 w-28 opacity-70" />
-          <h3 className="mt-6 text-xl font-semibold text-[#2c3e50]">你还没有开始任何项目</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            去
-            <Link href="/creatives" className="mx-1 text-[#3498db] hover:underline">
-              创意广场
-            </Link>
-            发现一个能点燃你热情的想法吧！
-          </p>
-        </section>
-      )}
-
-        {/* 项目卡片列表 */}
-        {hasProjects && (
-          <section className="mt-8">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {projectsToRender.map((p) => (
-                <ProjectCard key={p.id} project={p} href={`/projects/me/${p.id}`} />
+          {/* 顶部工具栏：筛选Tabs + 新建按钮 */}
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <div className="w-fit rounded-lg bg-gray-100 p-1">
+              {([
+                { key: "全部", label: `全部 (${totalCount})` },
+                { key: "规划中", label: `规划中 (${planningCount})` },
+                { key: "开发中", label: `开发中 (${developingCount})` },
+                { key: "内测中", label: `内测中 (${betaCount})` },
+                { key: "已发布", label: `已发布 (${publishedCount})` },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    activeTab === tab.key
+                      ? "bg-[#2ECC71] text-white shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                  }`}
+                  type="button"
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
-          </section>
-        )}
+
+            {/* 新建项目按钮（右侧） */}
+            <Link
+              href="/projects/new"
+              className="relative inline-flex select-none items-center gap-2 overflow-hidden rounded-lg bg-[#2ECC71] px-4 py-2.5 text-[14px] font-semibold text-white transition-colors transition-transform duration-150 ease-out hover:bg-[#27AE60] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#27AE60] focus-visible:ring-offset-2 before:pointer-events-none before:absolute before:inset-0 before:rounded-lg before:bg-white/20 before:opacity-0 before:transition-opacity before:duration-300 before:ease-out active:before:opacity-100"
+              aria-label="新建项目"
+            >
+              新建项目
+            </Link>
+          </div>
+
+          {/* 空状态 */}
+          {!hasProjects && (
+            <section className="mt-16 flex flex-col items-center justify-center text-center">
+              <Image src="/globe.svg" alt="empty" width={112} height={112} className="h-28 w-28 opacity-70" />
+              <h3 className="mt-6 text-xl font-semibold text-[#2c3e50]">你还没有开始任何项目</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                去
+                <Link href="/creatives" className="mx-1 text-[#3498db] hover:underline">
+                  创意广场
+                </Link>
+                发现一个能点燃你热情的想法吧！
+              </p>
+            </section>
+          )}
+
+          {/* 项目卡片列表 */}
+          {hasProjects && (
+            <section className="mt-8">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {projectsToRender.map((p) => (
+                  <ProjectCard key={p.id} project={p} href={`/projects/me/${p.id}`} />
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </>

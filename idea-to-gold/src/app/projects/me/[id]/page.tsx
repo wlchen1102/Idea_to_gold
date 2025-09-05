@@ -298,8 +298,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   
   // 控制"完成当前阶段"确认弹窗
   const [showConfirm, setShowConfirm] = useState(false);
-  
-  // 编辑功能状态
+  const [advancing, setAdvancing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -351,7 +350,6 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     author: { name: 'Zoe' },
     description:
       '这是一个将会议记录全流程自动化的创意。通过高精度语音识别将语音实时转写为文本，并利用大语言模型进行要点提炼、行动项抽取与结构化输出，最终一键同步到团队协作平台，帮助团队快速复盘、对齐信息、提升执行效率。',
-    supporters: '1.5k',
   };
   // 新增：模拟开发历史时间轴数据（按时间倒序排列）
   const devHistory = [
@@ -359,9 +357,34 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     { author: 'Ken', time: '1 天前', title: '第一周开发进度', content: '已完成核心 API 的后端开发，准备开始前端对接与联调测试。' },
     { author: 'Zoe', time: '3 天前', title: '项目规划与功能定义 V1.0', content: '完成整体功能范围界定与优先级排序，明确 MVP：自动转写、行动项提取与协作平台同步。' },
   ];
-
-  // 基于返回数据归一化创意信息
-  const creative = normalizeCreative(projectData?.creatives);
+  
+  // 新增：关联创意想要用户数（真实数据）
+  const [supportersCount, setSupportersCount] = useState<number | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        // 仅使用项目上的关联创意 ID
+        const creativeId = (projectData?.creative_id ?? null) as string | null;
+        if (!creativeId) return;
+        const supabase = requireSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const res = await fetch(`/api/creatives/${creativeId}/upvote`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setSupportersCount(Number(data?.upvote_count ?? 0));
+        }
+      } catch (_e) {
+        // 忽略错误，维持为空即可
+      }
+    };
+    run();
+    return () => controller.abort();
+  }, [projectData?.creative_id]);
 
   const project = {
     id,
@@ -369,8 +392,9 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     // 后端暂未返回开发者昵称，先使用占位符
     owner: { name: "未知用户" },
     fromIdea: { 
-      title: creative?.title ?? "未知创意", 
-      href: `/creatives/${creative?.id ?? projectData?.creative_id ?? ''}` 
+      // 标题回退：后端暂未提供创意标题，这里先用占位文本
+      title: "关联创意",
+      href: `/creatives/${projectData?.creative_id ?? ''}` 
     },
     status: projectStatus, // 使用动态状态
     description: projectData?.description || ""
@@ -385,28 +409,83 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
     project.status === "planning" ? "开发中" : project.status === "developing" ? "内测中" : "已发布";
 
   // 确认推进阶段的处理函数
-  const handleConfirmStageProgress = () => {
+  const handleConfirmStageProgress = async () => {
+    // 计算下一阶段（前端与后端状态机需保持一致）
     let nextStatus: ProjectStatus = project.status;
-    
     switch (project.status) {
-      case "planning":
-        nextStatus = "developing";
+      case 'planning':
+        nextStatus = 'developing';
         break;
-      case "developing":
-        nextStatus = "internalTesting";
+      case 'developing':
+        nextStatus = 'internalTesting';
         break;
-      case "internalTesting":
-        nextStatus = "released";
+      case 'internalTesting':
+        nextStatus = 'released';
         break;
+      case 'released':
+        // 已发布不可再推进
+        return;
     }
-    
-    setProjectStatus(nextStatus);
-    setShowConfirm(false);
-    
-    // 这里可以添加API调用来更新服务器端状态
-    console.log(`项目状态已推进：${project.status} → ${nextStatus}`);
-  };
 
+    // 先响应：关闭弹窗、按钮进入忙碌态，并乐观更新 UI
+    setShowConfirm(false);
+    setAdvancing(true);
+    const prev = project.status;
+    setProjectStatus(nextStatus);
+
+    try {
+      // 获取登录态 token
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        // 回滚
+        setProjectStatus(prev);
+        alert('请先登录');
+        return;
+      }
+
+      // 调用后端推进接口（客户端认证 + 服务端验证）
+      const resp = await fetch(`/api/projects/me/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'advance' }),
+      });
+
+      if (!resp.ok) {
+        // 失败回滚
+        const err = await resp.json().catch(() => ({} as { error?: string }));
+        setProjectStatus(prev);
+        alert(err?.error || '推进失败，请稍后重试');
+        return;
+      }
+
+      // 与服务端状态对齐（防止并发时本地与服务端不一致）
+      const data = await resp.json().catch(() => null) as { project?: { status?: string | null } } | null;
+      const serverStatus = data?.project?.status ?? null;
+      const statusMap: Record<string, ProjectStatus> = {
+        planning: 'planning',
+        developing: 'developing',
+        internaltesting: 'internalTesting',
+        internalTesting: 'internalTesting',
+        released: 'released',
+      };
+      if (serverStatus && statusMap[serverStatus] && statusMap[serverStatus] !== nextStatus) {
+        setProjectStatus(statusMap[serverStatus]);
+      }
+      console.log(`项目状态已推进：${prev} → ${serverStatus || nextStatus}`);
+    } catch (e) {
+      // 失败回滚
+      setProjectStatus(prev);
+      console.error('推进阶段出错：', e);
+      alert('推进失败，请检查网络后重试');
+    } finally {
+      setAdvancing(false);
+    }
+  };
   // 保存编辑
   const handleSaveEdit = async () => {
     if (!editName.trim()) {
@@ -852,9 +931,9 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                 </div>
                 {/* 支持数据 */}
                 <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-[#2c3e50]">
-                  有 <span className="font-semibold text-[#2ECC71]">{ideaInfo.supporters}</span> 人想要
+                  有 <span className="font-semibold text-[#2ECC71]">{projectData?.creative_id ? (supportersCount === null ? '加载中...' : new Intl.NumberFormat('zh-CN').format(supportersCount)) : '未关联'}</span> 人想要
                 </div>
-              </div>
+                </div>
             ) : activeTab === 'history' ? (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-[#2c3e50]">开发日志</h3>
@@ -1098,8 +1177,10 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                   <button
                     type="button"
                     onClick={() => setShowConfirm(true)}
-                    className="w-full rounded-xl border border-gray-300 px-5 py-2.5 text-[14px] font-semibold text-[#2c3e50] hover:bg-gray-50 transition-colors"
-                  >
+                    aria-busy={advancing ? 'true' : 'false'}
+                    disabled={advancing}
+                    className="w-full rounded-xl border border-gray-300 px-5 py-2.5 text-[14px] font-semibold text-[#2c3e50] hover:bg-gray-50 active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
                     完成当前阶段 →
                   </button>
                 )}
@@ -1107,6 +1188,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
             </div>
             
             {/* 核心数据仪表盘 */}
+            {/** 暂时下线核心数据卡片（日志更新数/项目浏览量）
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
               <ul className="space-y-3 text-[14px] text-[#2c3e50]">
                 <li className="flex items-center justify-between">
@@ -1119,6 +1201,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                 </li>
               </ul>
             </div>
+            */}
             
             {/* 创意信息与想要用户数卡片 */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -1131,7 +1214,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                 </div>
                 <div className="flex items-center justify-between text-[14px] text-[#2c3e50]">
                   <span className="text-gray-600">想要用户数</span>
-                  <span className="font-semibold">1.5k</span>
+                  <span className="font-semibold">{projectData?.creative_id ? (supportersCount === null ? '加载中...' : new Intl.NumberFormat('zh-CN').format(supportersCount)) : '未关联'}</span>
                 </div>
               </div>
             </div>
@@ -1161,7 +1244,9 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
           <button
             type="button"
             onClick={handleConfirmStageProgress}
-            className="rounded-md bg-[#2ECC71] px-4 py-2 text-sm font-semibold text-white hover:bg-[#27AE60] transition-colors"
+            aria-busy={advancing ? 'true' : 'false'}
+            disabled={advancing}
+            className="rounded-md bg-[#2ECC71] px-4 py-2 text-sm font-semibold text-white hover:bg-[#27AE60] active:scale-[.98] disabled:opacity-60 disabled:cursor-not-allowed transition-transform transition-colors"
           >
             确认推进
           </button>

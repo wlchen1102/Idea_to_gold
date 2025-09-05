@@ -59,7 +59,7 @@ _这是信息流的核心展示单元，其设计的优劣直接影响用户浏�
 
 #### 4.3. **数据加载与API**
 
-- **后端API**: `GET /api/v1/ideas`
+- **后端API**: `GET /api/v1/creatives`
     - **请求参数 (Query Params)**:
         - `sort`: `hot` (默认), `new`, `bounty`
         - `terminals`: (可选) 终端数组，如 `terminals[]=ios&terminals[]=web`

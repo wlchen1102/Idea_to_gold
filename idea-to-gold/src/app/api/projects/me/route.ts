@@ -111,7 +111,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         status: getStatusDisplayName(project.status),
         intro: project.description,
         fromIdeaTitle: creative?.title ?? '未知创意',
-        fromIdeaHref: creative?.slug ? `/creatives/${creative.slug}` : '#',
+        // 修正：统一使用创意ID进行跳转，避免以名称/slug 导致详情页 404
+        fromIdeaHref: creative?.id ? `/creatives/${encodeURIComponent(creative.id)}` : '#',
         createdAt: project.created_at,
         updatedAt: project.updated_at,
         // 注意：views 和 supports 需要从其他表获取，这里先设为0

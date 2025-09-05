@@ -104,8 +104,8 @@ export default function ProductReleasePage(): React.ReactElement {
       window.dispatchEvent(new Event("localToast"));
       await new Promise((resolve) => setTimeout(resolve, 2700));
 
-      // 跳转到已发布的项目主页（规范路径 /projects/[id]）
-      router.push(`/projects/${id}`);
+      // 跳转到已发布的项目主页（作者私有页 /projects/me/[id]）
+      router.push(`/projects/me/${id}`);
     } catch (error) {
       console.error("发布失败：", error);
     } finally {
@@ -122,8 +122,8 @@ export default function ProductReleasePage(): React.ReactElement {
       {/* 面包屑导航（全部使用 /projects 规范路径）*/}
       <Breadcrumb 
         paths={[
-          { href: "/projects", label: "我的项目" },
-          { href: `/projects/${id}`, label: projectNameDisplay },
+          { href: "/projects/me", label: "我的项目" },
+          { href: `/projects/me/${id}` , label: projectNameDisplay },
           { label: "发布产品" }
         ]} 
       />
@@ -133,8 +133,10 @@ export default function ProductReleasePage(): React.ReactElement {
         发布你的产品，让世界看到你的创造！
       </h1>
 
-      {/* 单列居中的表单容器 */}
       <div className="max-w-2xl mx-auto">
+        <div className="mb-4 flex items-center justify-end">
+          <a href={`/projects/${id}`} className="text-sm text-[#3498db] hover:underline">查看公开页</a>
+        </div>
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 产品Logo 上传（必填）*/}

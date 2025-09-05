@@ -1,6 +1,6 @@
 // Next.js Route Handler - 创建新项目
 // 功能与作用：
-// - 提供 POST /api/projects/new 接口，用于基于创意创建新项目
+// - 提供 POST /api/projects/new 接口，用于基于创意创建新项目（creative_id 可选）
 // - 按"客户端认证 + 服务端验证"模式，从 Authorization: Bearer <token> 验证用户
 // - 使用 Supabase service_role 执行数据库写入，并进行服务端字段校验
 // - 运行于 Edge Runtime，兼容 Cloudflare Pages
@@ -40,12 +40,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const name = (body?.name || '').trim()
     const description = (body?.description || '').trim()
-    const creativeId = (body?.creative_id || '').trim()
+    const creativeIdRaw = (body?.creative_id || '').trim()
+    const creativeId = creativeIdRaw.length > 0 ? creativeIdRaw : null
     const status = (body?.status || 'planning').trim().toLowerCase()
 
-    // 基础校验
-    if (!name || !description || !creativeId) {
-      return NextResponse.json({ message: '缺少必填字段：name、description 或 creative_id' }, { status: 400 })
+    // 基础校验：name 与 description 为必填；creative_id 可选
+    if (!name || !description) {
+      return NextResponse.json({ message: '缺少必填字段：name 或 description' }, { status: 400 })
     }
     if (!ALLOWED_STATUS.has(status)) {
       return NextResponse.json({ message: '非法的项目状态', error: `status 必须为 ${Array.from(ALLOWED_STATUS).join(' | ')}` }, { status: 400 })
@@ -60,30 +61,47 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: '认证令牌无效，请重新登录' }, { status: 401 })
     }
 
-    // 校验创意是否存在
-    const { data: creativeRow, error: creativeErr } = await supabaseAdmin
-      .from('creatives')
-      .select('id')
-      .eq('id', creativeId)
-      .maybeSingle()
+    // 若传入 creative_id，则校验创意是否存在
+    if (creativeId) {
+      const { data: creativeRow, error: creativeErr } = await supabaseAdmin
+        .from('creatives')
+        .select('id')
+        .eq('id', creativeId)
+        .maybeSingle()
 
-    if (creativeErr) {
-      return NextResponse.json({ message: '查询创意失败', error: creativeErr.message }, { status: 500 })
+      if (creativeErr) {
+        return NextResponse.json({ message: '查询创意失败', error: creativeErr.message }, { status: 500 })
+      }
+      if (!creativeRow?.id) {
+        return NextResponse.json({ message: '关联创意不存在或已删除' }, { status: 400 })
+      }
     }
-    if (!creativeRow?.id) {
-      return NextResponse.json({ message: '关联创意不存在或已删除' }, { status: 400 })
+
+    // 组织插入数据；creative_id 仅在提供时包含
+    const newProject: {
+      name: string
+      description: string
+      status: string
+      developer_id: string
+      creative_id?: string | null
+    } = {
+      name,
+      description,
+      status,
+      developer_id: developerId,
+    }
+
+    if (creativeId) {
+      newProject.creative_id = creativeId
+    } else {
+      // 显式设为 null 以兼容可能的列默认值
+      newProject.creative_id = null
     }
 
     // 写入 projects
     const { data: inserted, error: insertErr } = await supabaseAdmin
       .from('projects')
-      .insert({
-        name,
-        description,
-        status,
-        developer_id: developerId,
-        creative_id: creativeId,
-      })
+      .insert(newProject)
       .select('id')
       .maybeSingle()
 

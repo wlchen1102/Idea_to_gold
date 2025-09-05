@@ -1,4 +1,4 @@
-// 创建新项目页面（功能：从创意立项，提交后调用 /api/projects 创建真实项目，并根据 URL 的 idea_id 关联创意）
+// 创建新项目页面（功能：可空关联创意；提交后调用 /api/projects/new 创建项目；若 URL 携带 idea_id 则自动关联）
 "use client";
 
 // 声明页面运行在 Edge Runtime，并强制动态渲染以避免构建期预渲染错误
@@ -90,13 +90,9 @@ export default function NewProjectPage() {
     };
   }, [creativeId]);
 
-  // 提交表单：创建项目并跳转
+  // 提交表单：创建项目并跳转（创意关联可选）
   const handleCreateProject = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!creativeId) {
-      alert("缺少关联创意，无法创建项目。请从创意详情页点击“发起项目”进入此页。");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -121,12 +117,15 @@ export default function NewProjectPage() {
         return;
       }
 
-      const payload = {
+      // 构建 payload：仅当选择了创意时才携带 creative_id
+      const payload: { name: string; description: string; status: string; creative_id?: string } = {
         name,
         description,
-        creative_id: creativeId,
-        status, // 允许 'planning' | 'developing'
+        status,
       };
+      if (creativeId) {
+        payload.creative_id = creativeId;
+      }
 
       const resp = await fetch("/api/projects/new", {
         method: "POST",
@@ -139,8 +138,8 @@ export default function NewProjectPage() {
 
       const data = (await resp.json()) as CreateProjectResponse;
       if (resp.ok && data.id) {
-        // 先响应，后处理：立即跳转到详情页
-        router.push(`/projects/${data.id}`);
+        // 先响应，后处理：立即跳转到作者私有页（我的项目详情）
+        router.push(`/projects/me/${data.id}`);
         return;
       }
 
@@ -155,7 +154,7 @@ export default function NewProjectPage() {
   return (
     <>
       {/* 面包屑放在网格外部，确保右侧卡片与左侧标题（网格内顶部）对齐 */}
-      <Breadcrumb paths={[{ href: "/projects", label: "我的项目" }, { label: "创建新项目" }]} />
+      <Breadcrumb paths={[{ href: "/projects/me", label: "我的项目" }, { label: "创建新项目" }]} />
 
       {/* 双栏布局容器（遵循全局 main 的宽度与内边距，不再额外添加 max-w 或 mx-auto）*/}
       <div className="mt-2 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -230,10 +229,10 @@ export default function NewProjectPage() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting || !creativeId}
+                  disabled={isSubmitting}
                   className="block w-full rounded-lg bg-[#2ECC71] px-6 py-3 text-center text-[16px] font-semibold text-white hover:bg-[#27AE60] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "创建中..." : creativeId ? "创建项目" : "请先选择创意后发起项目"}
+                  {isSubmitting ? "创建中..." : "创建项目"}
                 </button>
               </div>
             </form>
@@ -243,7 +242,7 @@ export default function NewProjectPage() {
         {/* 右侧信息栏：约 1/3 宽（md 及以上）。用于展示关联创意详情（根据 URL idea_id 加载）*/}
         <aside className="md:col-span-1">
           <div className="sticky top-4 rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-            <h2 className="text-lg font-semibold text-[#2c3e50]">关联创意详情</h2>
+            <h2 className="text-lg font-semibold text-[#2c3e50]">关联创意详情（可选）</h2>
 
             {/* 创意标题 */}
             <h3 className="mt-3 text-base font-bold text-gray-900">
@@ -252,7 +251,7 @@ export default function NewProjectPage() {
 
             {/* 创意描述 */}
             <p className="mt-2 text-sm leading-6 text-gray-700">
-              {creative?.description || (creativeId && loadingCreative ? "正在获取创意描述..." : "从创意详情页点击“发起项目”将自动带入创意信息")}
+              {creative?.description || (creativeId && loadingCreative ? "正在获取创意描述..." : "从创意详情页点击“发起项目”将自动带入创意信息（该步骤可跳过）")}
             </p>
 
             {/* 关联创意链接（采用项目详情“源于创意”样式）*/}
@@ -288,7 +287,7 @@ export default function NewProjectPage() {
 
             {/* 其他信息（可扩展）*/}
             <div className="mt-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-              注：以上信息将根据所选创意自动关联。
+              注：可选。若未选择创意，也可直接创建项目。以上信息将根据所选创意自动关联。
             </div>
           </div>
         </aside>

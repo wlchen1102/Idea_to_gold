@@ -47,8 +47,8 @@ export async function GET(
     }
 
     const awaitedParams = await params
-    const id = awaitedParams?.id
-    if (!id) {
+    const idOrSlug = awaitedParams?.id
+    if (!idOrSlug) {
       return NextResponse.json(
         { message: '缺少或非法的参数：id' },
         { status: 400 }
@@ -57,16 +57,26 @@ export async function GET(
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
+    // 判断是 UUID 还是 slug；若是 slug 则走 slug 查询，避免 uuid 列强制转换报错
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug)
+
+    // 明确选择所需字段，并联表读取 profiles（通过外键提示避免 PostgREST 关系名推断失败）
+    const selectColumns = `
+      id, title, description, terminals, bounty_amount, created_at, author_id, slug,
+      profiles:profiles!creatives_author_id_fkey(nickname, avatar_url),
+      upvote_count
+    `
+
     const { data, error } = await supabase
       .from('creatives')
-      .select('*')
-      .eq('id', id)
-      .is('deleted_at', null)  // 只获取未删除的创意
-      .single()
+      .select(selectColumns)
+      .eq(isUuid ? 'id' : 'slug', idOrSlug)
+      .is('deleted_at', null) // 只获取未删除的创意
+      .maybeSingle()
 
     if (error) {
       return NextResponse.json(
-        { message: '数据库查询失败（获取创意）', error: error.message } satisfies Partial<CreativeResponse>,
+        { message: '数据库查询失败（获取创意）', error: error.message },
         { status: 500 }
       )
     }
@@ -80,11 +90,8 @@ export async function GET(
 
     const creative = data as unknown as Creative
 
-    // 移除点赞数量查询以提升性能，点赞数量将由客户端异步获取
-    // 这样可以大幅减少服务端渲染的延迟
-
     return NextResponse.json(
-      { message: '获取创意成功', creative } satisfies CreativeResponse,
+      { message: '获取创意成功', creative },
       { status: 200 }
     )
   } catch (e) {
@@ -273,7 +280,7 @@ export async function DELETE(
       return NextResponse.json({ message: '无权限：仅作者可删除该创意' }, { status: 403 });
     }
 
-    // 执行软删除：更新 deleted_at 字段
+    // 软删除：仅设置 deleted_at，不直接物理删除
     const { error: deleteError } = await supabase
       .from('creatives')
       .update({ deleted_at: new Date().toISOString() })
@@ -283,10 +290,7 @@ export async function DELETE(
       return NextResponse.json({ message: '删除失败', error: deleteError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ 
-      message: '删除成功', 
-      deletedCreative: { id: existing.id, title: existing.title } 
-    }, { status: 200 });
+    return NextResponse.json({ message: '删除成功' }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error && e.message ? e.message : 'unknown error';
     return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 });

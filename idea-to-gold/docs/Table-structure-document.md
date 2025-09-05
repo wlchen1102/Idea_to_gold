@@ -261,3 +261,66 @@ CREATE INDEX IF NOT EXISTS idx_creative_upvotes_creative_user
 -- ALTER TABLE public.creatives ADD PRIMARY KEY (id);
 
 ---
+#### 7. products 表 V2.0
+核心思想：
+结构化数据: 将表单中的所有信息，都用最合适的数据库类型进行存储。
+关联性: 确保它与creatives表和projects表都有清晰的关联。
+可扩展性: 为未来的功能（如分类、标签）预留空间。
+【核心表】public.products - 产品表
+它的作用:
+作为我们【产品库】的核心数据源，存储所有已上线产品的、丰富的展示信息。
+核心字段:
+id (uuid, 主键): 产品自己的唯一ID。
+project_id (uuid, 外键 -> projects.id, 唯一, 可为NULL):
+指向诞生它的那个“孵化型”项目。
+可为NULL: 因为“匹配型”产品是直接创建的，没有对应的孵化项目。
+唯一: 确保一个项目只能发布一个产品。
+creative_id (uuid, 外键 -> user_creatives.id, 可为NULL):
+指向它所实现的那个核心创意。
+可为NULL: 因为一个产品也可能不是为了解决平台上的某个特定创意而发布的。
+author_id (uuid, 外键 -> profiles.id, NOT NULL):
+产品的创建者（造物者）ID。
+name (text, NOT NULL): 产品名称。
+slogan (text, NOT NULL): 一句话Slogan。
+logo_url (text, NOT NULL): 产品Logo的图片链接。
+screenshots (text[], NOT NULL): 产品截图的图片链接数组 (支持1-5张)。
+description (text, NOT NULL): 详细功能介绍。
+product_types (text[], NOT NULL):
+产品类型数组，用于存储{"网页应用", "移动应用"}等。
+text[]类型完美支持了你的“可多选”需求。
+access_info (jsonb, NOT NULL):
+一个JSONB类型的字段，用来结构化地存储所有不同类型的访问链接。
+示例:
+code
+JSON
+{
+  "website": "https://...",
+  "app_store": "https://...",
+  "google_play": "https://...",
+  "windows": "https://...",
+  "macos": "https://...",
+  "other": "https://..."
+}
+为什么用JSONB: 极其灵活！未来你想增加一个新的平台类型（比如Linux），只需要在JSON里加一个键值对就行了，完全不需要修改数据库表结构！
+published_at (timestamptz, NOT NULL): 产品的首次发布时间。
+updated_at (timestamptz, NOT NULL): 产品的最后更新时间。
+
+
+#### 8. product_versions 表 V1.1
+核心思想：
+保持简洁，清晰地记录每一次迭代。
+提供足够的灵活性，以承载丰富的更新内容。
+【核心表】public.product_versions - 产品版本表
+它的作用:
+作为产品的“成长日记”，以时间轴的形式，记录一个产品的每一次重要更新和迭代。
+核心字段:
+id (uuid, 主键): 版本记录自己的唯一ID。
+product_id (uuid, 外键 -> products.id, NOT NULL): 指向这次更新属于哪个产品。
+author_id (uuid, 外键 -> profiles.id, NOT NULL): 发布这次更新的作者（造物者）。
+version_number (text, NOT NULL): 版本号，例如 v1.1.0。
+title (text, NOT NULL): 这次更新的标题，例如“重大更新：AI摘要引擎升级！”
+description (text, NOT NULL): 详细的版本更新说明（支持Markdown）。
+document_url (text, 可为NULL): (你新增的) 指向外部详细更新文档的链接。
+published_at (timestamptz, NOT NULL): 这个版本的发布时间。
+
+
