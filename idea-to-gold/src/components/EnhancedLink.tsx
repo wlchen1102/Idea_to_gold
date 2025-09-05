@@ -117,9 +117,10 @@ export function EnhancedLink({
     // 预加载页面
     router.prefetch(href);
     
-    // 如果是创意详情页面，预加载评论数据
-    if (href.startsWith('/idea/')) {
-      const creativeId = href.split('/idea/')[1];
+    // 如果是创意详情页面，预加载评论数据（兼容 /creatives/:id 与历史的 /idea/:id）
+    const match = href.match(/^\/(creatives|idea)\/([^\/?#]+)/);
+    if (match) {
+      const creativeId = match[2];
       if (creativeId) {
         prefetchComments(creativeId);
       }
@@ -168,7 +169,7 @@ export function CreativeLink({
   children: ReactNode;
   className?: string;
 }) {
-  const href = `/idea/${creativeId}`;
+  const href = `/creatives/${creativeId}`;
   const router = useRouter();
   
   // 处理点击：先播放动画，动画完成后跳转
@@ -185,12 +186,24 @@ export function CreativeLink({
     }, 100);
   };
   
+  // 键盘可达性：支持 Enter 触发导航
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      router.push(href);
+    }
+  };
+  
   return (
     <div 
       className={`${className} cursor-pointer`}
       onClick={handleCardClick}
+      role="link"
+      aria-label={`查看创意详情 ${creativeId}`}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        onMouseEnter={(_e) => {
+      onMouseEnter={(_e) => {
         // 预加载创意详情页面
         router.prefetch(href);
         

@@ -406,7 +406,7 @@ export default function NewCreativePage() {
           id: (aiSuggestions[0] ?? presetSuggestions[0]).id,
           title: (aiSuggestions[0] ?? presetSuggestions[0]).title,
           score: (aiSuggestions[0] ?? presetSuggestions[0]).score,
-          href: `/idea/${(aiSuggestions[0] ?? presetSuggestions[0]).id}`,
+          href: `/creatives/${(aiSuggestions[0] ?? presetSuggestions[0]).id}`,
         }}
         onClose={() => setShowConfirm(false)}
         onContinue={handleSubmit}

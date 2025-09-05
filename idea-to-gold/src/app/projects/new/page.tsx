@@ -259,7 +259,7 @@ export default function NewProjectPage() {
             {creative?.id ? (
               <div className="mt-6 rounded-xl bg-gray-50 p-4">
                 <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
-                  <Link href={`/idea/${encodeURIComponent(creative.id)}`} className="text-[#3498db] hover:underline">
+                  <Link href={`/creatives/${encodeURIComponent(creative.id)}`} className="text-[#3498db] hover:underline">
                     源于创意：{creative.title}
                   </Link>
                 </div>

@@ -4,7 +4,7 @@
 
 - 统一规范：以 `projects` 为唯一主路径；`project` 仅保留为向后兼容的重定向入口。
 - 入口与跳转：
-  - 从创意详情页（示例：`/idea/[id]` 的“我来解决”）跳转到创建页面：`/projects/new`。
+  - 从创意详情页（示例：`/creatives/[id]` 的“我来解决”）跳转到创建页面：`/projects/new`。
   - 我的项目（当前登录用户专属视图）：`/projects/me`（新增路由文件）。
   - 项目详情：`/projects/[id]`（本次新增路由文件）。
   - 发布产品：`/projects/[id]/release`（本次新增路由文件）。

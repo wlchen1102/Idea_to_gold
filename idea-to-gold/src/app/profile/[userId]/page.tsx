@@ -394,7 +394,7 @@ export default function ProfilePage() {
                     activeTab === "supportedIdeas" ? "supported-creatives" : "my-creatives";
     
     // 跳转到创意详情页，并在URL中记录来源TAB和用户ID
-    router.push(`/idea/${creativeId}?fromTab=${tabParam}&fromUserId=${userId}`);
+    router.push(`/creatives/${creativeId}?fromTab=${tabParam}&fromUserId=${userId}`);
   };
 
   // 取消删除
