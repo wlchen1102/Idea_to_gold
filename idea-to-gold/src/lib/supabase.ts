@@ -1,3 +1,4 @@
+// 前端环境变量获取函数
 import { createClient } from '@supabase/supabase-js'
 
 // 兼容两种环境变量命名：NEXT_PUBLIC_*（Next.js 约定）与 VITE_*（项目文档约定）

@@ -23,6 +23,7 @@ interface Creative {
     avatar_url?: string;
   } | null;
   upvote_count?: number; // 新增：数据库真实点赞数
+  comment_count?: number; // 新增：数据库真实评论数
 }
 
 export default function Home() {
@@ -96,12 +97,16 @@ export default function Home() {
     }
   };
 
-  // 未登录也允许访问首页：直接加载创意列表
+  // 根据当前tab加载创意列表
   useEffect(() => {
     const fetchCreatives = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/creatives');
+        setError(null);
+        
+        // 根据activeTab决定排序方式
+        const sortParam = activeTab === '热门' ? 'popular' : 'latest';
+        const response = await fetch(`/api/creatives?sort=${sortParam}&limit=50`);
         const result = await response.json();
         
         if (response.ok) {
@@ -118,7 +123,7 @@ export default function Home() {
     };
 
     fetchCreatives();
-  }, []);
+  }, [activeTab]); // 依赖activeTab，当tab切换时重新加载
 
   // 点击"发布创意"按钮的处理：未登录 -> 提示并跳登录；已登录 -> 跳转到发布页
   const handleCreateClick = async () => {
@@ -146,7 +151,7 @@ export default function Home() {
   // 转换 Creative 数据为 CreativityCard 组件所需的格式
   const convertToCardData = (creative: Creative) => {
     return {
-      id: creative.id, // 使用 UUID 或自增ID
+      creativeId: String(creative.id), // 使用 UUID 或自增ID
       authorName: creative.profiles?.nickname || `用户${creative.author_id.slice(-4)}`,
       authorAvatarUrl: creative.profiles?.avatar_url,
       publishedAtText: new Date(creative.created_at).toLocaleDateString('zh-CN'),
@@ -154,21 +159,13 @@ export default function Home() {
       description: creative.description,
       tags: Array.isArray(creative.terminals) ? creative.terminals : [creative.terminals].filter(Boolean),
       upvoteCount: Number(creative.upvote_count ?? 0), // 使用数据库真实点赞数
-      commentCount: Math.floor(Math.random() * 100),
+      commentCount: Number(creative.comment_count ?? 0), // 使用数据库真实评论数
       createdAt: new Date(creative.created_at).getTime(),
     };
   };
 
-  const ideasToShow = [...creatives].sort((a, b) => {
-    if (activeTab === "热门") {
-      // 热门按点赞数降序排序（无值按0处理）
-      const av = Number(a.upvote_count ?? 0);
-      const bv = Number(b.upvote_count ?? 0);
-      return bv - av;
-    }
-    // 最新按创建时间倒序（API 已按此排序）
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  // 直接使用后端返回的已排序数据，无需前端再次排序
+  const ideasToShow = creatives;
 
   // 首页为创意广场展示，无提交表单
   return (

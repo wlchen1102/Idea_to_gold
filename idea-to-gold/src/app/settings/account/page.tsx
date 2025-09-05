@@ -1,5 +1,8 @@
-// 账户设置页面
+// 页面：账户设置（/settings/account）
+// 作用：提供用户在客户端编辑基础资料（昵称、头像预览、个人简介）；通过 Edge API 读取/写入；符合 Cloudflare Pages + Next.js Edge Runtime 架构。
 "use client";
+
+export const runtime = 'edge';
 
 import { useEffect, useRef, useState } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
@@ -18,7 +21,6 @@ function AccountSettingsPage() {
   const [avatar, setAvatar] = useState("");
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
   // 增加加载态，避免错误时一直显示"加载中"而不结束
   const [loading, setLoading] = useState(true);
   // 防止 React 严格模式下 useEffect 执行两次导致的重复请求
@@ -37,7 +39,6 @@ function AccountSettingsPage() {
         } = await supabase.auth.getSession();
         const token = session?.access_token;
         if (!token) {
-          setMessage("请先登录");
           setLoading(false);
           return;
         }
@@ -49,7 +50,7 @@ function AccountSettingsPage() {
         });
         if (!resp.ok) {
           const txt = await resp.text();
-          setMessage(`加载用户资料失败: ${txt}`);
+          console.warn(`加载用户资料失败: ${txt}`);
           setLoading(false);
           return;
         }
@@ -62,11 +63,10 @@ function AccountSettingsPage() {
           setAvatar(json.profile.avatar_url || "");
           setBio(json.profile.bio || "");
         } else {
-          setMessage("未找到用户资料");
+          console.warn("未找到用户资料");
         }
       } catch (error) {
         console.error("加载用户资料失败:", error);
-        setMessage("加载用户资料失败");
       } finally {
         setLoading(false);
       }
@@ -77,14 +77,14 @@ function AccountSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    setMessage("");
 
     try {
       const supabase = requireSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        setMessage("登录已过期，请重新登录");
+        localStorage.setItem("pendingToast", "登录已过期，请重新登录");
+        window.dispatchEvent(new Event("localToast"));
         return;
       }
 
@@ -102,7 +102,10 @@ function AccountSettingsPage() {
       });
 
       if (response.ok) {
-        setMessage("保存成功！");
+        // 使用全局Toast提示
+        localStorage.setItem("pendingToast", "保存成功！");
+        window.dispatchEvent(new Event("localToast"));
+        
         // 触发头像菜单更新
         window.dispatchEvent(
           new CustomEvent("auth:changed", {
@@ -111,11 +114,13 @@ function AccountSettingsPage() {
         );
       } else {
         const error = await response.text();
-        setMessage(`保存失败: ${error}`);
+        localStorage.setItem("pendingToast", `保存失败: ${error}`);
+        window.dispatchEvent(new Event("localToast"));
       }
     } catch (error) {
       console.error("保存失败:", error);
-      setMessage("保存失败，请重试");
+      localStorage.setItem("pendingToast", "保存失败，请重试");
+      window.dispatchEvent(new Event("localToast"));
     } finally {
       setSaving(false);
     }
@@ -130,17 +135,11 @@ function AccountSettingsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">账户设置</h1>
 
-          {/* 顶部提示：优先展示友好提示，不阻断布局 */}
-          {(message || (!user && !loading)) && (
-            <div className={`mb-4 p-3 rounded-lg text-sm ${
-              message.includes("成功")
-                ? "bg-green-50 text-green-800"
-                : "bg-yellow-50 text-yellow-800"
-            }`}>
-              {message || "未登录状态下信息不可编辑，请先登录。"}
-              {!user && (
-                <a href="/login" className="ml-3 underline text-emerald-700 hover:text-emerald-800">去登录</a>
-              )}
+          {/* 未登录提示 */}
+          {!user && !loading && (
+            <div className="mb-4 p-3 rounded-lg text-sm bg-yellow-50 text-yellow-800">
+              未登录状态下信息不可编辑，请先登录。
+              <a href="/login" className="ml-3 underline text-emerald-700 hover:text-emerald-800">去登录</a>
             </div>
           )}
 
@@ -221,18 +220,7 @@ function AccountSettingsPage() {
               </div>
             </div>
 
-            {/* 消息提示（成功/失败）*/}
-            {message && (
-              <div
-                className={`p-3 rounded-lg text-sm ${
-                  message.includes("成功")
-                    ? "bg-green-50 text-green-800"
-                    : "bg-red-50 text-red-800"
-                }`}
-              >
-                {message}
-              </div>
-            )}
+
 
             {/* 保存按钮 */}
             <div className="flex justify-end">

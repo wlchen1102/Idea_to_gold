@@ -1,21 +1,474 @@
 // 用户个人中心页面
 "use client";
-// 声明允许cloudflare将动态页面部署到‘边缘环境’上
+// 声明允许cloudflare将动态页面部署到'边缘环境'上
 export const runtime = 'edge';
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import CreativityCard from "@/components/CreativityCard";
+import CreativityCardSkeleton from "@/components/CreativityCardSkeleton";
+import Modal from "@/components/Modal";
+import { useAuth } from "@/contexts/AuthContext";
+import { requireSupabaseClient } from "@/lib/supabase";
+import { cache, getCacheKey, CACHE_DURATION } from "@/lib/cache";
 
-type TabType = "createdIdeas" | "supportedIdeas" | "developedProjects";
+type TabType = "createdIdeas" | "supportedIdeas";
+
+// 用户资料接口
+interface UserProfile {
+  id: string;
+  nickname: string;
+  avatar_url?: string;
+  bio?: string;
+}
+
+// 创意数据接口
+interface Creative {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  created_at: string;
+  author_id: string;
+  upvote_count: number;
+  comment_count: number;
+  profiles: {
+    nickname: string;
+    avatar_url?: string;
+  };
+}
 
 export default function ProfilePage() {
   const params = useParams();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const userId = params.userId as string;
-  const [activeTab, setActiveTab] = useState<TabType>("createdIdeas");
+  const { user: currentUser } = useAuth();
+  
+  // 从URL参数中获取当前TAB状态，支持从创意详情页返回时的参数映射
+  const getInitialTab = (): TabType => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'my-creatives') return 'createdIdeas';
+    if (tabParam === 'supported-creatives') return 'supportedIdeas';
+    if (tabParam === 'createdIdeas' || tabParam === 'supportedIdeas') {
+      return tabParam as TabType;
+    }
+    return 'createdIdeas'; // 默认值
+  };
+  
+  const initialTab = getInitialTab();
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userCreatives, setUserCreatives] = useState<Creative[]>([]);
+  const [supportedCreatives, setSupportedCreatives] = useState<Creative[]>([]);
+  const [creativesLoading, setCreativesLoading] = useState(false);
+  const [supportedLoading, setSupportedLoading] = useState(false);
+  const [creativesError, setCreativesError] = useState<string | null>(null);
+  const [supportedError, setSupportedError] = useState<string | null>(null);
+  const [supportedPage, setSupportedPage] = useState(1);
+  const [supportedTotal, setSupportedTotal] = useState(0);
+  const [supportedHasMore, setSupportedHasMore] = useState(true);
+  const [supportedLoadingMore, setSupportedLoadingMore] = useState(false);
+  
+  // 删除相关状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingCreativeId, setDeletingCreativeId] = useState<string | null>(null);
+  const [deletingCreativeTitle, setDeletingCreativeTitle] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 使用ref来跟踪是否已经获取过用户资料
+  const hasInitializedProfile = useRef(false);
+  
+  // 获取用户资料
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 如果是当前用户的个人中心，直接使用当前用户信息
+        if (currentUser && currentUser.id === userId) {
+          setProfileUser({
+            id: currentUser.id,
+            nickname: currentUser.nickname,
+            avatar_url: currentUser.avatar_url,
+            bio: currentUser.bio
+          });
+          setLoading(false);
+          hasInitializedProfile.current = true;
+          return;
+        }
+        
+        // 否则从数据库获取其他用户的公开资料
+        const supabase = requireSupabaseClient();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, nickname, avatar_url, bio')
+          .eq('id', userId)
+          .single();
+        
+        if (error) {
+          console.error('获取用户资料失败:', error);
+          setError('用户不存在或获取资料失败');
+        } else {
+          setProfileUser(data);
+          hasInitializedProfile.current = true;
+        }
+      } catch (err) {
+        console.error('获取用户资料异常:', err);
+        setError('获取用户资料时发生错误');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (userId && !hasInitializedProfile.current) {
+      fetchUserProfile();
+    }
+  }, [userId, currentUser]);
+
+  // 获取用户创意列表
+  useEffect(() => {
+    let cancelled = false;
+    
+    const fetchUserCreatives = async () => {
+      // 检查是否已取消或没有userId
+      if (!userId || cancelled) {
+        return;
+      }
+      
+      try {
+        setCreativesLoading(true);
+        setCreativesError(null);
+        
+        // 获取当前用户的token
+        const supabase = requireSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          setCreativesError('登录已过期，请重新登录');
+          setCreativesLoading(false);
+          // 清理本地存储的过期状态
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userId');
+          }
+          return;
+        }
+        
+        const response = await fetch(`/api/users/${userId}/creatives`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          // 启用浏览器缓存
+          cache: 'default',
+          // 添加请求超时
+          signal: AbortSignal.timeout(10000)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        // 检查组件是否已卸载
+        if (!cancelled) {
+          setUserCreatives(data.creatives || []);
+        }
+      } catch (err) {
+        console.error('获取用户创意失败:', err);
+        if (!cancelled) {
+          setCreativesError(err instanceof Error ? err.message : '获取创意列表失败');
+        }
+      } finally {
+        if (!cancelled) {
+          setCreativesLoading(false);
+        }
+      }
+    };
+    
+    // 只在userId存在时调用API
+    if (userId) {
+      fetchUserCreatives();
+    }
+    
+    // cleanup函数：组件卸载时取消请求
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // 获取用户支持的创意列表
+  useEffect(() => {
+    let cancelled = false;
+    
+    const fetchSupportedCreatives = async () => {
+      // 只在切换到支持的创意tab时才加载
+      if (activeTab !== "supportedIdeas" || !userId || cancelled) {
+        return;
+      }
+      
+      try {
+        // 检查缓存（仅第一页）
+        const cacheKey = getCacheKey.supportedCreatives(userId, 1);
+        const cachedData = cache.get<{creatives: Creative[], total: number}>(cacheKey);
+        
+        if (cachedData) {
+          // 使用缓存数据，立即显示
+          setSupportedCreatives(cachedData.creatives);
+          setSupportedTotal(cachedData.total);
+          setSupportedHasMore(cachedData.creatives.length < cachedData.total);
+          setSupportedLoading(false);
+          return;
+        }
+        
+        setSupportedLoading(true);
+        setSupportedError(null);
+        
+        // 获取当前用户的token
+        const supabase = requireSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          setSupportedError('登录已过期，请重新登录');
+          setSupportedLoading(false);
+          return;
+        }
+        
+        const response = await fetch(`/api/users/${userId}/supported-creatives?page=1&limit=10`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          cache: 'default',
+          signal: AbortSignal.timeout(10000)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!cancelled) {
+          const creatives = data.creatives || [];
+          const total = data.total || 0;
+          setSupportedCreatives(creatives);
+          setSupportedTotal(total);
+          setSupportedPage(1);
+          setSupportedHasMore(creatives.length < total);
+          // 缓存数据，5分钟过期
+          cache.set(cacheKey, { creatives, total }, CACHE_DURATION.MEDIUM);
+        }
+      } catch (err) {
+        console.error('获取支持的创意失败:', err);
+        if (!cancelled) {
+          setSupportedError(err instanceof Error ? err.message : '获取支持的创意列表失败');
+        }
+      } finally {
+        if (!cancelled) {
+          setSupportedLoading(false);
+        }
+      }
+    };
+    
+    fetchSupportedCreatives();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, activeTab]);
+
+
+
+  // 加载更多支持的创意
+  const loadMoreSupportedCreatives = async () => {
+    if (!userId || supportedLoadingMore || !supportedHasMore) {
+      return;
+    }
+
+    try {
+      setSupportedLoadingMore(true);
+      
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setSupportedError('登录已过期，请重新登录');
+        return;
+      }
+
+      const nextPage = supportedPage + 1;
+      const response = await fetch(`/api/users/${userId}/supported-creatives?page=${nextPage}&limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        cache: 'default',
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const newCreatives = data.creatives || [];
+      
+      setSupportedCreatives(prev => [...prev, ...newCreatives]);
+      setSupportedPage(nextPage);
+      setSupportedHasMore(newCreatives.length === 10); // 如果返回的数量少于10，说明没有更多了
+      
+    } catch (err) {
+      console.error('加载更多支持的创意失败:', err);
+      setSupportedError(err instanceof Error ? err.message : '加载更多失败');
+    } finally {
+      setSupportedLoadingMore(false);
+    }
+  };
+
+  // 处理删除创意
+  const handleDeleteCreative = (creativeId: string, creativeTitle: string) => {
+    setDeletingCreativeId(creativeId);
+    setDeletingCreativeTitle(creativeTitle);
+    setDeleteDialogOpen(true);
+  };
+
+  // 确认删除创意
+  const confirmDeleteCreative = async () => {
+    if (!deletingCreativeId) return;
+    
+    try {
+      setIsDeleting(true);
+      
+      // 获取当前用户的token
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        alert('登录已过期，请重新登录');
+        return;
+      }
+      
+      const response = await fetch(`/api/creatives/${deletingCreativeId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      // 从本地状态中移除已删除的创意（立即反馈，已移除全局 Toast）
+      setUserCreatives(prev => prev.filter(creative => creative.id !== deletingCreativeId));
+      
+    } catch (err) {
+      console.error('删除创意失败:', err);
+      alert(err instanceof Error ? err.message : '删除创意失败');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setDeletingCreativeId(null);
+      setDeletingCreativeTitle('');
+    }
+  };
+
+  // 处理TAB切换并更新URL参数
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    // 更新URL参数，保持TAB状态
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.set('tab', tab);
+    router.replace(`/profile/${userId}?${newSearchParams.toString()}`, { scroll: false });
+  };
+
+  // 处理创意卡片点击，跳转到详情页并记录来源TAB
+  const handleCreativeCardClick = (creativeId: string) => {
+    // 将TAB类型转换为对应的参数值
+    const tabParam = activeTab === "createdIdeas" ? "my-creatives" : 
+                    activeTab === "supportedIdeas" ? "supported-creatives" : "my-creatives";
+    
+    // 跳转到创意详情页，并在URL中记录来源TAB和用户ID
+    router.push(`/idea/${creativeId}?fromTab=${tabParam}&fromUserId=${userId}`);
+  };
+
+  // 取消删除
+  const cancelDeleteCreative = () => {
+    setDeleteDialogOpen(false);
+    setDeletingCreativeId(null);
+    setDeletingCreativeTitle('');
+  };
+
+  // 加载状态 - 优化的骨架屏
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          {/* 用户资料骨架屏 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-start gap-6">
+              <div className="w-32 h-32 rounded-full bg-gray-200 animate-pulse"></div>
+              <div className="flex-grow">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-3 w-48"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-64"></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 标签页骨架屏 */}
+          <div className="bg-white rounded-lg shadow-md">
+            <div className="border-b border-gray-200 px-6">
+              <div className="flex space-x-8">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-12 w-24 bg-gray-200 rounded animate-pulse my-4"></div>
+                ))}
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="bg-gray-50 rounded-lg p-4">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error || !profileUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">用户不存在</h2>
+          <p className="text-gray-600 mb-4">{error || '找不到该用户的资料'}</p>
+          <Link href="/" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            返回首页
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
       {/* 页面主体 */}
       <div className="mx-auto max-w-4xl px-4 py-8">
@@ -24,24 +477,35 @@ export default function ProfilePage() {
           <div className="flex items-start gap-6">
             {/* 左侧：头像 */}
             <div className="flex-shrink-0">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-4xl font-bold">
-                Z
-              </div>
+              {profileUser.avatar_url ? (
+                <Image
+                  src={profileUser.avatar_url}
+                  alt={`${profileUser.nickname}的头像`}
+                  width={128}
+                  height={128}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                  {profileUser.nickname?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
             </div>
 
             {/* 右侧：信息 */}
             <div className="flex-grow">
               {/* 昵称和等级 */}
               <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-3xl font-bold text-gray-900">Zoe</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{profileUser.nickname || '用户'}</h1>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border border-amber-300">
-                  Lv.5
+                  Lv.1
                 </span>
               </div>
 
               {/* 个人简介 */}
               <p className="text-gray-600 text-base mb-4 leading-relaxed">
-                热爱创新的产品设计师，专注于用户体验和交互设计。相信好的设计能够改变世界，让生活变得更美好。欢迎与我交流设计心得！
+                {profileUser.bio || '这个用户还没有填写个人简介。'}
               </p>
 
               {/* 核心数据统计 */}
@@ -52,12 +516,9 @@ export default function ProfilePage() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">15</div>
-                  <div className="text-sm text-gray-500">提出的创意</div>
+                  <div className="text-sm text-gray-500">我的创意</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">3</div>
-                  <div className="text-sm text-gray-500">开发的项目</div>
-                </div>
+                {/* 第三个统计项（原“我的项目”）已下线 */}
               </div>
             </div>
           </div>
@@ -69,7 +530,7 @@ export default function ProfilePage() {
           <div className="border-b border-gray-200">
             <nav className="flex gap-8 px-6" aria-label="选项卡">
               <button
-                onClick={() => setActiveTab("createdIdeas")}
+                onClick={() => handleTabChange("createdIdeas")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === "createdIdeas"
                     ? "border-emerald-500 text-emerald-600"
@@ -77,10 +538,10 @@ export default function ProfilePage() {
                 }`}
                 aria-current={activeTab === "createdIdeas" ? "page" : undefined}
               >
-                提出的创意
+                我的创意
               </button>
               <button
-                onClick={() => setActiveTab("supportedIdeas")}
+                onClick={() => handleTabChange("supportedIdeas")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === "supportedIdeas"
                     ? "border-emerald-500 text-emerald-600"
@@ -90,17 +551,8 @@ export default function ProfilePage() {
               >
                 支持的创意
               </button>
-              <button
-                onClick={() => setActiveTab("developedProjects")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === "developedProjects"
-                    ? "border-emerald-500 text-emerald-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                aria-current={activeTab === "developedProjects" ? "page" : undefined}
-              >
-                开发的项目
-              </button>
+              {/* 第三个 Tab 已移除 */}
+              {/* Tab 已移除 */}
             </nav>
           </div>
 
@@ -108,145 +560,209 @@ export default function ProfilePage() {
           <div className="p-6">
             {activeTab === "createdIdeas" && (
               <div>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <CreativityCard
-                    authorName="Zoe"
-                    publishedAtText="3 小时前"
-                    title="用AI为创作者生成个性化封面"
-                    description="根据创作者的风格库与当期话题，自动生成平台原生风格的封面，提高点击率。"
-                    tags={["网页", "AI"]}
-                    upvoteCount={328}
-                    commentCount={24}
-                  />
-                  <CreativityCard
-                    authorName="Zoe"
-                    publishedAtText="昨天"
-                    title="轻量级会议纪要助手"
-                    description="浏览器插件，录制在线会议并自动生成纪要与行动项，支持导出到 Notion。"
-                    tags={["Chrome 插件", "效率"]}
-                    upvoteCount={512}
-                    commentCount={47}
-                  />
-                  <CreativityCard
-                    authorName="Zoe"
-                    publishedAtText="2 天前"
-                    title="小团队知识库同步工具"
-                    description="自动从多平台同步文档到一个统一知识库，并做摘要和标签归类。"
-                    tags={["SaaS", "知识管理"]}
-                    upvoteCount={189}
-                    commentCount={13}
-                  />
-                </div>
+                {creativesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-600">加载创意列表中...</p>
+                    </div>
+                  </div>
+                ) : creativesError ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">加载失败</h3>
+                    <p className="text-gray-600">{creativesError}</p>
+                  </div>
+                ) : userCreatives.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">还没有发布创意</h3>
+                    <p className="text-gray-600 mb-4">快去发布你的第一个创意吧！</p>
+                    <Link href="/creatives/new" className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                      发布创意
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {userCreatives.map((creative) => {
+                      // 格式化发布时间
+                      const publishedAt = new Date(creative.created_at);
+                      const now = new Date();
+                      const diffInHours = Math.floor((now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60));
+                      
+                      let publishedAtText: string;
+                      if (diffInHours < 1) {
+                        publishedAtText = '刚刚';
+                      } else if (diffInHours < 24) {
+                        publishedAtText = `${diffInHours} 小时前`;
+                      } else if (diffInHours < 48) {
+                        publishedAtText = '昨天';
+                      } else if (diffInHours < 72) {
+                        publishedAtText = '2 天前';
+                      } else if (diffInHours < 168) {
+                        publishedAtText = `${Math.floor(diffInHours / 24)} 天前`;
+                      } else {
+                        publishedAtText = '上周';
+                      }
+                      
+                      // 判断是否为当前用户的创意（可以删除）
+                      const isCurrentUserCreative = currentUser && currentUser.id === creative.author_id;
+                      
+                      return (
+                        <CreativityCard
+                          key={creative.id}
+                          creativeId={creative.id}
+                          authorName={creative.profiles.nickname}
+                          publishedAtText={publishedAtText}
+                          title={creative.title}
+                          description={creative.description}
+                          tags={creative.tags}
+                          upvoteCount={creative.upvote_count}
+                          commentCount={creative.comment_count}
+                          onCardClick={() => handleCreativeCardClick(creative.id)}
+                          showDeleteButton={isCurrentUserCreative || false}
+                          onDelete={() => handleDeleteCreative(creative.id, creative.title)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {/* 加载更多按钮 */}
+                {supportedCreatives.length > 0 && supportedHasMore && (
+                  <div className="mt-8 text-center">
+                    <button
+                      onClick={loadMoreSupportedCreatives}
+                      disabled={supportedLoadingMore}
+                      className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {supportedLoadingMore ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          加载中...
+                        </>
+                      ) : (
+                        '加载更多'
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "supportedIdeas" && (
               <div>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <CreativityCard
-                    authorName="Alex"
-                    publishedAtText="5 小时前"
-                    title="跨平台待办协作板"
-                    description="把日历、待办和看板融合到一起，支持家庭与小团队协作。"
-                    tags={["移动端", "协作"]}
-                    upvoteCount={233}
-                    commentCount={18}
-                  />
-                  <CreativityCard
-                    authorName="Mia"
-                    publishedAtText="3 天前"
-                    title="图片批量去背景云服务"
-                    description="面向电商卖家与设计师的批量去背景引擎，开放 API 接入。"
-                    tags={["云服务", "图像"]}
-                    upvoteCount={740}
-                    commentCount={92}
-                  />
-                  <CreativityCard
-                    authorName="Leo"
-                    publishedAtText="上周"
-                    title="RSS 智能聚合器"
-                    description="用大模型给订阅源做去重与摘要，节省阅读时间。"
-                    tags={["阅读", "AI"]}
-                    upvoteCount={401}
-                    commentCount={35}
-                  />
-                </div>
+                {supportedLoading ? (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <CreativityCardSkeleton count={6} />
+                  </div>
+                ) : supportedError ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">加载失败</h3>
+                    <p className="text-gray-600">{supportedError}</p>
+                  </div>
+                ) : supportedCreatives.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">还没有支持任何创意</h3>
+                    <p className="text-gray-600 mb-4">快去发现并支持感兴趣的创意吧！</p>
+                    <Link href="/" className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                      发现创意
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {supportedCreatives.map((creative) => {
+                      // 格式化发布时间
+                      const publishedAt = new Date(creative.created_at);
+                      const now = new Date();
+                      const diffInHours = Math.floor((now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60));
+                      
+                      let publishedAtText: string;
+                      if (diffInHours < 1) {
+                        publishedAtText = '刚刚';
+                      } else if (diffInHours < 24) {
+                        publishedAtText = `${diffInHours} 小时前`;
+                      } else if (diffInHours < 48) {
+                        publishedAtText = '昨天';
+                      } else if (diffInHours < 72) {
+                        publishedAtText = '2 天前';
+                      } else if (diffInHours < 168) {
+                        publishedAtText = `${Math.floor(diffInHours / 24)} 天前`;
+                      } else {
+                        publishedAtText = '上周';
+                      }
+                      
+                      return (
+                        <CreativityCard
+                          key={creative.id}
+                          creativeId={creative.id}
+                          authorName={creative.profiles.nickname}
+                          publishedAtText={publishedAtText}
+                          title={creative.title}
+                          description={creative.description}
+                          tags={creative.tags}
+                          upvoteCount={creative.upvote_count}
+                          commentCount={creative.comment_count}
+                          onCardClick={() => handleCreativeCardClick(creative.id)}
+                          showDeleteButton={false}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {activeTab === "developedProjects" && (
-              <div>
-                {/* 轻量内联 ProjectCard，只用于个人主页演示复用样式 */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div>
-                      <h3 className="text-[18px] font-semibold text-[#2c3e50]">会议纪要自动化助手</h3>
-                      <div className="mt-3 flex items-center gap-3">
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 border-green-200">开发中</span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-gray-600">将会议录音转写并自动抽取行动项，支持与团队协作工具同步。</p>
-                      <div className="mt-4 flex items-start justify-between gap-3">
-                        <div className="flex-1 border-l-4 border-gray-200 pl-3">
-                          <Link href="/idea/1" className="text-[13px] text-[#3498db] hover:underline">
-                            源于创意：AI会议纪要助手
-                          </Link>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-4 text-[12px] text-gray-500">
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
-                            1280
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" /></svg>
-                            312
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-5">
-                      <Link href="/project/1" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
-                        管理项目
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div>
-                      <h3 className="text-[18px] font-semibold text-[#2c3e50]">智能行动项追踪器</h3>
-                      <div className="mt-3 flex items-center gap-3">
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 border-gray-200">已发布</span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-gray-600">基于NLP的行动项归因与提醒工具，帮助团队闭环推进任务。</p>
-                      <div className="mt-4 flex items-start justify-between gap-3">
-                        <div className="flex-1 border-l-4 border-gray-200 pl-3">
-                          <Link href="/idea/2" className="text-[13px] text-[#3498db] hover:underline">
-                            源于创意：行动项提取与提醒
-                          </Link>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-4 text-[12px] text-gray-500">
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
-                            640
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" /></svg>
-                            120
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-5">
-                      <Link href="/project/2" className="block w-full rounded-lg bg-[#2ECC71] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#27AE60]">
-                        管理项目
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            {/* 第三个内容面板已下线 */}          </div>
         </div>
       </div>
     </div>
+    
+    {/* 删除确认弹窗 */}
+    <Modal
+      isOpen={deleteDialogOpen}
+      onClose={() => {
+        if (!isDeleting) cancelDeleteCreative();
+      }}
+    >
+      <p className="text-[16px] sm:text-[18px] leading-7 text-gray-800">确定删除这条创意吗？</p>
+      <div className="mt-6 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={cancelDeleteCreative}
+          disabled={isDeleting}
+          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-[#2c3e50] hover:bg-gray-50 disabled:opacity-50"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          onClick={confirmDeleteCreative}
+          className="rounded-md bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          disabled={isDeleting}
+        >
+          {isDeleting ? '删除中...' : '确认删除'}
+        </button>
+      </div>
+    </Modal>
+    </>
   );
 }

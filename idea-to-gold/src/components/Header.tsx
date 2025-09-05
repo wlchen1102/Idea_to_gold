@@ -46,7 +46,7 @@ function Header() {
               href="#" 
               className="text-base font-medium text-gray-700 hover:text-emerald-600 transition-colors px-1 pb-1 border-b-2 border-transparent"
             >
-              产品库
+              产品广场
             </Link>
           </div>
 

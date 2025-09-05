@@ -7,6 +7,7 @@ import Image from "next/image";
 import Textarea from "@/components/ui/Textarea";
 import { requireSupabaseClient } from "@/lib/supabase";
 import Modal from "@/components/Modal";
+import { commentsCache } from "@/lib/commentsCache";
 
 // 头像组件：优先显示图片，其次显示姓名首字母
 function Avatar({ name, src }: { name: string; src?: string | null }) {
@@ -62,6 +63,9 @@ interface CommentNode extends CommentDTO {
   liked?: boolean;
 }
 
+// 每个父评论默认预览的回复数量
+const REPLY_PREVIEW_COUNT = 0;
+
 // 新增：将节点视图组件提升为顶层，避免因父组件重渲染导致的子树重挂载，从而避免回复框反复 autoFocus 抢占焦点
 function NodeView({
   node,
@@ -76,6 +80,9 @@ function NodeView({
   formatTime,
   currentUserId,
   onRequestDelete,
+  expandedReplies,
+  setExpandedReplies,
+  currentUserAvatarUrl,
 }: {
   node: CommentNode;
   depth?: number;
@@ -89,6 +96,9 @@ function NodeView({
   formatTime: (iso: string) => string;
   currentUserId: string | null;
   onRequestDelete: (id: string) => void;
+  expandedReplies: Record<string, boolean>;
+  setExpandedReplies: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  currentUserAvatarUrl: string | null;
 }) {
   const name = node.profiles?.nickname ?? "匿名用户";
   const avatar = node.profiles?.avatar_url ?? undefined;
@@ -114,6 +124,10 @@ function NodeView({
     });
     return () => cancelAnimationFrame(raf);
   }, [open, node.id]);
+
+  // 计算该父评论下应渲染的子回复列表
+  const isExpanded = expandedReplies[node.id] ?? false;
+  const repliesToRender = isExpanded ? node.replies : node.replies.slice(0, REPLY_PREVIEW_COUNT);
 
   return (
     <li key={node.id} className="flex gap-3">
@@ -174,19 +188,20 @@ function NodeView({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setReplyOpen((p) => ({ ...p, [node.id]: false }))}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-[14px] text-gray-700 hover:bg-gray-50"
               >
                 取消
               </button>
               <button
-                onClick={async () => {
+                onClick={() => {
                   const text = (replyValue[node.id] ?? "").trim();
                   if (!text) return;
-                  await submitComment(text, node.id);
+                  // 先响应：立即清空并关闭输入框，后续异步提交
                   setReplyValue((p) => ({ ...p, [node.id]: "" }));
                   setReplyOpen((p) => ({ ...p, [node.id]: false }));
+                  submitComment(text, node.id);
                 }}
-                className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
+                className="rounded-lg bg-[#2ECC71] px-4 py-2 text-[14px] text-white hover:bg-[#27AE60]"
               >
                 发表回复
               </button>
@@ -196,7 +211,7 @@ function NodeView({
 
         {node.replies.length > 0 && (
           <ul className="mt-4 space-y-4 pl-0 border-l border-gray-200">
-            {node.replies.map((child) => (
+            {repliesToRender.map((child) => (
               <NodeView
                 key={child.id}
                 node={child}
@@ -211,8 +226,54 @@ function NodeView({
                 formatTime={formatTime}
                 currentUserId={currentUserId}
                 onRequestDelete={onRequestDelete}
+                expandedReplies={expandedReplies}
+                setExpandedReplies={setExpandedReplies}
+                currentUserAvatarUrl={currentUserAvatarUrl}
               />
             ))}
+
+            {/* 折叠/展开：默认展示2条，提供“查看全部回复（n）”与“收起全部回复”切换 */}
+            {!isExpanded && node.replies.length > REPLY_PREVIEW_COUNT ? (
+              <li className="list-none pl-0">
+                <button
+                  onClick={() => setExpandedReplies((p) => ({ ...p, [node.id]: true }))}
+                  className="group mt-1 inline-flex items-center gap-1 rounded px-2 py-1 text-[13px] text-[#3498db] hover:text-[#1d6fa5]"
+                >
+                  <span>查看全部回复（{node.replies.length}）</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4 transition-transform group-hover:translate-y-0.5"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </li>
+            ) : null}
+
+            {isExpanded && node.replies.length > REPLY_PREVIEW_COUNT ? (
+              <li className="list-none pl-0">
+                <button
+                  onClick={() => setExpandedReplies((p) => ({ ...p, [node.id]: false }))}
+                  className="group mt-1 inline-flex items-center gap-1 rounded px-2 py-1 text-[13px] text-[#3498db] hover:text-[#1d6fa5]"
+                >
+                  <span>收起全部回复</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4 transition-transform group-hover:-translate-y-0.5"
+                  >
+                    <path d="M6 15l6-6 6 6" />
+                  </svg>
+                </button>
+              </li>
+            ) : null}
           </ul>
         )}
       </div>
@@ -236,19 +297,37 @@ export default function CommentsSection({
   const [replyValue, setReplyValue] = useState<Record<string, string>>({});
   // 新增：当前登录用户ID（用于在自己评论旁显示“删除”按钮）
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // 新增：当前用户头像（用于资料未到达时的回退头像）
+  const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
   // 新增：删除确认弹窗状态
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+
+  // 新增：本地可见的顶级评论数量（默认显示5条，每次+5）
+  const [visibleRootCount, setVisibleRootCount] = useState<number>(5);
+  // 新增：回复展开状态（key 为父评论ID，值为是否展开全部回复）
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    // 获取当前登录用户ID
+    // 获取当前登录用户ID与头像URL
     const supabase = requireSupabaseClient();
     supabase.auth
       .getSession()
       .then((res) => {
-        setCurrentUserId(res.data?.session?.user?.id ?? null);
+        const uid = res.data?.session?.user?.id ?? null;
+        setCurrentUserId(uid);
+        // 尝试从 user_metadata 中提取 avatar_url（类型安全判断）
+        const meta: unknown = (res.data?.session?.user as { user_metadata?: unknown } | null | undefined)?.user_metadata;
+        let avatarUrl: string | null = null;
+        if (meta && typeof meta === "object" && "avatar_url" in meta) {
+          const v = (meta as Record<string, unknown>)["avatar_url"];
+          avatarUrl = typeof v === "string" ? v : null;
+        }
+        setCurrentUserAvatarUrl(avatarUrl);
       })
-      .catch(() => setCurrentUserId(null));
+      .catch(() => {
+        setCurrentUserId(null);
+        setCurrentUserAvatarUrl(null);
+      });
   }, []); // 移除pathname依赖，只在组件挂载时执行一次
 
   // 原始平铺列表（来自后端）
@@ -259,13 +338,13 @@ export default function CommentsSection({
   const [pagination, setPagination] = useState({ limit: 20, offset: 0, total: 0, hasMore: false });
 
   // 拉取评论列表（支持分页）
-  const fetchComments = useCallback(async (cid: string, isLoadMore = false) => {
+  const fetchComments = useCallback(async (cid: string, isLoadMore = false, silent = false, preserveLocalView = false) => {
     const fetchStartTime = Date.now(); // 性能监控：API调用开始时间
     
     try {
       if (isLoadMore) {
         setLoadingMore(true);
-      } else {
+      } else if (!silent) {
         setLoading(true);
         setError(null);
       }
@@ -281,12 +360,12 @@ export default function CommentsSection({
       }
       
       const currentOffset = isLoadMore ? pagination.offset + pagination.limit : 0;
-      const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}`;
+      const url = `/api/comments?creative_id=${encodeURIComponent(cid)}&limit=${pagination.limit}&offset=${currentOffset}&include_likes=1`;
       
       const res = await fetch(url, { 
         headers,
-        // 利用浏览器缓存，与后端Cache-Control头配合
-        cache: 'default'
+        // 强制绕过浏览器/边缘缓存，确保拿到最新数据；随后写入内存缓存提升二次进入速度
+        cache: 'no-store'
       });
       const fetchEndTime = Date.now(); // 性能监控：API调用结束时间
       const fetchDuration = fetchEndTime - fetchStartTime;
@@ -311,6 +390,11 @@ export default function CommentsSection({
         setItems(prev => [...prev, ...list]);
       } else {
         setItems(list);
+        // 当重新加载第一页时，根据 preserveLocalView 决定是否重置本地顶级可见数和回复展开状态
+        if (!preserveLocalView) {
+          setVisibleRootCount(5);
+          setExpandedReplies({});
+        }
       }
       
       setPagination(paginationInfo);
@@ -325,6 +409,13 @@ export default function CommentsSection({
         }
         return next;
       });
+      
+      // 将最新数据写入内存缓存（按分页维度存储）
+      try {
+        commentsCache.set(cid, { comments: list, pagination: paginationInfo }, paginationInfo.limit, paginationInfo.offset);
+      } catch (_err) {
+        // 忽略缓存写入异常
+      }
       
       const processEndTime = Date.now(); // 性能监控：数据处理结束时间
       const processDuration = processEndTime - processStartTime;
@@ -342,8 +433,11 @@ export default function CommentsSection({
       setError(msg);
       console.error(`获取评论异常 (耗时${fetchDuration}ms):`, e);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else if (!silent) {
+        setLoading(false);
+      }
     }
   }, [pagination.limit, pagination.offset]);
 
@@ -363,16 +457,51 @@ export default function CommentsSection({
         };
       });
       setLikesMap(initialLikesMap);
+      
+      // 静默刷新第一页，拿到 pagination.total 与 hasMore，避免切走列表
+      if (ideaId) {
+        fetchComments(ideaId, false, true);
+      }
       return;
     }
 
     if (ideaId && !fetchedRef.current) {
       fetchedRef.current = true;
-      fetchComments(ideaId);
+      
+      // 优先尝试从缓存中读取数据
+      const cachedData = commentsCache.get(ideaId, 20, 0);
+      if (cachedData) {
+        console.log(`[评论缓存] 从缓存加载评论数据，创意ID: ${ideaId}, 评论数: ${cachedData.comments.length}`);
+        
+        // 立即显示缓存数据
+        setItems(cachedData.comments);
+        setPagination(cachedData.pagination);
+        
+        // 初始化点赞状态
+        const cacheLikesMap: Record<string, { liked: boolean; likes: number }> = {};
+        cachedData.comments.forEach(comment => {
+          cacheLikesMap[comment.id] = {
+            liked: Boolean(comment.current_user_liked),
+            likes: comment.likes_count ?? 0
+          };
+        });
+        setLikesMap(cacheLikesMap);
+        
+        // 静默刷新：在后台获取最新数据，但不显示加载状态
+        fetchComments(ideaId, false, true).then(() => {
+          console.log(`[评论缓存] 静默刷新完成，创意ID: ${ideaId}`);
+        }).catch((error) => {
+          console.warn(`[评论缓存] 静默刷新失败，创意ID: ${ideaId}`, error);
+        });
+      } else {
+        // 缓存中没有数据，正常加载
+        console.log(`[评论缓存] 缓存未命中，正常加载评论数据，创意ID: ${ideaId}`);
+        fetchComments(ideaId);
+      }
     }
   }, [ideaId, fetchComments, initialComments]);
 
-  // 加载更多评论
+  // 加载更多评论（服务端分页）
   const loadMoreComments = () => {
     if (ideaId && pagination.hasMore && !loadingMore) {
       fetchComments(ideaId, true);
@@ -490,7 +619,7 @@ export default function CommentsSection({
     const old = likesMap[id] ?? { liked: false, likes: 0 };
     const optimisticLiked = !old.liked;
     const optimisticLikes = Math.max(0, old.likes + (optimisticLiked ? 1 : -1));
-    // 先做乐观更新
+    // 先做 optimistic 更新
     setLikesMap((prev) => ({ ...prev, [id]: { liked: optimisticLiked, likes: optimisticLikes } }));
 
     (async () => {
@@ -520,130 +649,129 @@ export default function CommentsSection({
     })();
   }
 
-  async function submitComment(content: string, parentId: string | null = null) {
-    if (!ideaId) return;
-    const text = content.trim();
-    if (!text) return;
+  async function submitComment(content: string, parentId: string | null) {
+    const supabase = requireSupabaseClient();
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data?.session?.access_token ?? "";
+
+    if (!token) {
+      alert("请先登录");
+      return;
+    }
+
+    // 解析用户元数据以获取头像/昵称（类型安全）
+    const meta: unknown = (sessionRes.data?.session?.user as { user_metadata?: unknown } | null | undefined)?.user_metadata;
+    let optimisticAvatar: string | null = null;
+    let optimisticNickname = "我";
+    if (meta && typeof meta === "object") {
+      if ("avatar_url" in meta) {
+        const v = (meta as Record<string, unknown>)["avatar_url"];
+        optimisticAvatar = typeof v === "string" && v.trim().length > 0 ? v : null;
+      }
+      if ("nickname" in meta) {
+        const n = (meta as Record<string, unknown>)["nickname"];
+        if (typeof n === "string" && n.trim().length > 0) optimisticNickname = n;
+      }
+    }
+    if (!optimisticAvatar) {
+      optimisticAvatar = currentUserAvatarUrl ?? null;
+    }
+
+    // 先响应：本地乐观插入一条临时评论（特别是回复场景）
+    const tempId = `temp-${Date.now()}`;
+    const tempComment: CommentDTO = {
+      id: tempId,
+      content,
+      author_id: sessionRes.data?.session?.user?.id ?? (currentUserId ?? ""),
+      creative_id: ideaId ?? null,
+      project_log_id: null,
+      parent_comment_id: parentId,
+      created_at: new Date().toISOString(),
+      profiles: { nickname: optimisticNickname, avatar_url: optimisticAvatar },
+      likes_count: 0,
+      current_user_liked: false,
+    };
+
+    setItems((prev) => [...prev, tempComment]);
+    setLikesMap((prev) => ({ ...prev, [tempId]: { liked: false, likes: 0 } }));
+    if (parentId) {
+      setExpandedReplies((p) => ({ ...p, [parentId]: true })); // 保证新回复可见
+    }
 
     try {
-      const supabase = requireSupabaseClient();
-      const sessionRes = await supabase.auth.getSession();
-      const token = sessionRes.data?.session?.access_token ?? "";
-      if (!token) {
-        alert("请先登录后再发表评论");
-        return;
-      }
-
-      const res = await fetch("/api/comments", {
+      const res = await fetch(`/api/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: text, creative_id: ideaId, parent_comment_id: parentId }),
+        body: JSON.stringify({ content, creative_id: ideaId ?? null, parent_comment_id: parentId }),
       });
-      const j = (await res.json().catch(() => null)) as { comment?: CommentDTO | null; message?: string; error?: string } | null;
-      if (res.status === 401) {
-        alert("登录已过期，请重新登录");
-        return;
-      }
       if (!res.ok) {
-        throw new Error(j?.error || j?.message || `请求失败（${res.status}）`);
+        const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+        throw new Error(j?.error || j?.message || `发表评论失败（${res.status}）`);
       }
 
-      const created = (j?.comment ?? null) as CommentDTO | null;
-      if (created) {
-        setItems((prev) => [...prev, created]);
-        // 初始化点赞项
-        setLikesMap((prev) => ({ ...prev, [created.id]: prev[created.id] ?? { liked: false, likes: 0 } }));
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "发表失败";
-      alert(msg);
-    }
-  }
-
-  // 删除评论（仅作者可删）
-  async function deleteCommentById(id: string): Promise<boolean> {
-    try {
-      const supabase = requireSupabaseClient();
-      const sessionRes = await supabase.auth.getSession();
-      const token = sessionRes.data?.session?.access_token ?? "";
-      if (!token) {
-        alert("请先登录");
-        return false;
-      }
-      const res = await fetch(`/api/comments?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
-      if (res.status === 401) {
-        alert("登录已过期，请重新登录");
-        return false;
-      }
-      if (!res.ok) {
-        throw new Error(j?.error || j?.message || `请求失败（${res.status}）`);
-      }
-      // 乐观移除被删节点，避免界面延迟
-      setItems((prev) => prev.filter((c) => c.id !== id));
-      // 清理相关本地状态
+      // 发表评论成功后不再触发任何立即 GET 请求（Solution A）
+      // 说明：前面已经完成本地状态与第一页缓存的更新，并清空了其余页缓存，
+      // 因而无需再静默刷新，避免产生「新增后立刻 GET」的网络回流。
+      // 如果未来需要做一致性校准，可基于“队列清空后再刷新”的策略做合并刷新。
+      // （此处故意留空）
+      const data = (await res.json().catch(() => null)) as { comment?: CommentDTO } | null;
+      const created = data?.comment;
+      // 使用服务端返回的数据替换临时评论，并更新本地与缓存（仅第一页），不立即请求网络
+      setItems((prev) => prev.map((c) => (c.id === tempId && created ? created : c)));
       setLikesMap((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: _, ...rest } = prev;
-        return rest;
-      });
-      setReplyOpen((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: __, ...rest } = prev;
-        return rest;
-      });
-      setReplyValue((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: ___, ...rest } = prev;
-        return rest;
-      });
-      // 优化：直接从本地状态移除被删除的评论，避免重复API调用
-      // 递归删除函数：删除指定评论及其所有子回复
-      const removeCommentAndReplies = (commentId: string, comments: CommentDTO[]): CommentDTO[] => {
-        const toRemove = new Set<string>();
-        
-        // 找出所有需要删除的评论ID（包括子回复）
-        const findReplies = (parentId: string) => {
-          toRemove.add(parentId);
-          comments.forEach(comment => {
-            if (comment.parent_comment_id === parentId) {
-              findReplies(comment.id);
-            }
-          });
-        };
-        
-        findReplies(commentId);
-        
-        // 过滤掉需要删除的评论
-        return comments.filter(comment => !toRemove.has(comment.id));
-      };
-      
-      setItems(prev => removeCommentAndReplies(id, prev));
-      
-      // 清理对应的点赞状态
-      setLikesMap(prev => {
-        const next = { ...prev };
-        delete next[id];
+        const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
+        delete next[tempId];
+        if (created) {
+          next[created.id] = { liked: Boolean(created.current_user_liked), likes: Number(created.likes_count ?? 0) };
+        }
         return next;
       });
-      return true;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "删除失败";
+      setPagination((prev) => ({ ...prev, total: (Number(prev.total) || 0) + 1 }));
+      if (ideaId) {
+        try {
+          const limit = pagination.limit || 20;
+          const cached = commentsCache.get(ideaId, limit, 0);
+          const base = cached?.comments ?? [];
+          const top = (created ?? tempComment);
+          const updatedList = [top, ...base].slice(0, limit);
+          const newTotal = (cached?.pagination.total ?? pagination.total ?? 0) + 1;
+          commentsCache.clearCreative(ideaId);
+          commentsCache.set(
+            ideaId,
+            { comments: updatedList, pagination: { limit, offset: 0, total: newTotal, hasMore: newTotal > updatedList.length } },
+            limit,
+            0
+          );
+        } catch (_e) {
+          // 忽略缓存写入异常
+        }
+      }
+    } catch (err) {
+      // 回滚临时评论
+      setItems((prev) => prev.filter((c) => c.id !== tempId));
+      setLikesMap((prev) => {
+        const next = { ...prev };
+        delete next[tempId];
+        return next;
+      });
+      const msg = err instanceof Error ? err.message : "提交失败";
       alert(msg);
-      return false;
     }
   }
 
   // 嵌套节点渲染（已提升为顶层组件）
   // NodeView 已移到文件顶层
 
-  const totalCount = items.length;
+  // 改为显示“全部评论总数”：优先使用后端返回的 pagination.total，回退到当前已加载数量
+  const totalCount = Math.max(0, Number(pagination.total || 0)) || items.length;
+
+  // 计算当前应展示的顶级评论（默认显示5条）
+  const visibleRoots = useMemo(() => {
+    return tree.slice(0, Math.max(0, visibleRootCount));
+  }, [tree, visibleRootCount]);
 
   return (
     <div className="mt-3">
@@ -663,13 +791,14 @@ export default function CommentsSection({
         />
         <div className="flex justify-end">
           <button
-            onClick={async () => {
+            onClick={() => {
               const text = value.trim();
               if (!text) return;
-              await submitComment(text, null);
+              // 先响应：立即清空输入框并发起异步提交
               setValue("");
+              submitComment(text, null);
             }}
-            className="rounded-lg bg-[#2ECC71] px-4 py-2 text-white hover:bg-[#27AE60]"
+            className="rounded-lg bg-[#2ECC71] px-4 py-2 text-[14px] text-white hover:bg-[#27AE60]"
           >
             发表评论
           </button>
@@ -685,7 +814,7 @@ export default function CommentsSection({
         <div className="mt-5 text-sm text-gray-500">还没有评论，快来抢沙发～</div>
       ) : (
         <ul className="mt-5 space-y-4">
-          {tree.map((node) => (
+          {visibleRoots.map((node) => (
             <NodeView
               key={node.id}
               node={node}
@@ -699,21 +828,53 @@ export default function CommentsSection({
               formatTime={formatTime}
               currentUserId={currentUserId}
               onRequestDelete={setConfirmDeleteId}
+              expandedReplies={expandedReplies}
+              setExpandedReplies={setExpandedReplies}
+              currentUserAvatarUrl={currentUserAvatarUrl}
             />
           ))}
         </ul>
       )}
 
-      {/* 加载更多按钮 */}
-      {pagination.hasMore && (
-        <div className="mt-6 text-center">
-          <button
-            onClick={loadMoreComments}
-            disabled={loadingMore}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loadingMore ? '加载中...' : '加载更多评论'}
-          </button>
+      {/* 查看更多（本地增量 + 服务端分页） */}
+      {!loading && tree.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          {tree.length > visibleRootCount ? (
+            <button
+              onClick={() => setVisibleRootCount((c) => c + 5)}
+              className="group inline-flex items-center gap-1 rounded px-3 py-2 text-[14px] text-[#34495e] hover:text-[#1d6fa5]"
+            >
+              <span>查看更多评论</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-4 w-4 transition-transform group-hover:translate-y-0.5"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+          ) : pagination.hasMore ? (
+            <button
+              onClick={loadMoreComments}
+              disabled={loadingMore}
+              className="group inline-flex items-center gap-1 rounded px-3 py-2 text-[14px] text-[#34495e] hover:text-[#1d6fa5] disabled:opacity-50"
+            >
+              <span>{loadingMore ? '加载中…' : '查看更多评论'}</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className={`h-4 w-4 transition-transform ${loadingMore ? 'animate-bounce' : 'group-hover:translate-y-0.5'}`}
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+          ) : null}
         </div>
       )}
 
@@ -721,7 +882,8 @@ export default function CommentsSection({
       <Modal
         isOpen={!!confirmDeleteId}
         onClose={() => {
-          if (!deleting) setConfirmDeleteId(null);
+          // 不再依赖全局 deleting，允许直接关闭
+          setConfirmDeleteId(null);
         }}
       >
         <p className="text-[16px] sm:text-[18px] leading-7 text-gray-800">确定删除此评论？</p>
@@ -729,8 +891,7 @@ export default function CommentsSection({
           <button
             type="button"
             onClick={() => setConfirmDeleteId(null)}
-            disabled={deleting}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-[#2c3e50] hover:bg-gray-50"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
           >
             取消
           </button>
@@ -738,26 +899,115 @@ export default function CommentsSection({
             type="button"
             onClick={async () => {
               if (!confirmDeleteId) return;
-              const id = confirmDeleteId;
-              // 立即关闭弹窗，不阻塞用户
+              // 先响应：立即关闭弹窗，后台执行删除
+              const targetId = confirmDeleteId;
               setConfirmDeleteId(null);
-              setDeleting(true);
-              const ok = await deleteCommentById(id);
-              setDeleting(false);
-              if (ok && typeof window !== "undefined") {
-                localStorage.setItem("pendingToast", "删除成功");
-                window.dispatchEvent(new Event("localToast"));
+
+              // 乐观更新：立刻从本地移除该评论及其所有子回复
+              const prevItemsSnapshot = items;
+              const prevLikesSnapshot = likesMap;
+              try {
+                // 计算需要删除的所有ID（包含目标及其所有后代）
+                const idsToRemove = new Set<string>();
+                idsToRemove.add(targetId);
+                let added = true;
+                while (added) {
+                  added = false;
+                  for (const c of prevItemsSnapshot) {
+                    if (c.parent_comment_id && idsToRemove.has(c.parent_comment_id) && !idsToRemove.has(c.id)) {
+                      idsToRemove.add(c.id);
+                      added = true;
+                    }
+                  }
+                }
+
+                // 应用本地移除
+                setItems(prev => prev.filter(c => !idsToRemove.has(c.id)));
+                setLikesMap(prev => {
+                  const next = { ...prev } as Record<string, { liked: boolean; likes: number }>;
+                  idsToRemove.forEach(id => { delete next[id]; });
+                  return next;
+                });
+                const removedCount = idsToRemove.size;
+                setPagination(prev => ({ ...prev, total: Math.max(0, (Number(prev.total) || 0) - removedCount) }));
+                if (ideaId) {
+                  try {
+                    const limit = pagination.limit || 20;
+                    const cached = commentsCache.get(ideaId, limit, 0);
+                    const base = (cached?.comments ?? prevItemsSnapshot).filter(c => !idsToRemove.has(c.id));
+                    const newTotal = Math.max(0, (cached?.pagination.total ?? pagination.total ?? 0) - removedCount);
+                    commentsCache.clearCreative(ideaId);
+                    commentsCache.set(
+                      ideaId,
+                      { comments: base.slice(0, limit), pagination: { limit, offset: 0, total: newTotal, hasMore: newTotal > base.length } },
+                      limit,
+                      0
+                    );
+                  } catch (_e) {
+                    // 忽略缓存写入异常
+                  }
+                }
+
+                // 将后端删除操作排入队列，确保串行执行（弹窗已关闭，此处 await 不影响 UI）
+                await enqueueDeletion(async () => {
+                  const supabase = requireSupabaseClient();
+                  const sessionRes = await supabase.auth.getSession();
+                  const token = sessionRes.data?.session?.access_token ?? "";
+                  if (!token) throw new Error("请先登录");
+
+                  const res = await fetch(`/api/comments?id=${encodeURIComponent(targetId)}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (!res.ok) {
+                    const j = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+                    throw new Error(j?.error || j?.message || `删除失败（${res.status}）`);
+                  }
+
+                  // 删除成功：不触发任何立即 GET（方案A）。
+                  // 本地状态与第一页缓存已在上文完成更新，其余页缓存已清空，后续访问其他页时再按需获取。
+                });
+              } catch (_err) {
+                // 回滚本地删除
+                setItems(prevItemsSnapshot);
+                setLikesMap(prevLikesSnapshot);
+                // 失败：使用全局 Toast 提示，并保持弹窗关闭，不打断用户操作
+                try {
+                  localStorage.setItem('pendingToast', '删除失败，请重试~');
+                  window.dispatchEvent(new Event('localToast'));
+                } catch (_e) {
+                  // ignore
+                }
               }
             }}
-            className="rounded-md bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-            disabled={deleting}
+            className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
           >
-            确认
+            确定删除
           </button>
         </div>
       </Modal>
     </div>
   );
 }
+
+
+
+// 模块级：删除请求串行队列，保证多个删除任务按顺序一个个执行
+let __deleteQueue: Promise<void> = Promise.resolve();
+function enqueueDeletion(task: () => Promise<void>) {
+  const run = async () => {
+    try {
+      await task();
+    } catch (_e) {
+      // 任务内部已处理错误与回滚，这里吞掉异常，确保队列继续执行
+    }
+  };
+  const next = __deleteQueue.then(run, run);
+  __deleteQueue = next;
+  return next;
+}
+
+
+/* 删除队列定义已移至模块顶部，无需在组件后再次定义 */
 
 

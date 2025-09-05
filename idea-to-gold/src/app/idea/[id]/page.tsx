@@ -12,7 +12,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Image from "next/image";
 import IdeaEditor from "@/components/IdeaEditor";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 
 // 复用 avatar 小组件
 function Avatar({ name, src }: { name: string; src?: string }) {
@@ -50,7 +50,13 @@ type Creative = {
 
 export default function IdeaDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const _router = useRouter();
   const id = params.id as string;
+  
+  // 获取来源信息
+  const fromTab = searchParams.get('fromTab');
+  const fromUserId = searchParams.get('fromUserId');
   
   const [creative, setCreative] = useState<Creative | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,13 +164,30 @@ export default function IdeaDetailPage() {
 
 
 
+  // 智能返回函数
+
+
+  // 动态生成面包屑路径
+  const getBreadcrumbPaths = () => {
+    if (fromTab && fromUserId) {
+      const tabLabel = fromTab === 'my-creatives' ? '我的创意' : 
+                      fromTab === 'supported-creatives' ? '支持的创意' : '个人中心';
+      return [
+        { href: "/creatives", label: "创意广场" },
+        { href: `/profile/${fromUserId}?tab=${fromTab}`, label: `个人中心 - ${tabLabel}` },
+        { label: "创意详情" }
+      ];
+    }
+    return [{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }];
+  };
+
   return (
     <>
-      <Breadcrumb paths={[{ href: "/creatives", label: "创意广场" }, { label: "创意详情" }]} />
+      <Breadcrumb paths={getBreadcrumbPaths()} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="md:col-span-2">
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="text-3xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
+          <div className="mb-4">
+            <h1 className="text-2xl font-extrabold leading-9 text-[#2c3e50]">{idea.title}</h1>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <Avatar name={idea.author.name} src={idea.author.avatarUrl} />

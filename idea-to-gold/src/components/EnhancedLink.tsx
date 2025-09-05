@@ -1,10 +1,17 @@
 "use client";
 
+// 文件用途：增强版 Link 组件与用于创意卡片的 CreativeLink 容器
+// - 在鼠标悬浮时预取目标页面与对应创意的评论列表数据，遵循“先响应，后处理”原则
+// - 预取评论的请求参数与 CommentsSection 中实际请求保持一致（limit=20, offset=0, include_likes=1），
+//   以利用浏览器 HTTP 缓存，避免重复网络请求
+// - 通过 Supabase 获取客户端会话并在有 token 的情况下携带 Authorization 头，以返回个性化点赞状态
+
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ReactNode } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
+import { commentsCache } from "@/lib/commentsCache";
 
 // 预加载缓存，避免重复请求
 const prefetchCache = new Set<string>();
@@ -31,16 +38,32 @@ const prefetchComments = async (creativeId: string) => {
       headers.Authorization = `Bearer ${token}`;
     }
     
-    // 预加载评论数据（只加载第一页）
-    const url = `/api/comments?creative_id=${encodeURIComponent(creativeId)}&limit=20&offset=0`;
+    // 预加载评论数据（与 CommentsSection 的默认请求参数保持一致）
+    const url = `/api/comments?creative_id=${encodeURIComponent(creativeId)}&limit=20&offset=0&include_likes=1`;
     
     fetch(url, { 
       headers,
       cache: 'default' // 利用浏览器缓存
-    }).catch(() => {
-      // 预加载失败不影响用户体验，静默处理
-      prefetchCache.delete(cacheKey);
-    });
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          prefetchCache.delete(cacheKey);
+          return;
+        }
+        // 将预取到的数据写入内存缓存，确保进入详情页即可渲染
+        try {
+          const json = await res.json();
+          const comments = Array.isArray(json?.comments) ? json.comments : [];
+          const pagination = json?.pagination ?? { limit: 20, offset: 0, total: comments.length, hasMore: false };
+          commentsCache.set(creativeId, { comments, pagination }, 20, 0);
+        } catch {
+          // JSON 解析失败不影响用户体验
+        }
+      })
+      .catch(() => {
+        // 预加载失败不影响用户体验，静默处理
+        prefetchCache.delete(cacheKey);
+      });
   } catch {
     // 预加载失败，从缓存中移除以便下次重试
     prefetchCache.delete(cacheKey);

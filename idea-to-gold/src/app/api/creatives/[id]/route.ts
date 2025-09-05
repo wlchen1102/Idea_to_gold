@@ -2,7 +2,7 @@
 // 迁移自 functions/api/creatives/[id]/index.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getEnvVars } from '@/lib/env'
 
 // 使用 Edge Runtime
 export const runtime = 'edge'
@@ -36,20 +36,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
@@ -73,6 +61,7 @@ export async function GET(
       .from('creatives')
       .select('*')
       .eq('id', id)
+      .is('deleted_at', null)  // 只获取未删除的创意
       .single()
 
     if (error) {
@@ -113,20 +102,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // 环境变量获取：开发环境使用 process.env，生产环境使用 getRequestContext
-    let supabaseUrl: string | undefined
-    let serviceRoleKey: string | undefined
-    
-    if (process.env.NODE_ENV === 'development') {
-      // 开发环境：从 process.env 读取
-      supabaseUrl = process.env.SUPABASE_URL
-      serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    } else {
-      // 生产环境：从 Cloudflare Pages 运行时上下文读取
-      const { env } = getRequestContext()
-      supabaseUrl = (env as { SUPABASE_URL?: string }).SUPABASE_URL
-      serviceRoleKey = (env as { SUPABASE_SERVICE_ROLE_KEY?: string }).SUPABASE_SERVICE_ROLE_KEY
-    }
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars()
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 });
@@ -222,6 +199,94 @@ export async function PATCH(
     }
 
     return NextResponse.json({ message: '更新成功' }, { status: 200 });
+  } catch (e) {
+    const msg = e instanceof Error && e.message ? e.message : 'unknown error';
+    return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 });
+  }
+}
+
+// DELETE /api/creatives/:id - 删除单个创意（仅作者可删除）
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  try {
+    // 获取环境变量
+    const { supabaseUrl, serviceRoleKey } = getEnvVars();
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ message: '服务端环境变量未配置' }, { status: 500 });
+    }
+
+    const awaitedParams = await params;
+    const idOrSlug = awaitedParams?.id;
+    if (!idOrSlug) {
+      return NextResponse.json({ message: '缺少或非法的参数：id' }, { status: 400 });
+    }
+
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) {
+      return NextResponse.json({ message: '缺少认证令牌，请先登录' }, { status: 401 });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // 验证 token
+    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    const currentUserId = userData?.user?.id;
+    if (authError || !currentUserId) {
+      return NextResponse.json({ message: '认证令牌无效，请重新登录' }, { status: 401 });
+    }
+
+    // 读取现有记录，优先按 id 查询，若未命中则回退按 slug 查询
+    let existing: { id: string; author_id: string; title: string } | null = null;
+    {
+      const { data, error } = await supabase
+        .from('creatives')
+        .select('id, author_id, title')
+        .eq('id', idOrSlug)
+        .maybeSingle();
+      if (error) {
+        return NextResponse.json({ message: '数据库查询失败（按ID查找）', error: error.message }, { status: 500 });
+      }
+      if (data) existing = data as { id: string; author_id: string; title: string };
+    }
+
+    if (!existing) {
+      const { data, error } = await supabase
+        .from('creatives')
+        .select('id, author_id, title')
+        .eq('slug', idOrSlug)
+        .maybeSingle();
+      if (error) {
+        return NextResponse.json({ message: '数据库查询失败（按Slug查找）', error: error.message }, { status: 500 });
+      }
+      if (data) existing = data as { id: string; author_id: string; title: string };
+    }
+
+    if (!existing) {
+      return NextResponse.json({ message: '未找到创意' }, { status: 404 });
+    }
+
+    if (existing.author_id !== currentUserId) {
+      return NextResponse.json({ message: '无权限：仅作者可删除该创意' }, { status: 403 });
+    }
+
+    // 执行软删除：更新 deleted_at 字段
+    const { error: deleteError } = await supabase
+      .from('creatives')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', existing.id);
+
+    if (deleteError) {
+      return NextResponse.json({ message: '删除失败', error: deleteError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      message: '删除成功', 
+      deletedCreative: { id: existing.id, title: existing.title } 
+    }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error && e.message ? e.message : 'unknown error';
     return NextResponse.json({ message: '服务器内部错误', error: msg }, { status: 500 });

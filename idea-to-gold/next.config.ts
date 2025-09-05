@@ -1,3 +1,5 @@
+// Next.js 配置文件：集成 Cloudflare Pages（next-on-pages），并配置外部图片域名白名单，确保使用 next/image 渲染远程头像与图片可用。
+
 import type { NextConfig } from "next";
 import { setupDevPlatform } from "@cloudflare/next-on-pages/next-dev";
 
@@ -15,11 +17,29 @@ export default async function nextConfig(): Promise<NextConfig> {
 
     // 针对 Cloudflare Pages 优化
     images: {
-      unoptimized: true // Cloudflare Pages 不支持 Next.js 图片优化
+      // Cloudflare Pages 不支持 Next.js 图片优化，使用浏览器直出
+      unoptimized: true,
+      // 允许的远程图片域名（头像等）
+      remotePatterns: [
+        { protocol: "https", hostname: "ui-avatars.com" },
+        { protocol: "https", hostname: "lh3.googleusercontent.com" },
+        { protocol: "https", hostname: "avatars.githubusercontent.com" },
+        { protocol: "https", hostname: "images.unsplash.com" },
+        { protocol: "https", hostname: "cdn.discordapp.com" }
+      ]
     },
 
     // 确保动态路由不被静态化
     trailingSlash: false,
+
+    // 路由兼容：将旧的 /project/* 永久重定向到规范路径 /projects/*
+    redirects: async () => [
+      {
+        source: "/project/:path*",
+        destination: "/projects/:path*",
+        permanent: true,
+      },
+    ],
 
     // 外部包配置（用于 Edge Runtime）
     serverExternalPackages: []

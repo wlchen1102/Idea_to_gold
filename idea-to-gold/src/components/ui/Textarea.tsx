@@ -7,6 +7,12 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   description?: string;
   error?: string;
   autoResize?: boolean; // 是否启用自适应高度
+  /**
+   * 是否折叠组件下方的外部间距，用于抵消父级 flex gap（如 gap-3）。
+   * 开启后会在根元素上加上 -mb-3，从而消除与下一个兄弟元素之间常见的 12px/0.75rem 空隙。
+   * 注意：这是一个针对页面布局（常见为 gap-3）的实用优化，如果你的父级不是 gap-3，请在使用处通过 collapseGapBelow={false} 关闭。
+   */
+  collapseGapBelow?: boolean;
 }
 
 export default function Textarea(props: TextareaProps) {
@@ -17,6 +23,7 @@ export default function Textarea(props: TextareaProps) {
     className = "",
     id,
     autoResize = true, // 默认开启自适应
+    collapseGapBelow = true, // 默认抵消父级 gap-3
     ...rest
   } = props;
 
@@ -68,11 +75,15 @@ export default function Textarea(props: TextareaProps) {
     };
   }, [autoResize, currentValue]);
 
-  // 没传 rows 时默认 2 行
-  const rows = (rest as { rows?: number }).rows ?? 2;
+  // 没传 rows 时默认 1 行
+  const rows = (rest as { rows?: number }).rows ?? 1;
+
+  // 根容器类名：仅当无描述/错误信息时才折叠与下一个兄弟之间的空隙，避免影响表单注释/报错布局
+  const shouldCollapse = collapseGapBelow && !description && !error;
+  const rootClass = `w-full ${shouldCollapse ? "-mb-3" : ""}`.trim();
 
   return (
-    <div className="w-full">
+    <div className={rootClass}>
       {label && (
         <label htmlFor={id} className="block text-sm font-medium text-[#2c3e50]">
           {label}

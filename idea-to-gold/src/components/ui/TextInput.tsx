@@ -6,9 +6,10 @@ export interface TextInputProps extends React.InputHTMLAttributes<HTMLInputEleme
   label?: string;
   description?: string;
   error?: string;
+  fontSize?: string; // 字体大小，如 'text-2xl', 'text-lg' 等
 }
 
-export default function TextInput({ label, description, error, className = "", id, ...rest }: TextInputProps) {
+export default function TextInput({ label, description, error, className = "", fontSize = "text-[14px]", id, ...rest }: TextInputProps) {
   return (
     <div className="w-full">
       {label && (
@@ -21,7 +22,7 @@ export default function TextInput({ label, description, error, className = "", i
         type="text"
         {...rest}
         className={
-          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-white p-3 text-[14px] focus:border-1 focus:border-[#2ECC71] focus:outline-none ` + (className || "")
+          `mt-2 w-full rounded-md border ${error ? "border-red-400" : "border-gray-300"} bg-transparent p-3 ${fontSize} focus:border-1 focus:border-[#2ECC71] focus:outline-none ` + (className || "")
         }
       />
       {description && <div className="mt-1 text-xs text-gray-500">{description}</div>}
