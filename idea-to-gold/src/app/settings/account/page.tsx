@@ -7,7 +7,7 @@ export const runtime = 'edge';
 import { useEffect, useRef, useState, useCallback } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
 import Image from "next/image";
-import Uploader from "@/components/Uploader";
+import Uploader, { type UploaderHandle } from "@/components/Uploader";
 
 interface UserProfile {
   id: string;
@@ -26,8 +26,10 @@ function AccountSettingsPage() {
   const [loading, setLoading] = useState(true);
   // 防止 React 严格模式下 useEffect 执行两次导致的重复请求
   const loadedRef = useRef(false);
-  // 控制头像上传面板显隐
-  const [showUploader, setShowUploader] = useState(false);
+  // 通过 ref 控制隐藏的 Uploader，点击“修改”时直接 open()
+  const uploaderRef = useRef<UploaderHandle | null>(null);
+  // 新增：本地预览与变更标记（仅选择，不立即上传）
+  const [hasPendingAvatarChange, setHasPendingAvatarChange] = useState<boolean>(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -78,6 +80,13 @@ function AccountSettingsPage() {
     loadUserProfile();
   }, []);
 
+  // 文件选择后：仅做本地预览与变更标记
+  const handleAvatarFileSelected = useCallback((_file: File, previewUrl: string) => {
+    setHasPendingAvatarChange(true);
+    // 仅在 UI 上立即显示预览（不请求接口）
+    setAvatar(previewUrl);
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
 
@@ -91,6 +100,18 @@ function AccountSettingsPage() {
         return;
       }
 
+      // 若头像发生变化：先上传获取 URL
+      let avatarUrlToSave: string | undefined = undefined;
+      if (hasPendingAvatarChange) {
+        const uploadedUrl = await uploaderRef.current?.uploadSelected();
+        if (!uploadedUrl) {
+          localStorage.setItem("pendingToast", "头像上传失败，请重试");
+          window.dispatchEvent(new Event("localToast"));
+          return; // 终止保存，等待用户重试
+        }
+        avatarUrlToSave = uploadedUrl;
+      }
+
       const response = await fetch("/api/users/me/profile", {
         method: "PATCH",
         headers: {
@@ -98,9 +119,9 @@ function AccountSettingsPage() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          // 不再保存 avatar_url，后续再实现
           nickname: nickname.trim() || null,
           bio: bio.trim() || null,
+          ...(avatarUrlToSave ? { avatar_url: avatarUrlToSave } : {}),
         }),
       });
 
@@ -108,6 +129,12 @@ function AccountSettingsPage() {
         // 使用全局Toast提示
         localStorage.setItem("pendingToast", "保存成功！");
         window.dispatchEvent(new Event("localToast"));
+        
+        // 如果包含头像更新，则落盘并清理“待保存”状态
+        if (avatarUrlToSave) {
+          setAvatar(avatarUrlToSave);
+          setHasPendingAvatarChange(false);
+        }
         
         // 触发头像菜单更新
         window.dispatchEvent(
@@ -128,58 +155,6 @@ function AccountSettingsPage() {
       setSaving(false);
     }
   };
-
-  // 头像上传成功：乐观更新 + 调用后端 PATCH 更新 avatar_url
-  const handleAvatarUploaded = useCallback(async (newUrl: string) => {
-    // 先响应：立即关闭上传面板并乐观更新头像
-    setShowUploader(false);
-    const prev = avatar;
-    setAvatar(newUrl);
-    if (user) setUser({ ...user, avatar_url: newUrl });
-
-    try {
-      const supabase = requireSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        localStorage.setItem("pendingToast", "登录已过期，请重新登录");
-        window.dispatchEvent(new Event("localToast"));
-        // 回滚
-        setAvatar(prev);
-        if (user) setUser({ ...user, avatar_url: prev });
-        return;
-      }
-
-      const resp = await fetch("/api/users/me/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ avatar_url: newUrl }),
-      });
-
-      if (resp.ok) {
-        localStorage.setItem("pendingToast", "头像已更新");
-        window.dispatchEvent(new Event("localToast"));
-        // 通知全局头像刷新
-        window.dispatchEvent(new CustomEvent("auth:changed", { detail: { userId: user?.id } }));
-      } else {
-        const txt = await resp.text();
-        localStorage.setItem("pendingToast", `头像更新失败: ${txt}`);
-        window.dispatchEvent(new Event("localToast"));
-        // 回滚
-        setAvatar(prev);
-        if (user) setUser({ ...user, avatar_url: prev });
-      }
-    } catch (e) {
-      console.error("更新头像失败", e);
-      localStorage.setItem("pendingToast", "更新头像失败，请稍后重试");
-      window.dispatchEvent(new Event("localToast"));
-      // 回滚
-      setAvatar(prev);
-      if (user) setUser({ ...user, avatar_url: prev });
-    }
-  }, [avatar, user]);
 
   // 统一渲染页面结构：加载中/未登录时用占位与禁用，避免整页卡住
   const inputsDisabled = loading || !user || saving;
@@ -233,10 +208,16 @@ function AccountSettingsPage() {
                           <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
                             <button
                               type="button"
-                              onClick={() => setShowUploader(true)}
+                              onPointerDown={() => uploaderRef.current?.open()}
                               className="px-3 py-1.5 text-xs font-semibold rounded-full bg-white/90 text-gray-900 shadow hover:shadow-md active:scale-95 transition"
                               onMouseDown={(e) => ((e.currentTarget as HTMLButtonElement).style.transform = "scale(0.96)")}
                               onMouseUp={(e) => ((e.currentTarget as HTMLButtonElement).style.transform = "scale(1)")}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  uploaderRef.current?.open();
+                                }
+                              }}
                             >
                               修改
                             </button>
@@ -246,27 +227,22 @@ function AccountSettingsPage() {
                     )}
                   </div>
 
-                  {/* 上传面板：点击“修改”后显示，包含通用 Uploader 组件 */}
-                  {showUploader && (
-                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <Uploader
-                          onUploadSuccess={handleAvatarUploaded}
-                          allowedTypes={["image/jpeg", "image/png"]}
-                          maxSizeMB={5}
-                          buttonText="上传头像"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowUploader(false)}
-                          className="px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:shadow-sm active:scale-95 transition"
-                        >
-                          关闭
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">支持 JPG/PNG，最大 5MB。上传完成将自动保存头像。</p>
-                    </div>
+                  {/* 选择后的小提示：不立即上传，等待保存 */}
+                  {hasPendingAvatarChange && (
+                    <div className="mt-2 text-xs text-gray-500">已选择新头像，点击“保存更改”后将上传并生效。</div>
                   )}
+
+                  {/* 隐藏但常驻的 Uploader：通过 ref.open() 直接拉起文件选择框；设置为仅选择不上传 */}
+                  <Uploader
+                    ref={uploaderRef}
+                    onUploadSuccess={() => { /* 上传在保存时触发并处理，这里故意 no-op */ }}
+                    allowedTypes={["image/jpeg", "image/png"]}
+                    maxSizeMB={5}
+                    buttonText="上传头像"
+                    className="absolute left-[-9999px] top-[-9999px] w-0 h-0 overflow-hidden"
+                    autoUpload={false}
+                    onFileSelected={handleAvatarFileSelected}
+                  />
                 </div>
 
                 {/* 用户ID */}
