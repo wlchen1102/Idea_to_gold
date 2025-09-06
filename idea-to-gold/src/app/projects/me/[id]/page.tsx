@@ -345,8 +345,8 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   };
   // 新增：模拟原始创意信息
   const ideaInfo = {
-    title: 'AI会议纪要助手', // 添加标题
-    ideaLink: `/creatives/1`, // 更新来源链接为 /creatives/{id}
+    title: projectData?.creative_id ? 'AI会议纪要助手' : '--', // 未关联：显示 "--"
+    ideaLink: projectData?.creative_id ? `/creatives/${projectData.creative_id}` : '#',
     author: { name: 'Zoe' },
     description:
       '这是一个将会议记录全流程自动化的创意。通过高精度语音识别将语音实时转写为文本，并利用大语言模型进行要点提炼、行动项抽取与结构化输出，最终一键同步到团队协作平台，帮助团队快速复盘、对齐信息、提升执行效率。',
@@ -389,14 +389,12 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
   const project = {
     id,
     title: projectData?.name || "加载中...",
-    // 后端暂未返回开发者昵称，先使用占位符
     owner: { name: "未知用户" },
     fromIdea: { 
-      // 标题回退：后端暂未提供创意标题，这里先用占位文本
-      title: "关联创意",
-      href: `/creatives/${projectData?.creative_id ?? ''}` 
+      title: projectData?.creative_id ? "关联创意" : "--", // 未关联：显示 "--"
+      href: projectData?.creative_id ? `/creatives/${projectData.creative_id}` : '#'
     },
-    status: projectStatus, // 使用动态状态
+    status: projectStatus,
     description: projectData?.description || ""
   };
 
@@ -853,7 +851,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
               <div className="space-y-3">
                 <h3 className="text-xl font-semibold text-[#2c3e50]">功能亮点</h3>
                 <p className="text-[15px] leading-7 text-gray-700">
-                  会议纪要自动化助手，基于高精度语音识别与自然语言处理，自动转写会议音频、提炼要点、生成结构化纪要，并同步到团队协作平台。
+                  会议纪要自动化助手，基于高精度语音识别与自然语言处理，自动转写会议音频、提炼要点、生成结构化纪要，并同步到团队协作平台，帮助团队快速复盘、对齐信息、提升执行效率。
                   它可智能识别发言人、抽取行动项与关键决策，帮助团队快速复盘、对齐信息、提升执行效率。通过多端接入（网页、iOS、桌面），让你随时随地记录与回看。
                 </p>
               </div>
@@ -912,9 +910,13 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                 
                 {/* 添加来源链接 */}
                 <div className="border-l-4 border-gray-300 pl-4 text-sm text-gray-700">
-                  <a className="text-[#3498db] hover:underline" href={ideaInfo.ideaLink}>
-                    源于创意：{ideaInfo.title}
-                  </a>
+                  {projectData?.creative_id ? (
+                    <a className="text-[#3498db] hover:underline" href={ideaInfo.ideaLink}>
+                      源于创意：{ideaInfo.title}
+                    </a>
+                  ) : (
+                    <span>源于创意：--</span>
+                  )}
                 </div>
                 
                 {/* 创想家信息 */}
@@ -931,7 +933,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                 </div>
                 {/* 支持数据 */}
                 <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-[#2c3e50]">
-                  有 <span className="font-semibold text-[#2ECC71]">{projectData?.creative_id ? (supportersCount === null ? '加载中...' : new Intl.NumberFormat('zh-CN').format(supportersCount)) : '未关联'}</span> 人想要
+                  有 <span className="font-semibold">{projectData?.creative_id ? (supportersCount === null ? '加载中...' : new Intl.NumberFormat('zh-CN').format(supportersCount)) : '--'}</span> 人想要
                 </div>
                 </div>
             ) : activeTab === 'history' ? (
@@ -1214,7 +1216,7 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
                 </div>
                 <div className="flex items-center justify-between text-[14px] text-[#2c3e50]">
                   <span className="text-gray-600">想要用户数</span>
-                  <span className="font-semibold">{projectData?.creative_id ? (supportersCount === null ? '加载中...' : new Intl.NumberFormat('zh-CN').format(supportersCount)) : '未关联'}</span>
+                  <span className="font-semibold">{projectData?.creative_id ? (supportersCount === null ? '加载中...' : new Intl.NumberFormat('zh-CN').format(supportersCount)) : '--'}</span>
                 </div>
               </div>
             </div>

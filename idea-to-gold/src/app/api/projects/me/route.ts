@@ -110,7 +110,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         name: project.name,
         status: getStatusDisplayName(project.status),
         intro: project.description,
-        fromIdeaTitle: creative?.title ?? '未知创意',
+        // 修改默认文案：未关联创意时显示为 "--"
+        fromIdeaTitle: creative?.title ?? '--',
         // 修正：统一使用创意ID进行跳转，避免以名称/slug 导致详情页 404
         fromIdeaHref: creative?.id ? `/creatives/${encodeURIComponent(creative.id)}` : '#',
         createdAt: project.created_at,

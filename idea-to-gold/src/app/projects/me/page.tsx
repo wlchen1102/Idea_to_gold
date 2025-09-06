@@ -52,6 +52,8 @@ function HeartIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 function ProjectCard({ project, href }: { project: Project; href: string }) {
+  // 未关联创意：fromIdeaTitle === "--" 或 fromIdeaHref === "#"
+  const noCreative = (project.fromIdeaTitle?.trim?.() === "--") || project.fromIdeaHref === '#';
   return (
     <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       {/* 顶部：项目名称 */}
@@ -75,18 +77,24 @@ function ProjectCard({ project, href }: { project: Project; href: string }) {
         {/* 底部：引用 + 关键数据 */}
         <div className="mt-4 flex items-start justify-between gap-3">
           <div className="flex-1 border-l-4 border-gray-200 pl-3">
-            <Link href={project.fromIdeaHref} className="text-[13px] text-[#3498db] hover:underline">
-              源于创意：{project.fromIdeaTitle}
-            </Link>
+            {noCreative ? (
+              <span className="text-[13px] text-gray-500">源于创意：--</span>
+            ) : (
+              <Link href={project.fromIdeaHref} className="text-[13px] text-[#3498db] hover:underline">
+                源于创意：{project.fromIdeaTitle}
+              </Link>
+            )}
           </div>
-          <div className="flex shrink-0 items-center gap-4 text-[12px] text-gray-500">
-            <span className="inline-flex items-center gap-1">
-              <EyeIcon className="h-4 w-4" /> {project.views}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <HeartIcon className="h-4 w-4" /> {project.supports}
-            </span>
-          </div>
+          {!noCreative && (
+            <div className="flex shrink-0 items-center gap-4 text-[12px] text-gray-500">
+              <span className="inline-flex items-center gap-1">
+                <EyeIcon className="h-4 w-4" /> {project.views}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <HeartIcon className="h-4 w-4" /> {project.supports}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
