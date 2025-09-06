@@ -1,7 +1,16 @@
-// 
+/**
+ * 组件名称：RightInfo
+ * 文件作用：用于创意详情页右侧信息面板，展示「我也要」支持按钮、
+ *           「正在进行的项目/已发布产品」复合卡片（含占位假数据）、
+ *           以及期望终端等信息。并提供跳转到新建项目与发布产品页面的入口。
+ * 重要说明：
+ * - 运行环境为 Next.js Edge Runtime（SSR 边缘渲染）。
+ * - 从创意页跳转：新建项目使用 idea_id 作为查询参数；发布产品使用 from_creative。
+ *   以确保对应页面的面包屑导航能正确显示用户来源。
+ */
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,8 +48,7 @@ function toast(message: string) {
 
 export default function RightInfo({
   supporters,
-  platforms,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  platforms: _platforms,
   bounty: _bounty,
   ideaId,
   initialUpvoteData,
@@ -236,12 +244,28 @@ export default function RightInfo({
     }
   }, [ideaId]);
 
+  // 假数据：关联项目与产品（数据表未就绪前的占位，便于展示 UI）
+  const projectList = useMemo(
+    () => [
+      { name: "会议纪要自动化助手", status: "进行中", desc: "将AI引入会议纪要生成与推送", tag: "Web" },
+      { name: "智能图像压缩器", status: "进行中", desc: "高保真压缩，极致体积", tag: "Desktop" },
+    ],
+    []
+  );
+  const productList = useMemo(
+    () => [
+      { name: "AI 日程助理", desc: "一键生成智能日程", tag: "Mobile" },
+      { name: "快速标注平台", desc: "标签流水线，效率翻倍", tag: "Web" },
+    ],
+    []
+  );
+
   return (
-    <div className="sticky top-24 space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <button
           onClick={handleSupport}
-          className={`w-full rounded-xl px-5 py-3 text-[16px] font-semibold text-white ${supported ? "bg-gray-400 hover:bg-gray-400" : "bg-[#2ECC71] hover:bg-[#27AE60]"}`}
+          className={`w-full rounded-xl px-5 py-3 text-[16px] font-semibold text-white transition-transform active:scale-[0.98] ${supported ? "bg-gray-400 hover:bg-gray-400" : "bg-[#2ECC71] hover:bg-[#27AE60]"}`}
         >
           {supported ? "✓ 已想要" : "我也要"}
         </button>
@@ -250,35 +274,59 @@ export default function RightInfo({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <Link
-          href={`/projects/new?idea_id=${ideaId ?? ""}`}
-          className="block w-full rounded-xl border border-[#2ECC71] px-5 py-3 text-center text-[16px] font-semibold text-[#2ECC71] hover:bg-[#2ECC71]/10"
-        >
-          我来解决
-        </Link>
+      {/* 复合信息卡：分为“项目区域”和“产品区域” */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-0 shadow-sm overflow-hidden">
+        {/* 项目区域 */}
+        <div className="p-5 border-b border-gray-100">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[15px] font-semibold text-[#2c3e50]">正在进行的项目</h3>
+            <Link
+              href={`/projects/new?idea_id=${ideaId ?? ""}`}
+              className="inline-flex items-center rounded-lg border border-[#2ECC71] px-3 py-1.5 text-[13px] font-medium text-[#2ECC71] hover:bg-[#2ECC71]/10 transition-colors active:scale-95"
+            >
+              我有个方案
+            </Link>
+          </div>
+          <ul className="space-y-3">
+            {projectList.map((p, idx) => (
+              <li key={idx} className="group rounded-lg border border-gray-200 bg-white/70 px-4 py-3 text-[13px] text-[#2c3e50] hover:border-[#2ECC71]/50 hover:bg-[#2ECC71]/5 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{p.name}</div>
+                  <span className="ml-3 inline-flex items-center rounded-md bg-[#2ECC71]/10 px-2 py-0.5 text-[12px] text-[#27AE60] ring-1 ring-[#2ECC71]/20">{p.status}</span>
+                </div>
+                <div className="mt-1 line-clamp-1 text-gray-600">{p.desc}</div>
+                <div className="mt-1 text-xs text-gray-400">#{p.tag}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* 产品区域 */}
+        <div className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[15px] font-semibold text-[#2c3e50]">已发布产品</h3>
+            <Link
+              href={`/products/new?from_creative=${ideaId ?? ""}`}
+              className="inline-flex items-center rounded-lg border border-[#3498db] px-3 py-1.5 text-[13px] font-medium text-[#3498db] hover:bg-[#3498db]/10 transition-colors active:scale-95"
+            >
+              我有个产品
+            </Link>
+          </div>
+          <ul className="space-y-3">
+            {productList.map((p, idx) => (
+              <li key={idx} className="group rounded-lg border border-gray-200 bg-white/70 px-4 py-3 text-[13px] text-[#2c3e50] hover:border-[#3498db]/50 hover:bg-[#3498db]/5 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{p.name}</div>
+                  <span className="ml-3 inline-flex items-center rounded-md bg-[#3498db]/10 px-2 py-0.5 text-[12px] text-[#2980b9] ring-1 ring-[#3498db]/20">#{p.tag}</span>
+                </div>
+                <div className="mt-1 line-clamp-1 text-gray-600">{p.desc}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <ul className="space-y-3 text-[14px] text-[#2c3e50]">
-          {/* 悬赏金额：按需上线，此处先注释掉 */}
-          {/**
-          <li className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#F1C40F" className="h-5 w-5">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="6" fill="#FFD95E" />
-            </svg>
-            <span>悬赏金额：￥{_bounty}</span>
-          </li>
-          */}
-          {platforms?.length ? (
-            <li>
-              <span className="font-medium">期望终端：</span>
-              <span className="text-gray-600">{platforms.join("、")}</span>
-            </li>
-          ) : null}
-        </ul>
-      </div>
+
     </div>
   );
 }

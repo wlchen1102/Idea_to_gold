@@ -1,4 +1,9 @@
-// 创意详情页面
+// 创意详情页面（App Router + Edge Runtime）
+// 作用：展示单个创意的完整详情。左侧为标题、作者信息、创意描述、期望终端与评论区；右侧为“我来解决”信息卡。
+// 本次改动：
+// 1）将“期望终端”从右侧信息卡移动到左侧“创意描述”下方；
+// 2）将评论区移动到左侧主列，避免因右侧卡片高度导致左侧出现大空白；
+// 3）RightInfo 组件接收的 platforms 置空（[]），右侧不再重复展示。
 "use client";
 
 export const runtime = 'edge';
@@ -215,24 +220,34 @@ export default function IdeaDetailPage() {
               <p key={idx} className="text-[15px] leading-7 text-gray-700 mb-4 last:mb-0">{para}</p>
             ))}
           </div>
-        </section>
+          {/* 期望终端：移动至左侧“创意描述”下方，避免与右侧布局互相影响 */}
+          {Array.isArray(idea.platforms) && idea.platforms.length > 0 ? (
+            <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+              <div className="text-[14px] text-[#2c3e50]">
+                <span className="font-medium">期望终端：</span>
+                <span className="text-gray-600">{idea.platforms.join("、")}</span>
+              </div>
+            </div>
+          ) : null}
 
+          {/* 评论区：并入左侧主列，避免首行高度受右侧影响而产生的大空白 */}
+          <div className="mt-6">
+            <CommentsSection 
+              ideaId={String(creative.id)} 
+              initialComments={undefined}
+            />
+          </div>
+        </section>
         <aside className="md:col-span-1">
           <RightInfo 
             supporters={idea.supporters} 
-            platforms={idea.platforms} 
+            platforms={[]} 
             bounty={idea.bounty} 
             ideaId={String(idea.id)}
             initialUpvoteData={null}
           />
         </aside>
-        <section className="md:col-span-2">
-          <CommentsSection 
-            ideaId={String(creative.id)} 
-            initialComments={undefined}
-          />
-        </section>
-      </div>
+       </div>
 
       <ClientEffects ideaId={String(idea.id)} />
     </>

@@ -1,4 +1,12 @@
-// 规范化路由实现：/projects/[id]/release 发布产品页面（与旧 /project/[id]/release/page.tsx 等价实现，避免重导出依赖）
+// 发布产品页面，通过URL查询参数 (Query Params)，来识别用户的“来路”，并获取必要的上下文信息:
+// 【项目详情】上的“发布最终产品”按钮，现在应该链接到：'/products/new?from_project={projectId}'
+// 【创意详情页】上的“我已有产品”按钮，现在应该链接到：'/products/new?from_creative={creativeId}'
+// 产品广场的“发布产品”按钮，现在应该链接到：'/products/new'
+// 页面内部的逻辑
+// products/new/page.tsx 这个页面组件，会在加载时，用 useSearchParams() Hook来读取这些URL参数。
+// 预填充数据:如果URL里有from_project，它可以先去API请求一下这个项目的信息，然后把项目的名称，作为产品名称的默认值，预先填充到表单里。
+// 提交数据:当用户最终提交表单时，它会把从URL参数里获取到的 project_id 或 creative_id，连同所有表单数据，一起发送给后端的同一个“创建产品”API (POST /api/products)。
+
 "use client";
 
 // 声明允许cloudflare将动态页面部署到“边缘环境”上（保持与项目一致的 Edge Runtime）
