@@ -4,9 +4,10 @@
 
 export const runtime = 'edge';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { requireSupabaseClient } from "@/lib/supabase";
 import Image from "next/image";
+import Uploader from "@/components/Uploader";
 
 interface UserProfile {
   id: string;
@@ -25,6 +26,8 @@ function AccountSettingsPage() {
   const [loading, setLoading] = useState(true);
   // 防止 React 严格模式下 useEffect 执行两次导致的重复请求
   const loadedRef = useRef(false);
+  // 控制头像上传面板显隐
+  const [showUploader, setShowUploader] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -126,6 +129,58 @@ function AccountSettingsPage() {
     }
   };
 
+  // 头像上传成功：乐观更新 + 调用后端 PATCH 更新 avatar_url
+  const handleAvatarUploaded = useCallback(async (newUrl: string) => {
+    // 先响应：立即关闭上传面板并乐观更新头像
+    setShowUploader(false);
+    const prev = avatar;
+    setAvatar(newUrl);
+    if (user) setUser({ ...user, avatar_url: newUrl });
+
+    try {
+      const supabase = requireSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        localStorage.setItem("pendingToast", "登录已过期，请重新登录");
+        window.dispatchEvent(new Event("localToast"));
+        // 回滚
+        setAvatar(prev);
+        if (user) setUser({ ...user, avatar_url: prev });
+        return;
+      }
+
+      const resp = await fetch("/api/users/me/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ avatar_url: newUrl }),
+      });
+
+      if (resp.ok) {
+        localStorage.setItem("pendingToast", "头像已更新");
+        window.dispatchEvent(new Event("localToast"));
+        // 通知全局头像刷新
+        window.dispatchEvent(new CustomEvent("auth:changed", { detail: { userId: user?.id } }));
+      } else {
+        const txt = await resp.text();
+        localStorage.setItem("pendingToast", `头像更新失败: ${txt}`);
+        window.dispatchEvent(new Event("localToast"));
+        // 回滚
+        setAvatar(prev);
+        if (user) setUser({ ...user, avatar_url: prev });
+      }
+    } catch (e) {
+      console.error("更新头像失败", e);
+      localStorage.setItem("pendingToast", "更新头像失败，请稍后重试");
+      window.dispatchEvent(new Event("localToast"));
+      // 回滚
+      setAvatar(prev);
+      if (user) setUser({ ...user, avatar_url: prev });
+    }
+  }, [avatar, user]);
+
   // 统一渲染页面结构：加载中/未登录时用占位与禁用，避免整页卡住
   const inputsDisabled = loading || !user || saving;
 
@@ -147,7 +202,7 @@ function AccountSettingsPage() {
             {/* 基本信息 */}
             <div>
               <div className="grid gap-4">
-                {/* 头像展示（优先） */}
+                {/* 头像展示（新增悬浮遮罩与修改按钮） */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     头像
@@ -156,22 +211,62 @@ function AccountSettingsPage() {
                     {/* 加载骨架 */}
                     {loading ? (
                       <div className="h-16 w-16 rounded-full bg-gray-200 animate-pulse" />
-                    ) : avatar ? (
-                      <Image
-                        src={avatar}
-                        alt="用户头像"
-                        width={64}
-                        height={64}
-                        unoptimized
-                        className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                      />
                     ) : (
-                      <div className="h-16 w-16 rounded-full bg-emerald-500 text-white flex items-center justify-center text-lg font-bold">
-                        {nickname?.charAt(0) || "用"}
+                      <div className="relative group h-16 w-16">
+                        {avatar ? (
+                          <Image
+                            src={avatar}
+                            alt="用户头像"
+                            width={64}
+                            height={64}
+                            unoptimized
+                            className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="h-16 w-16 rounded-full bg-emerald-500 text-white flex items-center justify-center text-lg font-bold select-none">
+                            {nickname?.charAt(0) || "用"}
+                          </div>
+                        )}
+                        {/* 悬浮遮罩与修改按钮 */}
+                        {user && (
+                          <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setShowUploader(true)}
+                              className="px-3 py-1.5 text-xs font-semibold rounded-full bg-white/90 text-gray-900 shadow hover:shadow-md active:scale-95 transition"
+                              onMouseDown={(e) => ((e.currentTarget as HTMLButtonElement).style.transform = "scale(0.96)")}
+                              onMouseUp={(e) => ((e.currentTarget as HTMLButtonElement).style.transform = "scale(1)")}
+                            >
+                              修改
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+
+                  {/* 上传面板：点击“修改”后显示，包含通用 Uploader 组件 */}
+                  {showUploader && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Uploader
+                          onUploadSuccess={handleAvatarUploaded}
+                          allowedTypes={["image/jpeg", "image/png"]}
+                          maxSizeMB={5}
+                          buttonText="上传头像"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowUploader(false)}
+                          className="px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:shadow-sm active:scale-95 transition"
+                        >
+                          关闭
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">支持 JPG/PNG，最大 5MB。上传完成将自动保存头像。</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* 用户ID */}
@@ -227,7 +322,7 @@ function AccountSettingsPage() {
               <button
                 onClick={handleSave}
                 disabled={saving || loading || !user}
-                className="rounded-lg bg-emerald-600 px-6 py-2 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-emerald-600 px-6 py-2 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition"
               >
                 {saving ? "保存中..." : (loading || !user) ? "等待数据..." : "保存更改"}
               </button>
