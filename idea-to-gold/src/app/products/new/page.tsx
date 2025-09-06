@@ -12,19 +12,22 @@
 // 声明允许cloudflare将动态页面部署到“边缘环境”上（保持与项目一致的 Edge Runtime）
 export const runtime = 'edge';
 
-import React, { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import Image from "next/image";
+import { getFreshAuth } from "@/lib/auth";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 // 产品类型定义
 type ProductType = "web" | "mobile" | "desktop" | "other";
 
 export default function ProductReleasePage(): React.ReactElement {
-  // 从路由中获取项目ID
-  const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+  const fromProject = searchParams.get("from_project");
+  const fromCreative = searchParams.get("from_creative");
+
   // 表单提交状态
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,6 +36,14 @@ export default function ProductReleasePage(): React.ReactElement {
   const [slogan, setSlogan] = useState("");
   const [features, setFeatures] = useState("");
   const [productTypes, setProductTypes] = useState<ProductType[]>(["web"]);
+  // 链接状态（按类型可选）
+  const [webLink, setWebLink] = useState("");
+  const [iosLink, setIosLink] = useState("");
+  const [androidLink, setAndroidLink] = useState("");
+  const [winLink, setWinLink] = useState("");
+  const [macLink, setMacLink] = useState("");
+  const [otherLink, setOtherLink] = useState("");
+
   // 切换产品类型（复选）
   const toggleProductType = (t: ProductType) => {
     setProductTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -45,6 +56,9 @@ export default function ProductReleasePage(): React.ReactElement {
   const [promoPreviews, setPromoPreviews] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 页面展示用的项目名（用于面包屑/返回路径提示）
+  const [projectNameDisplay, setProjectNameDisplay] = useState("");
+
   // 清理预览URL
   useEffect(() => {
     return () => {
@@ -53,8 +67,32 @@ export default function ProductReleasePage(): React.ReactElement {
     };
   }, [logoPreview, promoPreviews]);
 
-  // 获取项目信息（模拟数据，实际应从API获取）
-  const projectNameDisplay = "会议纪要自动化助手";
+  // 若来自项目详情页（from_project），预取项目信息并预填产品名
+  useEffect(() => {
+    const run = async () => {
+      if (!fromProject) return;
+      try {
+        const { token } = await getFreshAuth();
+        if (!token) return; // 未登录则忽略预填
+        const resp = await fetchWithTimeout(`/api/projects/me/${fromProject}`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+          timeoutMs: 10000,
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const pname = data?.project?.title || data?.project?.name || "";
+          if (pname && !productName) setProductName(pname);
+          if (pname) setProjectNameDisplay(pname);
+        }
+      } catch (e) {
+        // 预填失败不影响后续
+      }
+    };
+    run();
+    // 仅当进入页面或fromProject变化时尝试一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromProject]);
 
   // 处理Logo选择
   const onLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,8 +111,10 @@ export default function ProductReleasePage(): React.ReactElement {
     if (!files.length) return;
     // 清理旧预览
     promoPreviews.forEach((url) => URL.revokeObjectURL(url));
-    setPromoFiles(files);
-    setPromoPreviews(files.map((f) => URL.createObjectURL(f)));
+    // 最多5张
+    const limited = files.slice(0, 5);
+    setPromoFiles(limited);
+    setPromoPreviews(limited.map((f) => URL.createObjectURL(f)));
     setErrors((prev) => ({ ...prev, promos: "" }));
   };
 
@@ -90,6 +130,16 @@ export default function ProductReleasePage(): React.ReactElement {
     return newErrors;
   };
 
+  // 工具：File 转 DataURL
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // 提交发布
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,8 +153,58 @@ export default function ProductReleasePage(): React.ReactElement {
     }
 
     try {
-      // 模拟API调用
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // 先并发转换图片为 dataURL（先响应UI：按钮进入loading；后处理文件转换）
+      const [logoDataUrl, promoDataUrls] = await Promise.all([
+        logoFile ? fileToDataUrl(logoFile) : Promise.resolve(""),
+        Promise.all(promoFiles.map((f) => fileToDataUrl(f))),
+      ]);
+
+      const { token } = await getFreshAuth();
+      if (!token) {
+        window.alert("请先登录后再发布产品");
+        return;
+      }
+
+      // 组装访问链接（仅保留非空值）
+      const access_info: Record<string, string> = {};
+      if (productTypes.includes("web") && webLink.trim()) access_info.web = webLink.trim();
+      if (productTypes.includes("mobile")) {
+        if (iosLink.trim()) access_info.ios = iosLink.trim();
+        if (androidLink.trim()) access_info.android = androidLink.trim();
+      }
+      if (productTypes.includes("desktop")) {
+        if (winLink.trim()) access_info.win = winLink.trim();
+        if (macLink.trim()) access_info.mac = macLink.trim();
+      }
+      if (productTypes.includes("other") && otherLink.trim()) access_info.other = otherLink.trim();
+
+      // 调用后端真实接口
+      const resp = await fetchWithTimeout("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          project_id: fromProject ?? null,
+          creative_id: fromCreative ?? null,
+          name: productName.trim(),
+          slogan: slogan.trim(),
+          logo_url: logoDataUrl,
+          screenshots: promoDataUrls,
+          description: features.trim(),
+          product_types: productTypes,
+          access_info,
+        }),
+        timeoutMs: 15000,
+      });
+
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        const msg = errJson?.message || `发布失败（${resp.status}）`;
+        window.alert(msg);
+        return;
+      }
 
       // 成功：先显示全局Toast（2.5s），再跳转
       localStorage.setItem("pendingToast", "恭喜！您的产品已成功发布！");
@@ -113,9 +213,11 @@ export default function ProductReleasePage(): React.ReactElement {
       await new Promise((resolve) => setTimeout(resolve, 2700));
 
       // 跳转到已发布的项目主页（作者私有页 /projects/me/[id]）
-      router.push(`/projects/me/${id}`);
+      if (fromProject) router.push(`/projects/me/${fromProject}`);
+      else router.push("/projects/me");
     } catch (error) {
       console.error("发布失败：", error);
+      window.alert("发布过程中发生错误，请稍后重试");
     } finally {
       setIsSubmitting(false);
     }
@@ -129,9 +231,12 @@ export default function ProductReleasePage(): React.ReactElement {
     <>
       {/* 面包屑导航（全部使用 /projects 规范路径）*/}
       <Breadcrumb 
-        paths={[
+        paths={fromProject ? [
           { href: "/projects/me", label: "我的项目" },
-          { href: `/projects/me/${id}` , label: projectNameDisplay },
+          { href: `/projects/me/${fromProject}` , label: projectNameDisplay || "项目详情" },
+          { label: "发布产品" }
+        ] : [
+          { href: "/products", label: "产品广场" },
           { label: "发布产品" }
         ]} 
       />
@@ -143,7 +248,9 @@ export default function ProductReleasePage(): React.ReactElement {
 
       <div className="max-w-2xl mx-auto">
         <div className="mb-4 flex items-center justify-end">
-          <a href={`/projects/${id}`} className="text-sm text-[#3498db] hover:underline">查看公开页</a>
+          {fromProject && (
+            <a href={`/projects/${fromProject}`} className="text-sm text-[#3498db] hover:underline">查看公开页</a>
+          )}
         </div>
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -287,6 +394,8 @@ export default function ProductReleasePage(): React.ReactElement {
                    id="webLink"
                    type="url"
                    placeholder="https://your-product.com"
+                   value={webLink}
+                   onChange={(e) => setWebLink(e.target.value)}
                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-[#2c3e50] placeholder:text-gray-400 focus:border-[#2ECC71] focus:outline-none"
                  />
                </div>
@@ -301,6 +410,8 @@ export default function ProductReleasePage(): React.ReactElement {
                      id="iosLink"
                      type="url"
                      placeholder="https://apps.apple.com/app/..."
+                     value={iosLink}
+                     onChange={(e) => setIosLink(e.target.value)}
                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-[#2c3e50] placeholder:text-gray-400 focus:border-[#2ECC71] focus:outline-none"
                    />
                  </div>
@@ -310,6 +421,8 @@ export default function ProductReleasePage(): React.ReactElement {
                      id="androidLink"
                      type="url"
                      placeholder="https://play.google.com/store/apps/details?id=..."
+                     value={androidLink}
+                     onChange={(e) => setAndroidLink(e.target.value)}
                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-[#2c3e50] placeholder:text-gray-400 focus:border-[#2ECC71] focus:outline-none"
                    />
                  </div>
@@ -325,6 +438,8 @@ export default function ProductReleasePage(): React.ReactElement {
                      id="winLink"
                      type="url"
                      placeholder="https://example.com/download/app-setup.exe"
+                     value={winLink}
+                     onChange={(e) => setWinLink(e.target.value)}
                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-[#2c3e50] placeholder:text-gray-400 focus:border-[#2ECC71] focus:outline-none"
                    />
                  </div>
@@ -334,6 +449,8 @@ export default function ProductReleasePage(): React.ReactElement {
                      id="macLink"
                      type="url"
                      placeholder="https://example.com/download/app.dmg"
+                     value={macLink}
+                     onChange={(e) => setMacLink(e.target.value)}
                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-[#2c3e50] placeholder:text-gray-400 focus:border-[#2ECC71] focus:outline-none"
                    />
                  </div>
@@ -346,6 +463,8 @@ export default function ProductReleasePage(): React.ReactElement {
                   id="otherLink"
                   type="url"
                   placeholder="https://example.com/..."
+                  value={otherLink}
+                  onChange={(e) => setOtherLink(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-[#2c3e50] placeholder:text-gray-400 focus:border-[#2ECC71] focus:outline-none"
                 />
               </div>

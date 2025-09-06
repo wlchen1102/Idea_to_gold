@@ -1161,12 +1161,11 @@ export default function ProjectHomePage({ params }: PageProps): React.ReactEleme
             
               {/* 动态操作按钮 */}
               <div className="mt-4 space-y-2">
-
                 
                 {/* 阶段推进按钮 */}
                 {project.status === "internalTesting" ? (
                   <Link 
-                    href={`/projects/${id}/release`}
+                    href={`/products/new?from_project=${id}`}
                     className="block w-full rounded-xl bg-[#2ECC71] px-5 py-3 text-center text-[16px] font-semibold text-white hover:bg-[#27AE60] transition-colors"
                   >
                     发布最终产品
